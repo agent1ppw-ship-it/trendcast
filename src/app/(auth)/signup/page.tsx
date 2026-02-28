@@ -1,9 +1,14 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { ArrowRight } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function SignUpPage() {
+function SignUpContent() {
+    const searchParams = useSearchParams();
+    const checkout = searchParams.get('checkout');
+    const callbackUrl = checkout ? `/dashboard?checkout=${checkout}` : '/dashboard/crm';
+
     return (
         <div className="flex flex-col min-h-screen items-center justify-center p-6 bg-[#0A0A0A] relative overflow-hidden">
             {/* Background Effects */}
@@ -28,7 +33,7 @@ export default function SignUpPage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent rounded-2xl pointer-events-none"></div>
 
                     <button
-                        onClick={() => signIn('google', { callbackUrl: '/dashboard/crm' })}
+                        onClick={() => signIn('google', { callbackUrl: callbackUrl })}
                         className="w-full py-4 mt-2 rounded-xl bg-white text-black font-bold text-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 relative z-10"
                     >
                         {/* Google G Logo SVG */}
@@ -47,5 +52,13 @@ export default function SignUpPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SignUpPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A]" />}>
+            <SignUpContent />
+        </Suspense>
     );
 }

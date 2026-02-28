@@ -3,12 +3,26 @@ import { ArrowUpRight, Users, DollarSign, Activity, Percent, Zap } from 'lucide-
 import Link from 'next/link';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
+import { createCheckoutSession } from '@/app/actions/billing';
 
 import { prisma } from '@/lib/prisma';
 
-export default async function DashboardOverview() {
+export default async function DashboardOverview({
+    searchParams
+}: {
+    searchParams: { [key: string]: string | string[] | undefined }
+}) {
     const orgId = await ensureOrganization();
     if (!orgId) redirect('/signup');
+
+    // Intercept Google OAuth callbacks with attached checkout intents
+    if (searchParams.checkout) {
+        const tier = searchParams.checkout as 'INTRO' | 'PRO' | 'ULTIMATE';
+        const result = await createCheckoutSession(tier);
+        if (result.success && result.url) {
+            redirect(result.url);
+        }
+    }
 
     const org = await prisma.organization.findUnique({
         where: { id: orgId },
