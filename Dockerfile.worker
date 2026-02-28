@@ -1,0 +1,25 @@
+FROM mcr.microsoft.com/playwright:v1.42.0-jammy
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install exact dependencies
+RUN npm install
+
+# Copy Prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Copy the rest of the application code
+COPY . .
+
+# Install tsx globally to run the TypeScript worker
+RUN npm install -g tsx
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Start the background Playwright proxy worker
+CMD ["tsx", "src/workers/scraper.ts"]
