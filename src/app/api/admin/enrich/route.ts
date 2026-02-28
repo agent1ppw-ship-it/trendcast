@@ -25,7 +25,7 @@ export async function GET(request: Request) {
             if (stateZip.length >= 2) {
                 batchDataPayload = {
                     requests: [{
-                        address: {
+                        propertyAddress: {
                             street: street,
                             city: city,
                             state: stateZip[0],

@@ -46,7 +46,7 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             if (stateZip.length >= 2) {
                 batchDataPayload = {
                     requests: [{
-                        address: {
+                        propertyAddress: {
                             street: street,
                             city: city,
                             state: stateZip[0],
@@ -78,10 +78,10 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
 
         const data = JSON.parse(textResponse);
 
-        // Parse Modern BatchData v1/property/skip-trace response structure
-        const results = data?.results;
+        // Parse BatchData response structure
+        const persons = data?.data?.results?.persons || data?.results?.persons;
 
-        if (!results || !Array.isArray(results) || results.length === 0 || !results[0].match) {
+        if (!persons || !Array.isArray(persons) || persons.length === 0) {
             console.log(`[Enrichment] No match found or zero records returned for: ${address}`);
             return {
                 ownerName: 'Unknown',
@@ -91,9 +91,9 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             };
         }
 
-        const match = results[0].match;
+        const person = persons[0];
 
-        if (!match?.name || Object.keys(match.name).length === 0) {
+        if (!person?.name || Object.keys(person.name).length === 0) {
             console.log(`[Enrichment] Record traced but name is empty for: ${address}`);
             return {
                 ownerName: 'Unknown',
@@ -103,12 +103,12 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             };
         }
 
-        const ownerName = match.name.full || (match.name.first ? `${match.name.first} ${match.name.last || ''}`.trim() : 'Unknown');
+        const ownerName = person.name.full || (person.name.first ? `${person.name.first} ${person.name.last || ''}`.trim() : 'Unknown');
 
         // Find best phone (mobile preferred)
         let mobileNumber = '';
-        if (match.phoneNumbers && Array.isArray(match.phoneNumbers)) {
-            const bestPhone = match.phoneNumbers.find((p: any) => p.type?.toLowerCase() === 'mobile' || p.type?.toLowerCase() === 'wireless') || match.phoneNumbers[0];
+        if (person.phoneNumbers && Array.isArray(person.phoneNumbers)) {
+            const bestPhone = person.phoneNumbers.find((p: any) => p.type?.toLowerCase() === 'mobile' || p.type?.toLowerCase() === 'wireless') || person.phoneNumbers[0];
             mobileNumber = bestPhone?.number || '';
         }
 
