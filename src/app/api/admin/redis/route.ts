@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     const url = process.env.REDIS_URL || '';
-
+    
     const redis = new IORedis(url, {
         maxRetriesPerRequest: null,
         connectTimeout: 3000,
@@ -16,13 +16,14 @@ export async function GET() {
     const queue = new Queue('ScrapeQueue', { connection: redis as any });
 
     try {
-        const failedJobs = await queue.getFailed(0, 5);
+        const failedJobs = await queue.getFailed(0, 100);
         if (failedJobs.length === 0) {
             return NextResponse.json({ success: true, message: 'No failed jobs found in the queue.' });
         }
 
-        const job = failedJobs[0];
-
+        // Get the very last (newest/most recent) failed job in the array
+        const job = failedJobs[failedJobs.length - 1];
+        
         return NextResponse.json({
             success: true,
             jobId: job.id,
