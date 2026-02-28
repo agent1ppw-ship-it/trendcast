@@ -24,16 +24,12 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
 
     // If the user hasn't provided an API key yet, fallback to "Unknown"
     if (!apiKey) {
-        console.warn(`[Enrichment] No SKIP_TRACING_API_KEY found in .env. Generating MOCK data for ${address}.`);
-
-        // Ensure consistent but seemingly random data per address
-        faker.seed(address.length + (address.charCodeAt(0) || 0));
-
+        console.warn(`[Enrichment] No SKIP_TRACING_API_KEY found in .env. Falling back to Unknown for ${address}.`);
         return {
-            ownerName: faker.person.fullName(),
-            mobileNumber: faker.phone.number({ style: 'national' }),
+            ownerName: 'Unknown',
+            mobileNumber: '',
             carrierType: 'mobile',
-            confidenceScore: 99,
+            confidenceScore: 0,
         };
     }
 
@@ -132,14 +128,14 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
         return enrichedData;
 
     } catch (error) {
-        console.warn(`[Enrichment] Skip tracing API network request failed for ${address}. Generating MOCK data. Error:`, (error as Error).message);
+        const errorMsg = (error as Error).message;
+        console.warn(`[Enrichment] Skip tracing API network request failed for ${address}. Falling back to Unknown. Error:`, errorMsg);
 
-        faker.seed(address.length + (address.charCodeAt(0) || 0));
         return {
-            ownerName: faker.person.fullName(),
-            mobileNumber: faker.phone.number({ style: 'national' }),
+            ownerName: 'Unknown',
+            mobileNumber: '',
             carrierType: 'mobile',
-            confidenceScore: 99,
+            confidenceScore: 0,
         };
     }
 }
