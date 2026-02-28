@@ -75,9 +75,9 @@ export async function signUp(formData: FormData) {
         });
 
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Signup error:', error);
-        return { success: false, error: 'Failed to create account. Please try again later.' };
+        return { success: false, error: `Server Crash: ${error.message || String(error)}` };
     }
 }
 
