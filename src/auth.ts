@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 export const authOptions: NextAuthOptions = {
     // Cast adapter because of generic type mismatch between Prisma NextAuth packages, but it operates perfectly
     adapter: PrismaAdapter(prisma) as any,
+    secret: process.env.NEXTAUTH_SECRET,
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
