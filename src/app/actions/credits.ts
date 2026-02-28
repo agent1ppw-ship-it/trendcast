@@ -51,7 +51,12 @@ export async function revealLeadContact(leadId: string) {
             })
         ]);
 
-        revalidatePath('/dashboard/leads');
+        try {
+            revalidatePath('/dashboard/leads');
+        } catch (e: any) {
+            console.warn("revalidatePath skipped:", e.message);
+        }
+
         return { success: true };
 
     } catch (error) {
