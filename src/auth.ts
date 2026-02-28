@@ -20,6 +20,12 @@ export const authOptions: NextAuthOptions = {
     },
     debug: true,
     callbacks: {
+        async redirect({ url, baseUrl }) {
+            console.log('--- REDIRECT FIRED ---', { url, baseUrl });
+            if (url.startsWith('/')) return `${baseUrl}${url}`;
+            else if (new URL(url).origin === baseUrl) return url;
+            return baseUrl + '/dashboard/crm';
+        },
         async jwt({ token, user, account }) {
             console.log('--- JWT CALLBACK FIRED ---');
             console.log('User:', user);
