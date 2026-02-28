@@ -9,7 +9,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
     apiVersion: '2026-02-25.clover',
 });
 
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock_123';
+// For Vercel Edge/Serverless environments, always evaluate secrets directly
+const getWebhookSecret = () => process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock_123';
 
 export async function POST(req: Request) {
     const bodyText = await req.text();
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     let event: Stripe.Event;
 
     try {
-        event = stripe.webhooks.constructEvent(bodyText, sig, endpointSecret);
+        event = stripe.webhooks.constructEvent(bodyText, sig, getWebhookSecret());
     } catch (err: any) {
         console.error(`Webhook signature verification failed: ${err.message}`);
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
