@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TrendCast - AI Home Services Suite
 
-## Getting Started
+TrendCast is an end-to-end B2B SaaS platform specifically designed to automate lead generation, customer communication, and sales pipelines for home service businesses (roofers, landscapers, pressure washers, HVAC, etc.).
 
-First, run the development server:
+## 🏗 System Architecture
 
+*   **Frontend**: Next.js 14 (App Router), Tailwind CSS, Shadcn/UI
+*   **Database**: PostgreSQL via Prisma ORM
+*   **Background Jobs**: BullMQ & Redis (Handles Playwright Stealth Scraping)
+*   **AI Engine**: OpenAI GPT-4o Structured Outputs & Vision API
+*   **Omnichannel Routing**: Twilio Webhooks (SMS) and Vapi.ai (Voice)
+
+## 🚀 Local Deployment Setup
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables
+Create a `.env` file in the root directory and add the following:
+```env
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/trendcast?schema=public"
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Redis Queue
+REDIS_URL="redis://localhost:6379"
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# AI
+OPENAI_API_KEY="sk-proj-..."
+```
 
-## Learn More
+### 3. Database Initialization
+```bash
+# Push schema to the database
+npx prisma db push
 
-To learn more about Next.js, take a look at the following resources:
+# Generate Prisma Client
+npx prisma generate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Seed the database with mock Leads and Organizations for testing
+npx tsx prisma/seed.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run the Application
+```bash
+# Terminal 1: Next.js Frontend & API
+npm run dev
 
-## Deploy on Vercel
+# Terminal 2: Background Playwright Scraper Worker
+npx tsx src/workers/scraper.ts
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧠 Core Feature Paths
+*   **Tier 1 (SEO)**: `src/app/service/[slug]/page.tsx`
+*   **Tier 2 (Scraper)**: `src/workers/scraper.ts`
+*   **Tier 3 (AI SMS)**: `src/app/api/webhooks/twilio/route.ts` & `src/lib/ai/prompts.ts`
+*   **Tier 4 (CRM)**: `src/app/dashboard/crm/page.tsx`
+*   **Voice Handoff**: `src/app/api/webhooks/voice/route.ts`

@@ -1,0 +1,64 @@
+[Worker] Started scraping job 24 for ZIP: 54115
+[Worker] Connecting via proxy: http://brd.superproxy.io:22225
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo
+[Worker] Extracted 41 addresses from page 1. Checking for duplicates...
+[Worker] Found 0 new potential properties so far.
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo/page-2
+[Worker] Extracted 41 addresses from page 2. Checking for duplicates...
+[Worker] Found 10 new potential properties so far.
+[Worker] Proceeding to Enrichment with 10 new properties.
+[Worker] Saved unrevealed lead for 420 S Good Hope Rd, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 1571 Shadow Ridge Way, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 2125 Dollar Rd, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 2167 Trailside Ln, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 1749 Hawthorne Heights Dr, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 830 Roth Rd, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 2060 Rush Ct, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 814 Roth Rd, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 220 Cornellius Martin Ct, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 424 N St Bernard Dr, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Finished job 24
+[Queue] Job 24 has completed!
+[Worker] Started scraping job 25 for ZIP: 54115
+[Worker] Connecting via proxy: http://brd.superproxy.io:22225
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo
+[Worker] Extracted 41 addresses from page 1. Checking for duplicates...
+[Worker] Found 0 new potential properties so far.
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo/page-2
+[Worker] Extracted 41 addresses from page 2. Checking for duplicates...
+[Worker] Found 1 new potential properties so far.
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo/page-3
+[Worker] Error in job 25: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.redfin.com/zipcode/54115/filter/include=sold-6mo/page-3", waiting until "domcontentloaded"[22m
+
+    at Worker.import_bullmq.Worker.connection (/Users/agent1/Documents/trendcast/src/workers/scraper.ts:80:28)
+    at async <anonymous> (/Users/agent1/Documents/trendcast/node_modules/bullmq/src/classes/worker.ts:998:26) {
+  name: 'TimeoutError'
+}
+[Queue] Job 25 has failed with page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.redfin.com/zipcode/54115/filter/include=sold-6mo/page-3", waiting until "domcontentloaded"[22m
+
+[Worker] Started scraping job 26 for ZIP: 54115
+[Worker] Connecting via proxy: http://brd.superproxy.io:22225
+[Worker] Scraping https://www.redfin.com/zipcode/54115/filter/include=sold-6mo
+[Worker] Extracted 41 addresses from page 1. Checking for duplicates...
+[Worker] Found 10 new potential properties so far.
+[Worker] Proceeding to Enrichment with 10 new properties.
+[Worker] Saved unrevealed lead for 2064 Kettle Creek Ct, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 1941 Pike Ln, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 657 Reid St, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 2094 Stone Silo Cir, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 907 Fulton St, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 2437 Lawrence Dr, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 114 N Huron St, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 724 N Huron St, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 1931 Terry Ln, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Saved unrevealed lead for 1208 Meadow View Ln, De Pere, WI 54115 and deducted 1 extract credit.
+[Worker] Finished job 26
+[Queue] Job 26 has completed!
+[Worker] Started scraping job 27 for ZIP: 54115
+[Queue] Job 27 has failed with Insufficient address extracts remaining.
+[Worker] Started scraping job 28 for ZIP: 54115
+[Queue] Job 28 has failed with Insufficient address extracts remaining.

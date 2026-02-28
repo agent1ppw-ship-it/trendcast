@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id               String   @id @default(uuid())
+  name             String
+  tier             String   @default("INTRO") // INTRO, PRO, ULTIMATE, ENTERPRISE
+  industry         String
+  stripeCustomerId String?
+  credits          Int      @default(50)
+  extracts         Int      @default(10)
+  createdAt        DateTime @default(now())
+  
+  users            User[]
+  leads            Lead[]
+  jobs             Job[]
+  aiSettings       AiConfig?
+}
+
+model User {
+  id             String   @id @default(uuid())
+  orgId          String
+  organization   Organization @relation(fields: [orgId], references: [id])
+  email          String   @unique
+  password       String?
+  name           String?
+  role           String   @default("USER") // ADMIN, USER
+  createdAt      DateTime @default(now())
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  orgId          String
+  organization   Organization @relation(fields: [orgId], references: [id])
+  name           String
+  phone          String?
+  address        String?
+  source         String   @default("SCRAPER") // ORGANIC, SCRAPER, MANUAL
+  leadScore      Int      @default(0)
+  status         String   @default("NEW") // NEW, CONTACTED, QUOTED, WON, LOST
+  isRevealed     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model AiConfig {
+  id             String   @id @default(uuid())
+  orgId          String   @unique
+  organization   Organization @relation(fields: [orgId], references: [id])
+  systemPrompt   String   @db.Text
+  autoReplySMS   Boolean  @default(false)
+  autoSchedule   Boolean  @default(false)
+  twilioNumber   String?
+}
+
+model Job {
+  id             String   @id @default(uuid())
+  orgId          String
+  organization   Organization @relation(fields: [orgId], references: [id])
+  title          String
+  status         String   @default("PENDING") // PENDING, SCHEDULED, COMPLETED, INVOICED
+  scheduledFor   DateTime?
+  createdAt      DateTime @default(now())
+}
