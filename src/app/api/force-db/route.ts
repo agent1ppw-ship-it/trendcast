@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    let dbUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+    let dbUrl = process.env.DATABASE_URL || "";
     if (!dbUrl.includes("pgbouncer=true")) {
         dbUrl += (dbUrl.includes("?") ? "&" : "?") + "pgbouncer=true";
     }
