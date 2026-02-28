@@ -1,36 +1,39 @@
 import { NextResponse } from 'next/server';
 import IORedis from 'ioredis';
+import { Queue } from 'bullmq';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     const url = process.env.REDIS_URL || '';
 
-    // Test 1: With the custom TLS object
     const redis = new IORedis(url, {
         maxRetriesPerRequest: null,
         connectTimeout: 3000,
         ...(url.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {})
     });
 
+    const queue = new Queue('ScrapeQueue', { connection: redis as any });
+
     try {
-        const failedIds = await redis.lrange('bull:ScrapeQueue:failed', 0, 5);
-        if (failedIds.length === 0) {
+        const failedJobs = await queue.getFailed(0, 5);
+        if (failedJobs.length === 0) {
             return NextResponse.json({ success: true, message: 'No failed jobs found in the queue.' });
         }
 
-        const jobData: any = await redis.hgetall(`bull:ScrapeQueue:${failedIds[0]}`);
+        const job = failedJobs[0];
 
         return NextResponse.json({
             success: true,
-            jobId: failedIds[0],
-            progress: jobData.progress || 'Unknown',
-            reason: jobData.failedReason || 'Unknown',
-            stack: jobData.stacktrace ? jobData.stacktrace.substring(0, 1000) : 'None'
+            jobId: job.id,
+            progress: job.progress || 'Unknown',
+            reason: job.failedReason || 'Unknown',
+            stack: job.stacktrace ? job.stacktrace[0] || 'None' : 'None'
         });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message });
     } finally {
+        await queue.close();
         redis.disconnect();
     }
 }
