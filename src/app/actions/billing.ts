@@ -11,9 +11,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
 });
 
 const PRICE_IDS = {
-    'INTRO': 'price_mock_intro_3499', // 100 Extracts, 500 Credits
-    'PRO': 'price_mock_pro_14999', // 1,000 Extracts, 5,000 Credits
-    'ULTIMATE': 'price_mock_ultimate_39999' // Unlimited Extracts, 25,000 Credits
+    'INTRO': process.env.STRIPE_PRICE_INTRO || 'price_mock_intro_3499',
+    'PRO': process.env.STRIPE_PRICE_PRO || 'price_mock_pro_14999',
+    'ULTIMATE': process.env.STRIPE_PRICE_ULTIMATE || 'price_mock_ultimate_39999'
 };
 
 export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') {
