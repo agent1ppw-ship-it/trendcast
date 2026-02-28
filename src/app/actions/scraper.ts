@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 
 const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
@@ -15,11 +15,11 @@ const prisma = new PrismaClient();
 
 export async function startScraperJob(zipCode: string) {
     try {
-        const session = await verifyAuth();
-        if (!session) return { success: false, error: 'Unauthorized. Please sign in.' };
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized. Please sign in.' };
 
         const org = await prisma.organization.findUnique({
-            where: { id: session.orgId }
+            where: { id: orgId }
         });
 
         if (!org) {
@@ -71,11 +71,11 @@ export async function getScraperStatus(jobId: string) {
 
 export async function syncLeadToCrm(leadId: string) {
     try {
-        const session = await verifyAuth();
-        if (!session) return { success: false, error: 'Unauthorized' };
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
 
         await prisma.lead.updateMany({
-            where: { id: leadId, orgId: session.orgId },
+            where: { id: leadId, orgId: orgId },
             data: { status: 'NEW' }
         });
         revalidatePath('/dashboard/leads');
@@ -89,11 +89,11 @@ export async function syncLeadToCrm(leadId: string) {
 
 export async function syncAllExtractedToCrm() {
     try {
-        const session = await verifyAuth();
-        if (!session) return { success: false, error: 'Unauthorized' };
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
 
         const result = await prisma.lead.updateMany({
-            where: { status: 'EXTRACTED', orgId: session.orgId },
+            where: { status: 'EXTRACTED', orgId: orgId },
             data: { status: 'NEW' }
         });
         revalidatePath('/dashboard/leads');
@@ -107,8 +107,8 @@ export async function syncAllExtractedToCrm() {
 
 export async function cancelScraperJob(jobId: string) {
     try {
-        const session = await verifyAuth();
-        if (!session) return { success: false, error: 'Unauthorized' };
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
 
         // Flag the job for cancellation in Redis
         await redisConnection.set(`cancel-job:${jobId}`, '1', 'EX', 3600);
@@ -124,7 +124,7 @@ export async function cancelScraperJob(jobId: string) {
 
         // Refund the 10 upfront extracts back to the User
         await prisma.organization.update({
-            where: { id: session.orgId },
+            where: { id: orgId },
             data: { extracts: { increment: 10 } }
         });
 

@@ -1,18 +1,18 @@
 'use server';
 
 import { PrismaClient } from '@prisma/client';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { revalidatePath } from 'next/cache';
 
 const prisma = new PrismaClient();
 
 export async function getAiConfig() {
-    const session = await verifyAuth();
-    if (!session) return null;
+    const orgId = await ensureOrganization();
+    if (!orgId) return null;
 
     try {
         const config = await prisma.aiConfig.findUnique({
-            where: { orgId: session.orgId }
+            where: { orgId }
         });
         return config;
     } catch (e) {
@@ -22,12 +22,12 @@ export async function getAiConfig() {
 }
 
 export async function saveAiConfig(data: any) {
-    const session = await verifyAuth();
-    if (!session) return { success: false, error: 'Unauthorized' };
+    const orgId = await ensureOrganization();
+    if (!orgId) return { success: false, error: 'Unauthorized' };
 
     try {
         await prisma.aiConfig.upsert({
-            where: { orgId: session.orgId },
+            where: { orgId },
             update: {
                 autoReplySMS: data.autoReplySMS,
                 autoSchedule: data.autoSchedule,
@@ -35,7 +35,7 @@ export async function saveAiConfig(data: any) {
                 systemPrompt: data.systemPrompt
             },
             create: {
-                orgId: session.orgId,
+                orgId,
                 autoReplySMS: data.autoReplySMS,
                 autoSchedule: data.autoSchedule,
                 twilioNumber: data.twilioNumber,

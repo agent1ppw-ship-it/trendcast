@@ -32,13 +32,47 @@ export async function GET() {
             -- CreateTable
             CREATE TABLE IF NOT EXISTS "User" (
                 "id" TEXT NOT NULL,
-                "orgId" TEXT NOT NULL,
-                "email" TEXT NOT NULL,
-                "password" TEXT,
+                "orgId" TEXT,
+                "email" TEXT,
+                "emailVerified" TIMESTAMP(3),
+                "image" TEXT,
                 "name" TEXT,
                 "role" TEXT NOT NULL DEFAULT 'USER',
                 "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+            );
+
+            -- CreateTable
+            CREATE TABLE IF NOT EXISTS "Account" (
+                "id" TEXT NOT NULL,
+                "userId" TEXT NOT NULL,
+                "type" TEXT NOT NULL,
+                "provider" TEXT NOT NULL,
+                "providerAccountId" TEXT NOT NULL,
+                "refresh_token" TEXT,
+                "access_token" TEXT,
+                "expires_at" INTEGER,
+                "token_type" TEXT,
+                "scope" TEXT,
+                "id_token" TEXT,
+                "session_state" TEXT,
+                CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
+            );
+
+            -- CreateTable
+            CREATE TABLE IF NOT EXISTS "Session" (
+                "id" TEXT NOT NULL,
+                "sessionToken" TEXT NOT NULL,
+                "userId" TEXT NOT NULL,
+                "expires" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+            );
+
+            -- CreateTable
+            CREATE TABLE IF NOT EXISTS "VerificationToken" (
+                "identifier" TEXT NOT NULL,
+                "token" TEXT NOT NULL,
+                "expires" TIMESTAMP(3) NOT NULL
             );
 
             -- CreateTable
@@ -87,13 +121,31 @@ export async function GET() {
                 IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'AiConfig_orgId_key') THEN
                     CREATE UNIQUE INDEX "AiConfig_orgId_key" ON "AiConfig"("orgId");
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Account_provider_providerAccountId_key') THEN
+                    CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Session_sessionToken_key') THEN
+                    CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'VerificationToken_token_key') THEN
+                    CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token");
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'VerificationToken_identifier_token_key') THEN
+                    CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
+                END IF;
             END
             $$;
 
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'User_orgId_fkey') THEN
-                    ALTER TABLE "User" ADD CONSTRAINT "User_orgId_fkey" FOREIGN KEY ("orgId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                    ALTER TABLE "User" ADD CONSTRAINT "User_orgId_fkey" FOREIGN KEY ("orgId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Account_userId_fkey') THEN
+                    ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Session_userId_fkey') THEN
+                    ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Lead_orgId_fkey') THEN
                     ALTER TABLE "Lead" ADD CONSTRAINT "Lead_orgId_fkey" FOREIGN KEY ("orgId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,101 +1,56 @@
 'use server';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import { PrismaClient } from '@prisma/client';
-import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// In production, this must be a strong environment variable (e.g., process.env.JWT_SECRET)
-const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || 'trendcast-local-dev-secret-key-12345');
+// Get the NextAuth session server-side
+export async function getSession() {
+    return await getServerSession(authOptions);
+}
 
-export async function signUp(formData: FormData) {
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+// Function to auto-generate an Organization if a new Google User logs in without one
+export async function ensureOrganization() {
+    const session = await getSession();
 
-    if (!email || !password) {
-        return { success: false, error: 'Email and password are required.' };
-    }
+    // Not logged in
+    if (!session?.user) return null;
 
-    try {
-        // 1. Check if user already exists
-        const existingUser = await prisma.user.findUnique({ where: { email } });
-        if (existingUser) {
-            return { success: false, error: 'An account with this email already exists.' };
-        }
+    const userEmail = session.user.email;
+    if (!userEmail) return null;
 
-        // 2. Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.findUnique({ where: { email: userEmail } });
 
-        // 3. Create mapping: Organization -> User (in a single transaction)
-        const organization = await prisma.organization.create({
-            data: {
-                name: `${email.split('@')[0]}'s Business`,
-                tier: 'INTRO',
-                industry: 'Home Services',
-                // Explicitly defining Free Trial defaults just to be safe
-                extracts: 10,
-                credits: 50,
-                users: {
-                    create: {
-                        email,
-                        password: hashedPassword,
-                        role: 'ADMIN',
-                    }
-                },
-                aiSettings: {
-                    create: {
-                        systemPrompt: 'You are a helpful home service estimator assistant.',
-                        autoReplySMS: false,
-                        autoSchedule: false,
-                    }
+    if (!user) return null;
+
+    // If the user already has an org, return it
+    if (user.orgId) return user.orgId;
+
+    // Otherwise, they just signed up via Google! Create their Free Trial Org.
+    const organization = await prisma.organization.create({
+        data: {
+            name: `${userEmail.split('@')[0]}'s Business`,
+            tier: 'INTRO',
+            industry: 'Home Services',
+            extracts: 10,
+            credits: 50,
+            aiSettings: {
+                create: {
+                    systemPrompt: 'You are a helpful home service estimator assistant.',
+                    autoReplySMS: false,
+                    autoSchedule: false,
                 }
-            },
-            include: { users: true }
-        });
+            }
+        }
+    });
 
-        // 4. Generate JWT
-        const userUserId = organization.users[0].id;
+    // Link the new Google User to this Orgniazation
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { orgId: organization.id, role: 'ADMIN' }
+    });
 
-        const token = await new SignJWT({ userId: userUserId, orgId: organization.id, role: 'ADMIN' })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setIssuedAt()
-            .setExpirationTime('7d') // 1 week session
-            .sign(SECRET_KEY);
-
-        // 5. Set HttpOnly Cookie
-        const cookieStore = await cookies();
-        cookieStore.set('trendcast_session', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 60 * 60 * 24 * 7 // 7 days
-        });
-
-        return { success: true };
-    } catch (error: any) {
-        console.error('Signup error:', error);
-        return { success: false, error: `Server Crash: ${error.message || String(error)}` };
-    }
-}
-
-// Helper to verify tokens server-side
-export async function verifyAuth() {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('trendcast_session')?.value;
-    if (!sessionCookie) return null;
-
-    try {
-        const { payload } = await jwtVerify(sessionCookie, SECRET_KEY);
-        return payload as { userId: string; orgId: string; role: string };
-    } catch (err) {
-        return null; // Invalid or expired token
-    }
-}
-
-export async function logOut() {
-    const cookieStore = await cookies();
-    cookieStore.delete('trendcast_session');
+    return organization.id;
 }

@@ -1,19 +1,19 @@
 import Link from 'next/link';
 import { Home, Users, BarChart, Settings, Layers, Wallet, Search } from 'lucide-react';
 import { PrismaClient } from '@prisma/client';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 
 const prisma = new PrismaClient();
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const session = await verifyAuth();
-    if (!session) {
+    const orgId = await ensureOrganization();
+    if (!orgId) {
         redirect('/signup');
     }
 
     const org = await prisma.organization.findUnique({
-        where: { id: session.orgId }
+        where: { id: orgId }
     });
 
     return (

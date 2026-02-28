@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/Navbar';
+import { NextAuthProvider } from '@/app/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,10 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth dark">
       <body className={`${inter.className} bg-[#0A0A0A] text-gray-100 antialiased selection:bg-blue-500/30 selection:text-blue-200`}>
-        <Navbar />
-        <main className="pt-20">
-          {children}
-        </main>
+        <NextAuthProvider>
+          <Navbar />
+          <main className="pt-20">
+            {children}
+          </main>
+        </NextAuthProvider>
       </body>
     </html>
   );

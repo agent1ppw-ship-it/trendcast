@@ -1,6 +1,6 @@
 import { PrismaClient, Lead } from '@prisma/client';
 import { LeadScraperClient } from '@/components/LeadScraperClient';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -8,15 +8,15 @@ export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 
 export default async function LeadScraperPage() {
-    const session = await verifyAuth();
-    if (!session) redirect('/signup');
+    const orgId = await ensureOrganization();
+    if (!orgId) redirect('/signup');
 
     let leads: Lead[] = [];
 
     try {
         leads = await prisma.lead.findMany({
             where: {
-                orgId: session.orgId,
+                orgId: orgId,
                 source: 'SCRAPER',
                 status: 'EXTRACTED'
             },

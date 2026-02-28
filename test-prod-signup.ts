@@ -1,20 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Force the client to use the exact variable Vercel uses in production
+process.env.POSTGRES_URL = "postgresql://postgres:Agent*Business!1@db.jttcwvpxzejjcspsyfgu.supabase.co:5432/postgres";
+
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: process.env.POSTGRES_URL
+        }
+    }
+});
 
 async function main() {
+    console.log("Simulating Vercel production signup payload...\n");
     try {
         const organization = await prisma.organization.create({
             data: {
-                name: `Test Business`,
+                name: `Production Test Business`,
                 tier: 'INTRO',
                 industry: 'Home Services',
-                extracts: 10,
-                credits: 50,
                 users: {
                     create: {
-                        email: `test_${Date.now()}@example.com`,
-                        password: 'hashedPassword',
+                        email: `prod_test_${Date.now()}@example.com`,
                         role: 'ADMIN',
                     }
                 },
@@ -28,9 +35,12 @@ async function main() {
             },
             include: { users: true }
         });
-        console.log("Success:", organization);
+        console.log("✅ SUCCESS - Created Organization:", organization.id);
     } catch (e: any) {
-        console.error("Database Error:", e);
+        console.error("\n❌ DATABASE ERROR ENCOUNTERED ❌");
+        console.error("Message:", e.message);
+        console.error("Meta:", e.meta);
+        console.error("Code:", e.code);
     }
 }
 

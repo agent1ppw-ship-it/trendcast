@@ -1,11 +1,11 @@
 import { getAiConfig } from '@/app/actions/settings';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { SettingsForm } from './SettingsForm';
 
 export default async function AiSettingsDashboard() {
-    const session = await verifyAuth();
-    if (!session) redirect('/signup');
+    const orgId = await ensureOrganization();
+    if (!orgId) redirect('/signup');
 
     const config = await getAiConfig();
 

@@ -1,18 +1,18 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ArrowUpRight, Users, DollarSign, Activity, Percent, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export default async function DashboardOverview() {
-    const session = await verifyAuth();
-    if (!session) redirect('/signup');
+    const orgId = await ensureOrganization();
+    if (!orgId) redirect('/signup');
 
     const org = await prisma.organization.findUnique({
-        where: { id: session.orgId },
+        where: { id: orgId },
         include: { users: true }
     });
 

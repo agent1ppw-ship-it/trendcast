@@ -1,7 +1,7 @@
 'use server';
 
 import Stripe from 'stripe';
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -19,11 +19,11 @@ const PRICE_IDS = {
 
 export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') {
     try {
-        const session = await verifyAuth();
-        if (!session) return { success: false, error: 'Unauthorized. Please sign in.' };
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized. Please sign in.' };
 
         const org = await prisma.organization.findUnique({
-            where: { id: session.orgId },
+            where: { id: orgId },
             include: { users: true }
         });
 
@@ -31,7 +31,7 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
             return { success: false, error: 'Active Organization profile not found.' };
         }
 
-        const activeEmail = org.users[0].email;
+        const activeEmail = org.users[0].email || undefined;
         const priceId = PRICE_IDS[tier];
 
         // Create the highly secure Stripe Checkout server session
@@ -48,7 +48,7 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
             mode: 'subscription',
             success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=success`,
             cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=cancelled`,
-            client_reference_id: session.orgId,
+            client_reference_id: orgId,
             metadata: {
                 tierUpgrade: tier // Stored securely on Stripe's end so the webhook knows what to provision
             }

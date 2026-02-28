@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { AddLeadModal } from '@/components/AddLeadModal';
 import { LeadCard } from '@/components/LeadCard';
 
-import { verifyAuth } from '@/app/actions/auth';
+import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 
 const prisma = new PrismaClient();
@@ -21,10 +21,10 @@ async function getLeads(orgId: string) {
 }
 
 export default async function CrmDashboard() {
-    const session = await verifyAuth();
-    if (!session) redirect('/signup');
+    const orgId = await ensureOrganization();
+    if (!orgId) redirect('/signup');
 
-    const leads = await getLeads(session.orgId);
+    const leads = await getLeads(orgId);
 
     const columns = ['NEW', 'CONTACTED', 'QUOTED', 'WON', 'LOST'];
 
