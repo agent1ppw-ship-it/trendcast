@@ -17,8 +17,13 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: 'jwt',
     },
+    debug: true,
     callbacks: {
         async jwt({ token, user, account }) {
+            console.log('--- JWT CALLBACK FIRED ---');
+            console.log('User:', user);
+            console.log('Account:', account);
+
             // First time login, user object is provided
             if (user) {
                 token.id = user.id;
@@ -28,6 +33,10 @@ export const authOptions: NextAuthOptions = {
             return token;
         },
         async session({ session, token }) {
+            console.log('--- SESSION CALLBACK FIRED ---');
+            console.log('Session User:', session.user);
+            console.log('Token:', token);
+
             if (session.user) {
                 (session.user as any).id = token.id;
                 (session.user as any).role = token.role;
