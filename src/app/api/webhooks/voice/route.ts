@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Inbound Voice AI hook (e.g. from Vapi.ai or Bland AI)
 export async function POST(req: Request) {

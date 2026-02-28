@@ -4,10 +4,9 @@ import { chromium } from 'playwright-extra';
 // @ts-ignore
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
-import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 // Add stealth plugin to Playwright
 chromium.use(stealthPlugin());

@@ -1,10 +1,9 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
 import { ensureOrganization } from '@/app/actions/auth';
 import { revalidatePath } from 'next/cache';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function getAiConfig() {
     const orgId = await ensureOrganization();

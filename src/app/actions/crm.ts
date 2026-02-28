@@ -1,9 +1,8 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function updateLeadStatus(leadId: string, newStatus: string) {
     try {

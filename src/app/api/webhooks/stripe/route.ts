@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { PrismaClient } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
     apiVersion: '2026-02-25.clover',

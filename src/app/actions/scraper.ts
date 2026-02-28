@@ -2,7 +2,6 @@
 
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { ensureOrganization } from '@/app/actions/auth';
 
@@ -13,7 +12,7 @@ const redisConnection = new IORedis(redisUrl, {
 });
 
 const scrapeQueue = new Queue('ScrapeQueue', { connection: redisConnection as any });
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function startScraperJob(zipCode: string) {
     try {

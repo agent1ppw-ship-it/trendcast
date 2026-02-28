@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { masterRouterPrompt } from '@/lib/ai/prompts';
-import { PrismaClient } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // This route receives inbound SMS from Twilio and processes the intent
 export async function POST(req: Request) {

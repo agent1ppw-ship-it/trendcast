@@ -3,9 +3,8 @@ import { ArrowUpRight, Users, DollarSign, Activity, Percent, Zap } from 'lucide-
 import Link from 'next/link';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export default async function DashboardOverview() {
     const orgId = await ensureOrganization();

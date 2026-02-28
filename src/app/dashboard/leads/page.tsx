@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export default async function LeadScraperPage() {
     const orgId = await ensureOrganization();

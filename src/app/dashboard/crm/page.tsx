@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 import { AddLeadModal } from '@/components/AddLeadModal';
 import { LeadCard } from '@/components/LeadCard';
@@ -6,7 +5,7 @@ import { LeadCard } from '@/components/LeadCard';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 async function getLeads(orgId: string) {
     try {

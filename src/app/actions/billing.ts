@@ -2,9 +2,8 @@
 
 import Stripe from 'stripe';
 import { ensureOrganization } from '@/app/actions/auth';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Initialize Stripe with the standard secret key (we'll use a local mock or the user's live key later)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {

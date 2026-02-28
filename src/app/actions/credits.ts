@@ -1,10 +1,9 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { enrichLead } from '@/lib/enrichment';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function revealLeadContact(leadId: string) {
     try {
