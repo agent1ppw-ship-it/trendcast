@@ -10,7 +10,10 @@ export async function GET() {
         return NextResponse.json({ success: false, error: "No database URL found in environment variables." });
     }
 
-    const client = new Client({ connectionString });
+    const client = new Client({
+        connectionString,
+        ssl: { rejectUnauthorized: false }
+    });
 
     try {
         await client.connect();
