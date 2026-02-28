@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient({
   datasources: {
-    db: { url: "postgresql://postgres.qssrlsbtuoxkndwmdszn:eG2Qn4jH3VunH7aQ@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" }
+    db: { url: "postgresql://postgres.jttcwvpxzejjcspsyfgu:Agent%2ABusiness%211@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" }
   }
 });
 
