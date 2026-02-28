@@ -59,8 +59,8 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
 
         return { success: true, url: checkoutSession.url };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to create Stripe checkout session:', error);
-        return { success: false, error: 'External billing error. Please try again later.' };
+        return { success: false, error: error?.message || 'Unknown billing error.' };
     }
 }
