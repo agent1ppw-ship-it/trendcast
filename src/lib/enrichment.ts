@@ -20,7 +20,7 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
     console.log(`[Enrichment] Looking up data for: ${address}`);
 
     const apiKey = process.env.SKIP_TRACING_API_KEY;
-    const apiUrl = process.env.SKIP_TRACING_API_URL || 'https://api.batchskiptracing.com/v1/enrich';
+    const apiUrl = process.env.SKIP_TRACING_API_URL || 'https://api.batchdata.com/api/v1/property/skip-trace';
 
     // If the user hasn't provided an API key yet, fallback to "Unknown"
     if (!apiKey) {
@@ -46,7 +46,7 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             if (stateZip.length >= 2) {
                 batchDataPayload = {
                     requests: [{
-                        propertyAddress: {
+                        address: {
                             street: street,
                             city: city,
                             state: stateZip[0],
@@ -78,11 +78,10 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
 
         const data = JSON.parse(textResponse);
 
-        // Parse BatchData response structure
-        // BatchData returns: { status: {...}, results: { persons: [...] } }
-        const persons = data?.data?.results?.persons || data?.results?.persons;
+        // Parse Modern BatchData v1/property/skip-trace response structure
+        const results = data?.results;
 
-        if (!persons || !Array.isArray(persons) || persons.length === 0) {
+        if (!results || !Array.isArray(results) || results.length === 0 || !results[0].match) {
             console.log(`[Enrichment] No match found or zero records returned for: ${address}`);
             return {
                 ownerName: 'Unknown',
@@ -92,10 +91,9 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             };
         }
 
-        const person = persons[0];
+        const match = results[0].match;
 
-        // BatchData sometimes returns a person object but leaves "name": {} empty if it couldn't find the owner
-        if (!person?.name || Object.keys(person.name).length === 0) {
+        if (!match?.name || Object.keys(match.name).length === 0) {
             console.log(`[Enrichment] Record traced but name is empty for: ${address}`);
             return {
                 ownerName: 'Unknown',
@@ -105,12 +103,12 @@ export async function enrichLead(address: string): Promise<EnrichmentResult | nu
             };
         }
 
-        const ownerName = person.name.full || (person.name.first ? `${person.name.first} ${person.name.last || ''}`.trim() : 'Unknown');
+        const ownerName = match.name.full || (match.name.first ? `${match.name.first} ${match.name.last || ''}`.trim() : 'Unknown');
 
         // Find best phone (mobile preferred)
         let mobileNumber = '';
-        if (person.phoneNumbers && Array.isArray(person.phoneNumbers)) {
-            const bestPhone = person.phoneNumbers.find((p: any) => p.type?.toLowerCase() === 'mobile' || p.type?.toLowerCase() === 'wireless') || person.phoneNumbers[0];
+        if (match.phoneNumbers && Array.isArray(match.phoneNumbers)) {
+            const bestPhone = match.phoneNumbers.find((p: any) => p.type?.toLowerCase() === 'mobile' || p.type?.toLowerCase() === 'wireless') || match.phoneNumbers[0];
             mobileNumber = bestPhone?.number || '';
         }
 
