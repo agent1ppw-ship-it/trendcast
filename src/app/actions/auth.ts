@@ -1,5 +1,7 @@
 'use server';
 
+export const dynamic = 'force-dynamic';
+
 import { PrismaClient } from '@prisma/client';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
