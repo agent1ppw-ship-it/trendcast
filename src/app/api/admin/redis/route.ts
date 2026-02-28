@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     const url = process.env.REDIS_URL || '';
-    
+
     const redis = new IORedis(url, {
         maxRetriesPerRequest: null,
         connectTimeout: 3000,
@@ -23,10 +23,11 @@ export async function GET() {
 
         // BullMQ pagination orders newest jobs First (index 0 is the most recently failed absolute object in the set)
         const job = failedJobs[0];
-        
+
         return NextResponse.json({
             success: true,
             jobId: job.id,
+            data: job.data,
             progress: job.progress || 'Unknown',
             reason: job.failedReason || 'Unknown',
             stack: job.stacktrace ? job.stacktrace[0] || 'None' : 'None'
