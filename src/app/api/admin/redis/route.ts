@@ -16,13 +16,13 @@ export async function GET() {
     const queue = new Queue('ScrapeQueue', { connection: redis as any });
 
     try {
-        const failedJobs = await queue.getFailed(0, 100);
+        const failedJobs = await queue.getFailed(0, 10);
         if (failedJobs.length === 0) {
             return NextResponse.json({ success: true, message: 'No failed jobs found in the queue.' });
         }
 
-        // Get the very last (newest/most recent) failed job in the array
-        const job = failedJobs[failedJobs.length - 1];
+        // BullMQ pagination orders newest jobs First (index 0 is the most recently failed absolute object in the set)
+        const job = failedJobs[0];
         
         return NextResponse.json({
             success: true,
