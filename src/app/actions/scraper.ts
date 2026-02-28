@@ -50,7 +50,11 @@ export async function startScraperJob(zipCode: string) {
         return { success: true, message: `Scraper queued for ${zipCode}. 10 Extracts deducted.`, jobId: job.id };
     } catch (error) {
         console.error('Failed to queue scraper job:', error);
-        return { success: false, error: 'Failed to connect to Redis queue' };
+        const redisIsSet = !!process.env.REDIS_URL;
+        return {
+            success: false,
+            error: `Connection Failed. Vercel REDIS_URL Configured?: ${redisIsSet}. Error trace: ${error instanceof Error ? error.message : 'Unknown Network Timeout'}`
+        };
     }
 }
 
