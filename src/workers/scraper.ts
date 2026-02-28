@@ -12,8 +12,10 @@ const prisma = new PrismaClient();
 // Add stealth plugin to Playwright
 chromium.use(stealthPlugin());
 
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisConnection = new IORedis(redisUrl, {
     maxRetriesPerRequest: null,
+    ...(redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {})
 });
 
 interface ScrapePayload {

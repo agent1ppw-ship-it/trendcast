@@ -6,8 +6,10 @@ import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { ensureOrganization } from '@/app/actions/auth';
 
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisConnection = new IORedis(redisUrl, {
     maxRetriesPerRequest: null,
+    ...(redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {})
 });
 
 const scrapeQueue = new Queue('ScrapeQueue', { connection: redisConnection as any });
