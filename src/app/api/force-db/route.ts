@@ -1,23 +1,13 @@
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+import { PrismaClient } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-
-    if (!connectionString) {
-        return NextResponse.json({ success: false, error: "No database URL found in environment variables." });
-    }
-
-    const client = new Client({ connectionString });
+    const prisma = new PrismaClient();
 
     try {
-        await client.connect();
-
-        const sql = `
-            -- CreateTable
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS "Account" (
                 "id" TEXT NOT NULL,
                 "userId" TEXT NOT NULL,
@@ -33,8 +23,9 @@ export async function GET() {
                 "session_state" TEXT,
                 CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
             );
+        `);
 
-            -- CreateTable
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS "Session" (
                 "id" TEXT NOT NULL,
                 "sessionToken" TEXT NOT NULL,
@@ -42,32 +33,32 @@ export async function GET() {
                 "expires" TIMESTAMP(3) NOT NULL,
                 CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
             );
+        `);
 
-            -- CreateTable
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS "VerificationToken" (
                 "identifier" TEXT NOT NULL,
                 "token" TEXT NOT NULL,
                 "expires" TIMESTAMP(3) NOT NULL
             );
+        `);
 
-            -- Indexes and constraints setup (Ignored if they already exist)
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Account_provider_providerAccountId_key') THEN
-                    CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Session_sessionToken_key') THEN
-                    CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'VerificationToken_token_key') THEN
-                    CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token");
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'VerificationToken_identifier_token_key') THEN
-                    CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
-                END IF;
-            END
-            $$;
+        // Create Indexes using IF NOT EXISTS syntax safe for Postgres
+        await prisma.$executeRawUnsafe(`
+            CREATE UNIQUE INDEX IF NOT EXISTS "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
+        `);
+        await prisma.$executeRawUnsafe(`
+            CREATE UNIQUE INDEX IF NOT EXISTS "Session_sessionToken_key" ON "Session"("sessionToken");
+        `);
+        await prisma.$executeRawUnsafe(`
+            CREATE UNIQUE INDEX IF NOT EXISTS "VerificationToken_token_key" ON "VerificationToken"("token");
+        `);
+        await prisma.$executeRawUnsafe(`
+            CREATE UNIQUE INDEX IF NOT EXISTS "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
+        `);
 
+        // Add constraints inside exception handling blocks natively
+        await prisma.$executeRawUnsafe(`
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Account_userId_fkey') THEN
@@ -78,16 +69,13 @@ export async function GET() {
                 END IF;
             END
             $$;
-        `;
+        `);
 
-        await client.query(sql);
-        await client.end();
-
-        return NextResponse.json({ success: true, message: "OAuth tables successfully created in the active Vercel database!" });
+        return NextResponse.json({ success: true, message: "Prisma executeRaw deployed tables perfectly to Vercel!" });
     } catch (e: any) {
         return NextResponse.json({
             success: false,
-            error: "SQL Execution failed",
+            error: "Prisma Execution failed",
             details: e.message || String(e)
         }, { status: 500 });
     }
