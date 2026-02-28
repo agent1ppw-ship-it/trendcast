@@ -4,7 +4,16 @@ import { PrismaClient } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const prisma = new PrismaClient();
+    let dbUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+    if (!dbUrl.includes("pgbouncer=true")) {
+        dbUrl += (dbUrl.includes("?") ? "&" : "?") + "pgbouncer=true";
+    }
+
+    const prisma = new PrismaClient({
+        datasources: {
+            db: { url: dbUrl }
+        }
+    });
 
     try {
         await prisma.$executeRawUnsafe(`
