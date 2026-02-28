@@ -4,16 +4,14 @@ import { Client } from 'pg';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
     if (!connectionString) {
         return NextResponse.json({ success: false, error: "No database URL found in environment variables." });
     }
 
-    const client = new Client({
-        connectionString,
-        ssl: { rejectUnauthorized: false }
-    });
+    const client = new Client({ connectionString });
 
     try {
         await client.connect();
