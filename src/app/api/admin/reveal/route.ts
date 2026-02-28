@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     try {
         const lead = await prisma.lead.findFirst({
-            where: { status: 'NEW' },
+            where: { isRevealed: false },
             include: { organization: true }
         });
 
