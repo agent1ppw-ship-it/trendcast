@@ -31,9 +31,12 @@ export default function Home() {
 
     if (result.success && result.url) {
       window.location.href = result.url;
+    } else if (result.error === 'Unauthorized. Please sign in.') {
+      // Only redirect to signup if actually unauthorized
+      router.push(`/signup?checkout=${tier}`);
     } else {
-      // If unauthorized, redirect them to sign up to get a Free Trial first
-      router.push('/signup');
+      // For actual Stripe errors (like missing Price IDs), alert the user
+      alert(`Stripe Checkout Error: ${result.error || 'Configuration missing. Check your Vercel keys.'}`);
     }
     setIsLoading(null);
   };
