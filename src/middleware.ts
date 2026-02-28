@@ -1,27 +1,30 @@
-import { withAuth } from "next-auth/middleware"
+import { getToken } from 'next-auth/jwt';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default withAuth({
-    callbacks: {
-        authorized: ({ req, token }) => {
-            console.log('--- MIDDLEWARE EXECUTING ---');
-            console.log('Requested URL:', req.nextUrl.pathname);
-            console.log('Middleware Token Exists?:', !!token);
-            if (token) {
-                console.log('Middleware Token Name:', token.name);
-            } else {
-                console.log('Middleware Cookies:', req.cookies.getAll());
-            }
+export async function middleware(req: NextRequest) {
+    const isProduction = process.env.NODE_ENV === 'production';
 
-            const isAuthenticated = !!token;
-            if (!isAuthenticated) return false;
-            return true;
-        },
-    },
-    secret: process.env.NEXTAUTH_SECRET,
-    pages: {
-        signIn: "/signup",
-    },
-});
+    // Check if the secure cookie exists explicitly as NextAuth doesn't always detect Cloudflare/Vercel edge HTTPS
+    const secureCookieExists = req.cookies.has('__Secure-next-auth.session-token');
+
+    const token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+        secureCookie: isProduction || secureCookieExists
+    });
+
+    console.log('--- CUSTOM MIDDLEWARE EXECUTING ---');
+    console.log('Requested URL:', req.nextUrl.pathname);
+    console.log('Secure Cookie Exists?', secureCookieExists);
+    console.log('Token Resolved By Custom Middleware?', !!token);
+
+    if (!token) {
+        return NextResponse.redirect(new URL('/signup', req.url));
+    }
+
+    return NextResponse.next();
+}
 
 export const config = {
     matcher: ['/dashboard/:path*'],
