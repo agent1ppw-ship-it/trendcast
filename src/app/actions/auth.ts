@@ -2,9 +2,7 @@
 
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Get the NextAuth session server-side
 export async function getSession() {

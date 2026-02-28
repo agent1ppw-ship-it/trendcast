@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import { Home, Users, BarChart, Settings, Layers, Wallet, Search } from 'lucide-react';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
-
-const prisma = new PrismaClient();
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const orgId = await ensureOrganization();
