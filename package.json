@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "worker": "tsx src/workers/scraper.ts"
+    "worker": "npx playwright install chromium && tsx src/workers/scraper.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
