@@ -45,8 +45,8 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
                 },
             ],
             mode: 'subscription',
-            success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=cancelled`,
+            success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
+            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,
             client_reference_id: orgId,
             metadata: {
                 tierUpgrade: tier // Stored securely on Stripe's end so the webhook knows what to provision
