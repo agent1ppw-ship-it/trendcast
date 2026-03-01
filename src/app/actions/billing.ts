@@ -33,25 +33,52 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
         const activeEmail = org.users[0].email || undefined;
         const priceId = PRICE_IDS[tier];
 
-        // Create the highly secure Stripe Checkout server session
-        const checkoutSession = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            billing_address_collection: 'required',
-            customer_email: activeEmail,
-            line_items: [
-                {
-                    price: priceId,
-                    quantity: 1,
+        let checkoutSession;
+
+        if (org.stripeSubscriptionId && org.stripeCustomerId) {
+            // Prorated Upgrade Route for Existing Subscribers
+            checkoutSession = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                customer: org.stripeCustomerId,
+                line_items: [
+                    {
+                        price: priceId,
+                        quantity: 1,
+                    },
+                ],
+                mode: 'subscription',
+                subscription_update: {
+                    subscription: org.stripeSubscriptionId,
+                    proration_behavior: 'always_invoice',
                 },
-            ],
-            mode: 'subscription',
-            success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,
-            client_reference_id: orgId,
-            metadata: {
-                tierUpgrade: tier // Stored securely on Stripe's end so the webhook knows what to provision
-            }
-        });
+                success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
+                cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,
+                client_reference_id: orgId,
+                metadata: {
+                    tierUpgrade: tier
+                }
+            });
+        } else {
+            // Standard New Subscription Route
+            checkoutSession = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                billing_address_collection: 'required',
+                customer_email: activeEmail,
+                line_items: [
+                    {
+                        price: priceId,
+                        quantity: 1,
+                    },
+                ],
+                mode: 'subscription',
+                success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
+                cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,
+                client_reference_id: orgId,
+                metadata: {
+                    tierUpgrade: tier
+                }
+            });
+        }
 
         if (!checkoutSession.url) {
             throw new Error('Stripe returned an empty session URL.');

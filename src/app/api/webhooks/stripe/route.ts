@@ -35,6 +35,8 @@ export async function POST(req: Request) {
 
         const orgId = session.client_reference_id;
         const tierUpgrade = session.metadata?.tierUpgrade;
+        const stripeCustomerId = session.customer as string;
+        const stripeSubscriptionId = session.subscription as string;
 
         if (!orgId || !tierUpgrade) {
             console.error('Webhook missing crucial metadata (orgId or tierUpgrade)', session.id);
@@ -61,6 +63,8 @@ export async function POST(req: Request) {
                 where: { id: orgId },
                 data: {
                     tier: tierUpgrade,
+                    stripeCustomerId: stripeCustomerId || undefined,
+                    stripeSubscriptionId: stripeSubscriptionId || undefined,
                     extracts: { increment: extractsToAdd },
                     credits: { increment: creditsToAdd },
                 }

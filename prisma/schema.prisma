@@ -12,7 +12,8 @@ model Organization {
   name             String
   tier             String   @default("INTRO") // INTRO, PRO, ULTIMATE, ENTERPRISE
   industry         String
-  stripeCustomerId String?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
   credits          Int      @default(50)
   extracts         Int      @default(10)
   createdAt        DateTime @default(now())
