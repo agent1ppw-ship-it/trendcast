@@ -26,10 +26,16 @@ export default async function DashboardOverview({
 
     const org = await prisma.organization.findUnique({
         where: { id: orgId },
-        include: { users: true }
+        include: {
+            users: true,
+            _count: { select: { leads: true } },
+            leads: { where: { status: 'WON' } }
+        }
     });
 
     const activeUserName = org?.users[0]?.name || org?.users[0]?.email?.split('@')[0] || 'User';
+    const totalLeads = org?._count?.leads || 0;
+    const wonLeads = org?.leads?.length || 0;
 
     return (
         <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
@@ -49,9 +55,9 @@ export default async function DashboardOverview({
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-extrabold text-white mb-1">1,248</div>
-                        <p className="text-xs text-green-400 flex items-center gap-1 font-medium">
-                            <ArrowUpRight className="w-3 h-3" /> +12% from last month
+                        <div className="text-3xl font-extrabold text-white mb-1">{totalLeads}</div>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                            Syncing live from Scraper
                         </p>
                     </CardContent>
                 </Card>
@@ -60,14 +66,14 @@ export default async function DashboardOverview({
                     <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-green-500/20 transition-all"></div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
-                            Monthly Recurring Revenue
+                            Closed Deals Revenue
                             <DollarSign className="w-4 h-4 text-gray-500" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-extrabold text-white mb-1">$45,231</div>
-                        <p className="text-xs text-green-400 flex items-center gap-1 font-medium">
-                            <ArrowUpRight className="w-3 h-3" /> +18.2% from last month
+                        <div className="text-3xl font-extrabold text-white mb-1">Pending</div>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                            Awaiting Stripe/CRM Integrations
                         </p>
                     </CardContent>
                 </Card>
@@ -76,14 +82,16 @@ export default async function DashboardOverview({
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-purple-500/20 transition-all"></div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
-                            Auto-Close Rate (AI)
+                            Pipeline Close Rate
                             <Percent className="w-4 h-4 text-gray-500" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-extrabold text-white mb-1">24.5%</div>
-                        <p className="text-xs text-green-400 flex items-center gap-1 font-medium">
-                            <ArrowUpRight className="w-3 h-3" /> +4.1% from last month
+                        <div className="text-3xl font-extrabold text-white mb-1">
+                            {totalLeads > 0 ? `${Math.round((wonLeads / totalLeads) * 100)}%` : '0%'}
+                        </div>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                            Leads marked as WON
                         </p>
                     </CardContent>
                 </Card>
@@ -92,14 +100,14 @@ export default async function DashboardOverview({
                     <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-yellow-500/20 transition-all"></div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
-                            Active Jobs Running
+                            Account Tier
                             <Activity className="w-4 h-4 text-gray-500" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-extrabold text-white mb-1">12</div>
+                        <div className="text-3xl font-extrabold text-white mb-1">{org?.tier || 'TRIAL'}</div>
                         <p className="text-xs text-gray-500 font-medium mt-1">
-                            across 4 service areas
+                            {org?.credits} Credits Available
                         </p>
                     </CardContent>
                 </Card>
