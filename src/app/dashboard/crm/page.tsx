@@ -54,7 +54,7 @@ export default async function CrmDashboard() {
                             {displayLeads
                                 .filter(lead => lead.status === status)
                                 .map(lead => (
-                                    <LeadCard key={lead.id} lead={lead} />
+                                    <LeadCard key={lead.id} lead={{ ...lead, createdAt: lead.createdAt.toISOString() }} />
                                 ))}
                         </div>
                     </div>
