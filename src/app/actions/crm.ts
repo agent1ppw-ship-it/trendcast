@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { ensureOrganization } from '@/app/actions/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function updateLeadStatus(leadId: string, newStatus: string) {
@@ -39,24 +40,22 @@ export async function deleteLead(leadId: string) {
 
 export async function createLead(data: { name: string; phone: string; address: string; source: string }) {
     try {
-        // In a real app, resolve orgId
-        const org = await prisma.organization.findFirst();
-        if (!org) {
-            return { success: false, error: 'No active organization found to attach lead.' };
-        }
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized. Please sign in.' };
 
         await prisma.lead.create({
             data: {
-                orgId: org.id,
+                orgId,
                 name: data.name,
-                phone: data.phone,
-                address: data.address,
+                phone: data.phone || null,
+                address: data.address || null,
                 source: data.source,
                 status: 'NEW',
             }
         });
 
         revalidatePath('/dashboard/crm');
+        revalidatePath('/dashboard/businesses');
         return { success: true };
     } catch (error) {
         console.error('Failed to create lead:', error);

@@ -30,6 +30,7 @@ model User {
   organization   Organization? @relation(fields: [orgId], references: [id])
   name           String?
   email          String?   @unique
+  passwordHash   String?
   emailVerified  DateTime?
   image          String?
   role           String    @default("USER") // ADMIN, USER

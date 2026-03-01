@@ -34,7 +34,7 @@ export function Navbar() {
                         <Link href="/#testimonials" className="text-gray-300 hover:text-white font-medium transition-colors">
                             Testimonials
                         </Link>
-                        <Link href="/dashboard/crm" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
+                        <Link href="/signup?mode=signin" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
                             CRM Login
                         </Link>
                         <Link href="/dashboard/leads" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
@@ -88,7 +88,7 @@ export function Navbar() {
                         Testimonials
                     </Link>
                     <Link
-                        href="/dashboard/crm"
+                        href="/signup?mode=signin"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
                     >

@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Home, Users, BarChart, Settings, Layers, Wallet, Search } from 'lucide-react';
+import { Wallet, Search } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
+import { DashboardSidebarNav } from '@/components/DashboardSidebarNav';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const orgId = await ensureOrganization();
@@ -30,23 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     </Link>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1">
-                    <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-[#1A1A1A] hover:text-white rounded-md font-medium transition-all group">
-                        <Home className="w-5 h-5 text-gray-500 group-hover:text-gray-300" /> Overview
-                    </Link>
-                    <Link href="/dashboard/crm" className="flex items-center gap-3 px-3 py-2 bg-blue-500/10 text-blue-400 rounded-md font-medium border border-blue-500/20 shadow-inner">
-                        <Layers className="w-5 h-5 text-blue-400" /> Pipeline CRM
-                    </Link>
-                    <Link href="/dashboard/leads" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-[#1A1A1A] hover:text-white rounded-md font-medium transition-all group">
-                        <Users className="w-5 h-5 text-gray-500 group-hover:text-gray-300" /> Lead Scraper
-                    </Link>
-                    <Link href="/dashboard/analytics" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-[#1A1A1A] hover:text-white rounded-md font-medium transition-all group">
-                        <BarChart className="w-5 h-5 text-gray-500 group-hover:text-gray-300" /> Analytics
-                    </Link>
-                    <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-[#1A1A1A] hover:text-white rounded-md font-medium transition-all group">
-                        <Settings className="w-5 h-5 text-gray-500 group-hover:text-gray-300" /> Settings
-                    </Link>
-                </nav>
+                <DashboardSidebarNav />
 
                 <div className="p-4 border-t border-white/5 bg-[#0A0A0A]">
                     <div className="space-y-3 mb-4 px-1">
