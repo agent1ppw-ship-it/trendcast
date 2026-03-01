@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
 
 export function Navbar() {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     return (
         <nav className="fixed top-0 w-full bg-[#0A0A0A]/70 backdrop-blur-xl z-50 border-b border-white/10 supports-[backdrop-filter]:bg-[#0A0A0A]/50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,12 +47,56 @@ export function Navbar() {
 
                     {/* Mobile menu button */}
                     <div className="md:hidden flex items-center">
-                        <button className="text-gray-300 hover:text-white focus:outline-none">
-                            <Menu className="h-6 w-6" />
+                        <button
+                            className="text-gray-300 hover:text-white focus:outline-none p-2"
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        >
+                            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Navigation Dropdown Menu */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-8 space-y-5 rounded-b-2xl">
+                    <Link
+                        href="#features"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
+                    >
+                        Features
+                    </Link>
+                    <Link
+                        href="#pricing"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
+                    >
+                        Pricing
+                    </Link>
+                    <Link
+                        href="#testimonials"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
+                    >
+                        Testimonials
+                    </Link>
+                    <Link
+                        href="/dashboard/crm"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
+                    >
+                        CRM Login
+                    </Link>
+                    <Link
+                        href="#pricing"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
+                    >
+                        Book Demo
+                    </Link>
+                </div>
+            )}
         </nav>
     );
 }
