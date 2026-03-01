@@ -36,28 +36,13 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
         let checkoutSession;
 
         if (org.stripeSubscriptionId && org.stripeCustomerId) {
-            // Prorated Upgrade Route for Existing Subscribers
-            checkoutSession = await stripe.checkout.sessions.create({
-                payment_method_types: ['card'],
+            // Prorated Upgrade Route for Existing Subscribers using the Hosted Billing Portal
+            const portalSession = await stripe.billingPortal.sessions.create({
                 customer: org.stripeCustomerId,
-                line_items: [
-                    {
-                        price: priceId,
-                        quantity: 1,
-                    },
-                ],
-                mode: 'subscription',
-                subscription_update: {
-                    subscription: org.stripeSubscriptionId,
-                    proration_behavior: 'always_invoice',
-                },
-                success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
-                cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,
-                client_reference_id: orgId,
-                metadata: {
-                    tierUpgrade: tier
-                }
+                return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=managed`,
             });
+
+            return { success: true, url: portalSession.url };
         } else {
             // Standard New Subscription Route
             checkoutSession = await stripe.checkout.sessions.create({
