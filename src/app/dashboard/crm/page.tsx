@@ -27,11 +27,7 @@ export default async function CrmDashboard() {
 
     const columns = ['NEW', 'CONTACTED', 'QUOTED', 'WON', 'LOST'];
 
-    // Mock leads if DB is empty for demo purposes
-    const displayLeads = leads.length > 0 ? leads : [
-        { id: '1', name: 'Jane Doe', phone: '555-019-2838', address: '123 Main St', source: 'SCRAPER', status: 'NEW' },
-        { id: '2', name: 'John Smith', phone: '555-224-1199', address: '456 Oak Ave', source: 'ORGANIC', status: 'QUOTED' },
-    ];
+    const displayLeads = leads;
 
     return (
         <div className="min-h-screen bg-[#0A0A0A] p-8">
