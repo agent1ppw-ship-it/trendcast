@@ -40,6 +40,9 @@ export function Navbar() {
                         <Link href="/dashboard/leads" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
                             Lead Extractor
                         </Link>
+                        <Link href="/hub" className="text-blue-400 hover:text-blue-300 font-bold transition-colors">
+                            Resources
+                        </Link>
                         <Link
                             href="/#pricing"
                             className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
@@ -97,6 +100,13 @@ export function Navbar() {
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
                     >
                         Lead Extractor
+                    </Link>
+                    <Link
+                        href="/hub"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-blue-400 hover:text-blue-300 font-bold text-lg transition-colors border-b border-white/5 pb-3"
+                    >
+                        Resources
                     </Link>
                     <Link
                         href="/#pricing"
