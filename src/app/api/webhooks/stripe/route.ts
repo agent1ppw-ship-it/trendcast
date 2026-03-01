@@ -46,8 +46,8 @@ export async function POST(req: Request) {
             let creditsToAdd = 0;
 
             if (tierUpgrade === 'INTRO') {
-                extractsToAdd = 100;
-                creditsToAdd = 500;
+                extractsToAdd = 150;
+                creditsToAdd = 1000;
             } else if (tierUpgrade === 'PRO') {
                 extractsToAdd = 1000;
                 creditsToAdd = 5000;

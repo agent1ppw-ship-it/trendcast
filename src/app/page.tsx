@@ -248,8 +248,8 @@ export default function Home() {
                 <span className="text-gray-500">/mo</span>
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 100 Address Extracts /mo</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 500 Contact Reveal Credits</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 150 Address Extracts /mo</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 1,000 Contact Reveal Credits</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Pipeline Management CRM</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Lead Scoring Dashboard</li>
               </ul>
