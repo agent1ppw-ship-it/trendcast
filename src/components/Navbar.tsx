@@ -25,13 +25,13 @@ export function Navbar() {
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex space-x-8 items-center">
-                        <Link href="#features" className="text-gray-300 hover:text-white font-medium transition-colors">
+                        <Link href="/#features" className="text-gray-300 hover:text-white font-medium transition-colors">
                             Features
                         </Link>
-                        <Link href="#pricing" className="text-gray-300 hover:text-white font-medium transition-colors">
+                        <Link href="/#pricing" className="text-gray-300 hover:text-white font-medium transition-colors">
                             Pricing
                         </Link>
-                        <Link href="#testimonials" className="text-gray-300 hover:text-white font-medium transition-colors">
+                        <Link href="/#testimonials" className="text-gray-300 hover:text-white font-medium transition-colors">
                             Testimonials
                         </Link>
                         <Link href="/dashboard/crm" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
@@ -41,7 +41,7 @@ export function Navbar() {
                             Lead Extractor
                         </Link>
                         <Link
-                            href="#pricing"
+                            href="/#pricing"
                             className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
                         >
                             Book Demo
@@ -64,21 +64,21 @@ export function Navbar() {
             {isMobileMenuOpen && (
                 <div className="md:hidden bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-8 space-y-5 rounded-b-2xl">
                     <Link
-                        href="#features"
+                        href="/#features"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
                     >
                         Features
                     </Link>
                     <Link
-                        href="#pricing"
+                        href="/#pricing"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
                     >
                         Pricing
                     </Link>
                     <Link
-                        href="#testimonials"
+                        href="/#testimonials"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
                     >
@@ -99,7 +99,7 @@ export function Navbar() {
                         Lead Extractor
                     </Link>
                     <Link
-                        href="#pricing"
+                        href="/#pricing"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
                     >
