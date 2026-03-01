@@ -5,7 +5,7 @@ import { Star } from 'lucide-react';
 
 export default function ReviewGatingWidget({
     googleReviewLink = 'https://search.google.com/local/writereview?placeid=ChIJo4_', // Placeholder
-    companyName = 'TrendCast Demo Co.'
+    companyName = 'trendcast.io'
 }) {
     const [rating, setRating] = useState<number>(0);
     const [hoveredRating, setHoveredRating] = useState<number>(0);

@@ -28,16 +28,16 @@ async function getServiceArea(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const serviceArea = await getServiceArea(params.slug);
-  
+
   if (!serviceArea) {
     return {
-      title: 'Service Not Found | TrendCast',
+      title: 'Service Not Found | trendcast.io',
       description: 'The requested service area could not be found.'
     };
   }
 
   return {
-    title: `${serviceArea.title} | TrendCast Home Services`,
+    title: `${serviceArea.title} | trendcast.io Home Services`,
     description: serviceArea.description,
     openGraph: {
       title: serviceArea.title,
@@ -58,7 +58,7 @@ export default async function ServiceAreaPage({ params }: Props) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    name: `TrendCast ${serviceArea.service}`,
+    name: `trendcast.io ${serviceArea.service}`,
     description: serviceArea.description,
     address: {
       '@type': 'PostalAddress',
@@ -78,7 +78,7 @@ export default async function ServiceAreaPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      
+
       <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="bg-blue-600 px-8 py-12 text-center text-white">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
@@ -88,13 +88,13 @@ export default async function ServiceAreaPage({ params }: Props) {
             {serviceArea.description}
           </p>
         </div>
-        
+
         <div className="px-8 py-8 md:p-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Why Choose Our {serviceArea.service} in {serviceArea.location}?</h2>
           <div className="prose prose-blue max-w-none text-gray-600">
             <p>
-              When it comes to maintaining your property in {serviceArea.location}, you need a reliable partner. 
-              Our state-of-the-art {serviceArea.service.toLowerCase()} equipment and biodegradable solutions ensure 
+              When it comes to maintaining your property in {serviceArea.location}, you need a reliable partner.
+              Our state-of-the-art {serviceArea.service.toLowerCase()} equipment and biodegradable solutions ensure
               that your home not only looks stunning but is protected from long-term damage caused by mold, algae, and structural decay.
             </p>
             <ul className="mt-6 list-disc list-inside space-y-2">
@@ -104,7 +104,7 @@ export default async function ServiceAreaPage({ params }: Props) {
               <li>100% Satisfaction Guarantee.</li>
             </ul>
           </div>
-          
+
           <div className="mt-10">
             <button className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:text-xl transition-colors shadow-lg hover:shadow-xl">
               Get an Instant Quote

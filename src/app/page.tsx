@@ -163,7 +163,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl font-bold text-white sm:text-4xl mb-4">Everything you need to scale</h2>
-            <p className="text-xl text-gray-400 font-light">From SEO domination to totally autonomous answering agents, TrendCast provides a complete backend system.</p>
+            <p className="text-xl text-gray-400 font-light">From SEO domination to totally autonomous answering agents, trendcast.io provides a complete backend system.</p>
           </div>
 
           <motion.div
@@ -342,10 +342,10 @@ export default function Home() {
               <span className="text-white font-bold text-xl">T</span>
             </div>
             <span className="font-bold text-xl tracking-tight text-white">
-              TrendCast<span className="text-blue-500">.ai</span>
+              trendcast<span className="text-blue-500">.io</span>
             </span>
           </div>
-          <p className="text-gray-600 text-sm">© 2026 TrendCast.ai. All rights reserved.</p>
+          <p className="text-gray-600 text-sm">© 2026 trendcast.io. All rights reserved.</p>
           <div className="flex gap-6 text-sm">
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Terms</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Privacy Policy</Link>

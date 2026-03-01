@@ -7,7 +7,7 @@ import { saveAiConfig } from '@/app/actions/settings';
 
 export function SettingsForm({ initialConfig }: { initialConfig: any }) {
     const [twilioNumber, setTwilioNumber] = useState(initialConfig?.twilioNumber || '');
-    const [systemPrompt, setSystemPrompt] = useState(initialConfig?.systemPrompt || 'You are the virtual receptionist for TrendCast. You are speaking to a potential customer via SMS. Your Goal: Gather the required information to provide an accurate estimate or book an on-site inspection. Always remain highly professional and concise.');
+    const [systemPrompt, setSystemPrompt] = useState(initialConfig?.systemPrompt || 'You are the virtual receptionist for trendcast.io. You are speaking to a potential customer via SMS. Your Goal: Gather the required information to provide an accurate estimate or book an on-site inspection. Always remain highly professional and concise.');
     const [autoReplySMS, setAutoReplySMS] = useState(initialConfig?.autoReplySMS !== undefined ? initialConfig.autoReplySMS : true);
     const [autoSchedule, setAutoSchedule] = useState(initialConfig?.autoSchedule !== undefined ? initialConfig.autoSchedule : false);
 

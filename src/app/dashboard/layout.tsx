@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                             <span className="text-white font-bold text-xl">T</span>
                         </div>
                         <span className="font-extrabold text-2xl tracking-tight text-white/90 group-hover:text-white transition-colors">
-                            TrendCast
+                            trendcast.io
                         </span>
                     </Link>
                 </div>
@@ -86,7 +86,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
                 {/* Mobile Header (Dark) */}
                 <div className="md:hidden h-16 bg-[#0F0F0F] border-b border-white/5 flex items-center px-4 shrink-0 shadow-md">
-                    <span className="font-extrabold text-xl tracking-tight text-white">TrendCast</span>
+                    <span className="font-extrabold text-xl tracking-tight text-white">trendcast.io</span>
                 </div>
 
                 {/* Children Rendered Here */}

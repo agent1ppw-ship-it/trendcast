@@ -13,7 +13,7 @@ export function Navbar() {
                                 <span className="text-white font-bold text-xl drop-shadow-md">T</span>
                             </div>
                             <span className="font-extrabold text-2xl tracking-tight text-white">
-                                TrendCast<span className="text-blue-500">.ai</span>
+                                trendcast<span className="text-blue-500">.io</span>
                             </span>
                         </Link>
                     </div>

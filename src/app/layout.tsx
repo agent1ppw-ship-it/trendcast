@@ -7,7 +7,7 @@ import { NextAuthProvider } from '@/app/providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'TrendCast.ai - The Ultimate AI Suite for Home Services',
+  title: 'trendcast.io - The Ultimate AI Suite for Home Services',
   description: 'Fully automated lead generation, customer communication, and job management using AI for roofers, landscapers, pressure washers, and more.',
 };
 

@@ -22,7 +22,7 @@ function SignUpContent() {
                             <span className="text-white font-bold text-xl">T</span>
                         </div>
                         <span className="font-bold text-xl tracking-tight text-white">
-                            TrendCast<span className="text-blue-500">.ai</span>
+                            trendcast<span className="text-blue-500">.io</span>
                         </span>
                     </div>
                     <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Claim Your Setup</h1>
