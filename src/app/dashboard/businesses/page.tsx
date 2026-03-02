@@ -23,6 +23,11 @@ export default async function BusinessesPage() {
         <BusinessFinderClient
             defaultIndustry={org?.industry || 'Roofing'}
             crmLeadCount={crmLeadCount}
+            buildVersion={
+                process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
+                process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
+                'local'
+            }
         />
     );
 }

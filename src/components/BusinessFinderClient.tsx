@@ -30,9 +30,11 @@ function sanitizeIndustry(industry: string) {
 export function BusinessFinderClient({
     defaultIndustry,
     crmLeadCount,
+    buildVersion,
 }: {
     defaultIndustry: string;
     crmLeadCount: number;
+    buildVersion: string;
 }) {
     const [zipCode, setZipCode] = useState('75201');
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
@@ -335,6 +337,13 @@ export function BusinessFinderClient({
                             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Directory Source</label>
                             <div className="px-4 py-3 rounded-lg bg-[#161616] border border-white/10 text-sm font-medium text-gray-300">
                                 {sourceLabel} (live)
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Frontend Build</label>
+                            <div className="px-4 py-3 rounded-lg bg-[#161616] border border-white/10 text-sm font-mono text-gray-300">
+                                {buildVersion}
                             </div>
                         </div>
 
