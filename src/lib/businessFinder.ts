@@ -161,6 +161,143 @@ function addLeadIfUnique(target: Map<string, BusinessFinderLead>, lead: Business
     }
 }
 
+function isPhoneLine(line: string) {
+    return /\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/.test(line) || /^\(\d{3}\)\s*\d{3}-\d{4}$/.test(line);
+}
+
+function normalizePhone(line: string) {
+    const match = line.match(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/);
+    return match ? match[0].replace(/\s+/g, ' ') : '';
+}
+
+function isCityStateZipLine(line: string) {
+    return /^[A-Za-z .'-]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?$/i.test(line);
+}
+
+function isMetaLine(line: string) {
+    return (
+        !line ||
+        /^(Website|Directions|More Info|opening soon|open now|closed now|open 24 hours)$/i.test(line) ||
+        /^From Business:/i.test(line) ||
+        /^in Business$/i.test(line) ||
+        /^Accredited$/i.test(line) ||
+        /^Business$/i.test(line) ||
+        /^\d+\s+Years$/i.test(line) ||
+        /^\d+\s+Years with$/i.test(line) ||
+        /^Yellow Pages$/i.test(line) ||
+        /^Serving the$/i.test(line) ||
+        /^About Search Results$/i.test(line) ||
+        /^Sort:Default$/i.test(line) ||
+        /^View all businesses/i.test(line)
+    );
+}
+
+function isLikelyStreetAddress(line: string) {
+    return /\d/.test(line) && !isPhoneLine(line) && !isCityStateZipLine(line) && !/^From Business:/i.test(line);
+}
+
+function extractBusinessesFromYellowPagesText(
+    text: string,
+    zipCode: string,
+    industry: string,
+    batchSize: number,
+) {
+    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const lines = text
+        .split('\n')
+        .map((line) => normalizeText(line))
+        .filter(Boolean);
+
+    const firstResultIndex = lines.findIndex((line) => /^\d+\.\s+/.test(line));
+    if (firstResultIndex === -1) {
+        return {
+            exactLeads: [] as BusinessFinderLead[],
+            areaLeads: [] as BusinessFinderLead[],
+        };
+    }
+
+    const exactMatches = new Map<string, BusinessFinderLead>();
+    const areaMatches = new Map<string, BusinessFinderLead>();
+
+    let index = firstResultIndex;
+
+    while (index < lines.length) {
+        const line = lines[index];
+        if (/^About Search Results$/i.test(line) || /^Showing \d+-\d+ of/i.test(line)) {
+            break;
+        }
+
+        if (!/^\d+\.\s+/.test(line)) {
+            index += 1;
+            continue;
+        }
+
+        const name = normalizeText(line.replace(/^\d+\.\s+/, ''));
+        index += 1;
+
+        const block: string[] = [];
+        while (index < lines.length && !/^\d+\.\s+/.test(lines[index])) {
+            if (/^About Search Results$/i.test(lines[index]) || /^Showing \d+-\d+ of/i.test(lines[index])) {
+                break;
+            }
+
+            block.push(lines[index]);
+            index += 1;
+        }
+
+        const phoneLine = block.find(isPhoneLine) || '';
+        const phone = normalizePhone(phoneLine);
+        const cityLineIndex = block.findIndex(isCityStateZipLine);
+
+        let address = '';
+        let city = '';
+
+        if (cityLineIndex >= 0) {
+            city = extractCityFromLocality(block[cityLineIndex]);
+            const streetCandidate = block[cityLineIndex - 1] || '';
+            address = isLikelyStreetAddress(streetCandidate)
+                ? `${streetCandidate}, ${block[cityLineIndex]}`
+                : block[cityLineIndex];
+        } else {
+            const streetOnly = block.find(isLikelyStreetAddress) || '';
+            address = streetOnly;
+        }
+
+        const meaningfulBlockLine = block.find((entry) => !isMetaLine(entry) && !isPhoneLine(entry) && !isLikelyStreetAddress(entry) && !isCityStateZipLine(entry));
+        const website = meaningfulBlockLine && /^www\.|https?:\/\//i.test(meaningfulBlockLine) ? meaningfulBlockLine : '';
+
+        if (!name || !address) {
+            continue;
+        }
+
+        const lead = buildLead({
+            name,
+            industry,
+            zipCode,
+            city,
+            address,
+            phone,
+            website,
+        });
+
+        const detectedZip = normalizeZip(address);
+        if (detectedZip === zipCode) {
+            addLeadIfUnique(exactMatches, lead);
+        } else {
+            addLeadIfUnique(areaMatches, lead);
+        }
+
+        if (exactMatches.size >= safeBatchSize) {
+            break;
+        }
+    }
+
+    return {
+        exactLeads: Array.from(exactMatches.values()).slice(0, safeBatchSize),
+        areaLeads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
+    };
+}
+
 export function extractBusinessesFromYellowPagesHtml(
     html: string,
     zipCode: string,
@@ -255,8 +392,24 @@ export function extractBusinessesFromYellowPagesHtml(
         };
     }
 
+    const textFallback = extractBusinessesFromYellowPagesText($('body').text(), zipCode, industry, safeBatchSize);
+    if (textFallback.exactLeads.length > 0) {
+        return {
+            leads: textFallback.exactLeads,
+            matchStrategy: 'exact_zip' as BusinessFinderMatchStrategy,
+        };
+    }
+
+    const areaLeads = Array.from(areaResults.values()).slice(0, safeBatchSize);
+    if (areaLeads.length > 0) {
+        return {
+            leads: areaLeads,
+            matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
+        };
+    }
+
     return {
-        leads: Array.from(areaResults.values()).slice(0, safeBatchSize),
+        leads: textFallback.areaLeads,
         matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
     };
 }
