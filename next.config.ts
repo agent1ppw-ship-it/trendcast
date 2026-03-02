@@ -16,11 +16,7 @@ const nextConfig: NextConfig = {
     ];
   },
   outputFileTracingIncludes: {
-    "/*": [
-      "./src/content/hub/**/*.md",
-      "./node_modules/playwright/.local-browsers/**/*",
-      "./node_modules/playwright-core/.local-browsers/**/*",
-    ],
+    "/*": ["./src/content/hub/**/*.md"],
   },
 };
 

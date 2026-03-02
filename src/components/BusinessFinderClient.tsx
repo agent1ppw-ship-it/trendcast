@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Building2, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Send, Sparkles, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createLead } from '@/app/actions/crm';
-import { searchBusinessesByZip, type BusinessFinderLead } from '@/app/actions/businessFinder';
+import { getBusinessSearchStatus, startBusinessSearchJob } from '@/app/actions/businessFinder';
+import type { BusinessFinderLead } from '@/lib/businessFinder';
 
 const industryOptions = [
     'Roofing',
@@ -40,6 +41,7 @@ export function BusinessFinderClient({
     const [statusMessage, setStatusMessage] = useState('Run a live directory search to populate your lead list.');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [isSendingAll, setIsSendingAll] = useState(false);
+    const [jobProgress, setJobProgress] = useState<{ phase: string; percent: number } | null>(null);
 
     const availableIndustries = useMemo(() => {
         const normalizedDefault = sanitizeIndustry(defaultIndustry);
@@ -56,32 +58,60 @@ export function BusinessFinderClient({
     const handleRunBatch = async () => {
         setIsLoading(true);
         setError('');
-        setStatusMessage('Searching live directory listings and verifying postal codes...');
+        setJobProgress({ phase: 'Queueing live business search...', percent: 5 });
+        setStatusMessage('Queueing live business search...');
 
-        const result = await searchBusinessesByZip(zipCode, industry, batchSize);
+        const result = await startBusinessSearchJob(zipCode, industry, batchSize);
 
         if (!result.success) {
             setResults([]);
             setSentIds([]);
             setError(result.error || 'Failed to search businesses.');
             setStatusMessage('No live results were loaded.');
+            setJobProgress(null);
             setIsLoading(false);
             return;
         }
 
-        const liveLeads = result.leads ?? [];
+        const pollInterval = setInterval(async () => {
+            const status = await getBusinessSearchStatus(result.jobId!);
 
-        setResults(liveLeads);
-        setSentIds([]);
-        setSourceLabel(result.sourceLabel || 'Yellow Pages');
+            if (!status.success) {
+                clearInterval(pollInterval);
+                setError(status.error || 'Failed to fetch search progress.');
+                setJobProgress(null);
+                setIsLoading(false);
+                return;
+            }
 
-        if (liveLeads.length === 0) {
-            setStatusMessage(`No exact ZIP matches were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
-        } else {
-            setStatusMessage(`Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`);
-        }
+            setJobProgress(status.progress || { phase: 'Searching...', percent: 10 });
 
-        setIsLoading(false);
+            if (status.state === 'completed') {
+                clearInterval(pollInterval);
+                const liveLeads = status.results ?? [];
+
+                setResults(liveLeads);
+                setSentIds([]);
+                setSourceLabel(status.sourceLabel || 'Yellow Pages');
+                setJobProgress(null);
+
+                if (liveLeads.length === 0) {
+                    setStatusMessage(`No exact ZIP matches were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
+                } else {
+                    setStatusMessage(`Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`);
+                }
+
+                setIsLoading(false);
+            }
+
+            if (status.state === 'failed') {
+                clearInterval(pollInterval);
+                setError('The live search job failed.');
+                setStatusMessage('No live results were loaded.');
+                setJobProgress(null);
+                setIsLoading(false);
+            }
+        }, 1500);
     };
 
     const handleSendSingle = async (lead: BusinessFinderLead) => {
@@ -292,6 +322,21 @@ export function BusinessFinderClient({
                         <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-3 text-sm text-gray-400">
                             {statusMessage}
                         </div>
+
+                        {isLoading && jobProgress && (
+                            <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-4">
+                                <div className="flex items-center justify-between text-xs mb-3">
+                                    <span className="text-blue-300">{jobProgress.phase}</span>
+                                    <span className="font-mono text-gray-400">{jobProgress.percent}%</span>
+                                </div>
+                                <div className="w-full bg-blue-900/20 rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-700"
+                                        style={{ width: `${jobProgress.percent}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <button
                             onClick={handleRunBatch}

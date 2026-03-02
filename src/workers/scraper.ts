@@ -7,6 +7,7 @@ import * as cheerio from 'cheerio';
 import { faker } from '@faker-js/faker';
 
 import { prisma } from '../lib/prisma';
+import { extractBusinessesFromYellowPagesHtml, mapIndustryToSearchTerm } from '../lib/businessFinder';
 
 // Add stealth plugin to Playwright
 chromium.use(stealthPlugin());
@@ -20,6 +21,13 @@ const redisConnection = new IORedis(redisUrl, {
 interface ScrapePayload {
     zipCode: string;
     orgId: string;
+}
+
+interface BusinessFinderPayload {
+    orgId: string;
+    zipCode: string;
+    industry: string;
+    batchSize: number;
 }
 
 export const scraperWorker = new Worker(
@@ -194,10 +202,106 @@ export const scraperWorker = new Worker(
     { connection: redisConnection as any }
 );
 
+export const businessFinderWorker = new Worker(
+    'BusinessFinderQueue',
+    async (job: Job<BusinessFinderPayload>) => {
+        console.log(`[BusinessFinderWorker] Started job ${job.id} for ZIP ${job.data.zipCode} / ${job.data.industry}`);
+
+        const org = await prisma.organization.findUnique({ where: { id: job.data.orgId } });
+        if (!org) {
+            await job.updateProgress({ phase: 'Organization not found.', percent: 0, error: true });
+            throw new Error('Organization not found.');
+        }
+
+        const launchOptions: any = {
+            headless: true,
+        };
+
+        if (process.env.PLAYWRIGHT_PROXY_SERVER) {
+            launchOptions.proxy = {
+                server: process.env.PLAYWRIGHT_PROXY_SERVER,
+                username: process.env.PLAYWRIGHT_PROXY_USERNAME,
+                password: process.env.PLAYWRIGHT_PROXY_PASSWORD,
+            };
+        }
+
+        const browser = await chromium.launch(launchOptions);
+
+        try {
+            await job.updateProgress({ phase: 'Launching browser...', percent: 10 });
+
+            const context = await browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                viewport: { width: 1440, height: 2400 },
+                ignoreHTTPSErrors: true,
+            });
+
+            const page = await context.newPage();
+
+            await page.setExtraHTTPHeaders({
+                'accept-language': 'en-US,en;q=0.9',
+            });
+
+            await page.route('**/*', async (route) => {
+                const resourceType = route.request().resourceType();
+                if (resourceType === 'image' || resourceType === 'font' || resourceType === 'media') {
+                    await route.abort();
+                    return;
+                }
+
+                await route.continue();
+            });
+
+            const searchTerm = mapIndustryToSearchTerm(job.data.industry);
+            const searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(job.data.zipCode)}`;
+
+            await job.updateProgress({ phase: 'Loading live directory results...', percent: 35 });
+            await page.goto(searchUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: 45000,
+            });
+
+            await page.waitForTimeout(4000);
+            await job.updateProgress({ phase: 'Parsing business listings...', percent: 75 });
+
+            const html = await page.content();
+            const leads = extractBusinessesFromYellowPagesHtml(
+                html,
+                job.data.zipCode,
+                job.data.industry,
+                job.data.batchSize,
+            );
+
+            await job.updateProgress({ phase: `Found ${leads.length} matching businesses.`, percent: 100 });
+
+            return {
+                leads,
+                sourceLabel: 'Yellow Pages',
+                searchUrl,
+            };
+        } catch (error) {
+            console.error(`[BusinessFinderWorker] Error in job ${job.id}:`, error);
+            await job.updateProgress({ phase: 'Live business search failed.', percent: 0, error: true });
+            throw error;
+        } finally {
+            await browser.close();
+        }
+    },
+    { connection: redisConnection as any }
+);
+
 scraperWorker.on('completed', (job) => {
     console.log(`[Queue] Job ${job.id} has completed!`);
 });
 
 scraperWorker.on('failed', (job, err) => {
     console.error(`[Queue] Job ${job?.id} has failed with ${err.message}`);
+});
+
+businessFinderWorker.on('completed', (job) => {
+    console.log(`[BusinessFinderQueue] Job ${job.id} has completed!`);
+});
+
+businessFinderWorker.on('failed', (job, err) => {
+    console.error(`[BusinessFinderQueue] Job ${job?.id} has failed with ${err.message}`);
 });
