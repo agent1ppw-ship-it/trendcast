@@ -35,6 +35,12 @@ export interface BusinessFinderExtractionResult {
 export interface OpenStreetMapSearchResult {
     leads: BusinessFinderLead[];
     matchStrategy: BusinessFinderMatchStrategy;
+    sourceLabel: string;
+    diagnostics?: {
+        geocodeFound: boolean;
+        overpassElementCount: number;
+        nominatimResultCount: number;
+    };
 }
 
 type YellowPagesPostalAddress = {
@@ -466,6 +472,18 @@ type ZipGeocodeResult = {
     lon: number;
 };
 
+type NominatimSearchResult = {
+    place_id?: number;
+    osm_type?: 'node' | 'way' | 'relation';
+    osm_id?: number;
+    lat?: string;
+    lon?: string;
+    name?: string;
+    display_name?: string;
+    extratags?: Record<string, string>;
+    address?: Record<string, string>;
+};
+
 type OverpassElement = {
     id: number;
     type: 'node' | 'way' | 'relation';
@@ -575,7 +593,16 @@ export async function searchOpenStreetMapBusinessesByZip(
     const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
     const geocode = await fetchZipGeocode(zipCode);
     if (!geocode) {
-        return { leads: [], matchStrategy: 'area_results' };
+        return {
+            leads: [],
+            matchStrategy: 'area_results',
+            sourceLabel: 'OpenStreetMap',
+            diagnostics: {
+                geocodeFound: false,
+                overpassElementCount: 0,
+                nominatimResultCount: 0,
+            },
+        };
     }
 
     const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(industry));
@@ -611,7 +638,16 @@ out center tags;
     });
 
     if (!response.ok) {
-        return { leads: [], matchStrategy: 'area_results' };
+        return {
+            leads: [],
+            matchStrategy: 'area_results',
+            sourceLabel: 'OpenStreetMap',
+            diagnostics: {
+                geocodeFound: true,
+                overpassElementCount: 0,
+                nominatimResultCount: 0,
+            },
+        };
     }
 
     const data = (await response.json()) as { elements?: OverpassElement[] };
@@ -657,11 +693,129 @@ out center tags;
         return {
             leads: exactLeads,
             matchStrategy: 'exact_zip',
+            sourceLabel: 'OpenStreetMap',
+            diagnostics: {
+                geocodeFound: true,
+                overpassElementCount: elements.length,
+                nominatimResultCount: 0,
+            },
+        };
+    }
+
+    const areaLeads = Array.from(areaMatches.values()).slice(0, safeBatchSize);
+    if (areaLeads.length > 0) {
+        return {
+            leads: areaLeads,
+            matchStrategy: 'area_results',
+            sourceLabel: 'OpenStreetMap',
+            diagnostics: {
+                geocodeFound: true,
+                overpassElementCount: elements.length,
+                nominatimResultCount: 0,
+            },
+        };
+    }
+
+    const searchQueries = [
+        `${industry} near ${zipCode}`,
+        `${mapIndustryToSearchTerm(industry)} near ${zipCode}`,
+        `${industry} ${zipCode}`,
+    ];
+    let nominatimResultCount = 0;
+
+    for (const query of searchQueries) {
+        const url = new URL('https://nominatim.openstreetmap.org/search');
+        url.searchParams.set('q', query);
+        url.searchParams.set('format', 'jsonv2');
+        url.searchParams.set('limit', String(safeBatchSize * 2));
+        url.searchParams.set('countrycodes', 'us');
+        url.searchParams.set('addressdetails', '1');
+        url.searchParams.set('extratags', '1');
+
+        const nominatimResponse = await fetch(url.toString(), {
+            headers: {
+                'User-Agent': 'trendcast-business-finder/1.0',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            signal: AbortSignal.timeout(15000),
+        });
+
+        if (!nominatimResponse.ok) {
+            continue;
+        }
+
+        const nominatimResults = (await nominatimResponse.json()) as NominatimSearchResult[];
+        nominatimResultCount += nominatimResults.length;
+
+        for (const result of nominatimResults) {
+            const address = normalizeText(result.display_name);
+            const name = normalizeText(result.name || address.split(',')[0]);
+            const tags = result.extratags || {};
+            const phone = tags.phone || tags['contact:phone'] || '';
+            const website = tags.website || tags['contact:website'] || tags.url || '';
+            const city = normalizeText(
+                result.address?.city ||
+                result.address?.town ||
+                result.address?.village ||
+                result.address?.hamlet
+            );
+            const postcode = normalizeZip(result.address?.postcode || address);
+            const listingUrl = result.osm_type && result.osm_id
+                ? `https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}`
+                : '';
+
+            if (!name || !address) continue;
+
+            const lead = buildLead({
+                name,
+                industry,
+                zipCode,
+                city,
+                address,
+                phone,
+                website,
+                listingUrl,
+                sourceLabel: 'OpenStreetMap Search',
+            });
+
+            if (postcode === zipCode) {
+                addLeadIfUnique(exactMatches, lead);
+            } else {
+                addLeadIfUnique(areaMatches, lead);
+            }
+
+            if (exactMatches.size >= safeBatchSize || areaMatches.size >= safeBatchSize) {
+                break;
+            }
+        }
+
+        if (exactMatches.size >= safeBatchSize || areaMatches.size >= safeBatchSize) {
+            break;
+        }
+    }
+
+    const fallbackExactLeads = Array.from(exactMatches.values()).slice(0, safeBatchSize);
+    if (fallbackExactLeads.length > 0) {
+        return {
+            leads: fallbackExactLeads,
+            matchStrategy: 'exact_zip',
+            sourceLabel: 'OpenStreetMap Search',
+            diagnostics: {
+                geocodeFound: true,
+                overpassElementCount: elements.length,
+                nominatimResultCount,
+            },
         };
     }
 
     return {
         leads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
         matchStrategy: 'area_results',
+        sourceLabel: 'OpenStreetMap Search',
+        diagnostics: {
+            geocodeFound: true,
+            overpassElementCount: elements.length,
+            nominatimResultCount,
+        },
     };
 }

@@ -320,7 +320,7 @@ export const businessFinderWorker = new Worker(
                             leads: openStreetMapResult.leads,
                             matchStrategy: openStreetMapResult.matchStrategy,
                         };
-                        sourceLabel = 'OpenStreetMap';
+                        sourceLabel = openStreetMapResult.sourceLabel;
                     } else if (yellowPagesBlocked) {
                         blocked = true;
                         blockReason = 'Yellow Pages returned a Cloudflare block page, and the OpenStreetMap fallback did not return any businesses.';
