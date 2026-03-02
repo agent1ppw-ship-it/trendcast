@@ -35,6 +35,8 @@ export interface BusinessFinderExtractionResult {
 export type ZipGeocodeResult = {
     lat: number;
     lon: number;
+    city: string;
+    state: string;
 };
 
 export interface OpenStreetMapSearchResult {
@@ -484,6 +486,10 @@ export type NominatimSearchResult = {
     address?: Record<string, string>;
 };
 
+function normalizePlaceName(value?: string) {
+    return normalizeText(value);
+}
+
 type OverpassElement = {
     id: number;
     type: 'node' | 'way' | 'relation';
@@ -568,13 +574,24 @@ export async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult
         return null;
     }
 
-    const results = (await response.json()) as Array<{ lat: string; lon: string }>;
+    const results = (await response.json()) as Array<{
+        lat: string;
+        lon: string;
+        address?: Record<string, string>;
+    }>;
     const first = results[0];
     if (!first) return null;
 
     return {
         lat: Number(first.lat),
         lon: Number(first.lon),
+        city: normalizePlaceName(
+            first.address?.city ||
+            first.address?.town ||
+            first.address?.village ||
+            first.address?.hamlet
+        ),
+        state: normalizePlaceName(first.address?.state || first.address?.state_code),
     };
 }
 
@@ -582,7 +599,10 @@ function toRadians(value: number) {
     return (value * Math.PI) / 180;
 }
 
-function distanceInMiles(a: ZipGeocodeResult, b: ZipGeocodeResult) {
+function distanceInMiles(
+    a: { lat: number; lon: number },
+    b: { lat: number; lon: number },
+) {
     const earthRadiusMiles = 3958.8;
     const dLat = toRadians(b.lat - a.lat);
     const dLon = toRadians(b.lon - a.lon);
@@ -616,6 +636,27 @@ function buildOpenStreetMapAddress(tags: Record<string, string>) {
         .join(' ');
 
     return [street, locality].filter(Boolean).join(', ');
+}
+
+function buildLocationQueries(industry: string, zipCode: string, geocode: ZipGeocodeResult | null) {
+    const searchTerm = mapIndustryToSearchTerm(industry);
+    const locationParts = [geocode?.city, geocode?.state].filter(Boolean).join(', ');
+
+    const queries = [
+        `${industry} near ${zipCode}`,
+        `${searchTerm} near ${zipCode}`,
+        `${industry} ${zipCode}`,
+    ];
+
+    if (locationParts) {
+        queries.unshift(
+            `${industry} near ${locationParts}`,
+            `${searchTerm} near ${locationParts}`,
+            `${industry} ${locationParts}`,
+        );
+    }
+
+    return Array.from(new Set(queries.map((query) => normalizeText(query)).filter(Boolean)));
 }
 
 export async function searchOpenStreetMapBusinessesByZip(
@@ -749,11 +790,7 @@ out center tags;
         };
     }
 
-    const searchQueries = [
-        `${industry} near ${zipCode}`,
-        `${mapIndustryToSearchTerm(industry)} near ${zipCode}`,
-        `${industry} ${zipCode}`,
-    ];
+    const searchQueries = buildLocationQueries(industry, zipCode, geocode);
     let nominatimResultCount = 0;
 
     for (const query of searchQueries) {
@@ -925,4 +962,8 @@ export function mapNominatimResultsToBusinessLeads(
         matchStrategy: 'area_results',
         sourceLabel,
     };
+}
+
+export function buildBrowserLocationQueries(industry: string, zipCode: string, geocode: ZipGeocodeResult | null) {
+    return buildLocationQueries(industry, zipCode, geocode);
 }
