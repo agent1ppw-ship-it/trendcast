@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "npm run install:browsers && prisma generate && next build",
+    "install:browsers": "PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "worker": "npx playwright install chromium && tsx src/workers/scraper.ts"
+    "worker": "PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium && tsx src/workers/scraper.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
