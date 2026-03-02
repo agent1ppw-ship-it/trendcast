@@ -11,6 +11,7 @@ import type {
     BusinessFinderLead,
     BusinessFinderMatchStrategy,
 } from '@/lib/businessFinder';
+import { BUSINESS_FINDER_RADIUS_OPTIONS } from '@/lib/businessFinder';
 
 const industryOptions = [
     'Roofing',
@@ -39,6 +40,7 @@ export function BusinessFinderClient({
     const [zipCode, setZipCode] = useState('75201');
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
     const [batchSize, setBatchSize] = useState(25);
+    const [radiusMiles, setRadiusMiles] = useState(50);
     const [sourceLabel, setSourceLabel] = useState('Yellow Pages');
     const [matchStrategy, setMatchStrategy] = useState<BusinessFinderMatchStrategy>('exact_zip');
     const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +79,7 @@ export function BusinessFinderClient({
         setJobProgress({ phase: 'Queueing live business search...', percent: 5 });
         setStatusMessage('Queueing live business search...');
 
-        const result = await startBusinessSearchJob(zipCode, industry, batchSize);
+        const result = await startBusinessSearchJob(zipCode, industry, batchSize, radiusMiles);
 
         if (!result.success) {
             setResults([]);
@@ -124,16 +126,16 @@ export function BusinessFinderClient({
                 setJobProgress(null);
 
                 if (status.usedCache) {
-                    setStatusMessage(`Loaded ${liveLeads.length} cached local businesses for ${zipCode} because live sources were temporarily unavailable.`);
+                    setStatusMessage(`Loaded ${liveLeads.length} cached local businesses for ${zipCode} within ${radiusMiles} miles because live sources were temporarily unavailable.`);
                 } else if (status.blocked) {
                     setError(status.blockReason || 'Yellow Pages appears to be blocking the worker.');
                     setStatusMessage('The worker reached Yellow Pages, but the returned page looks blocked.');
                 } else if (liveLeads.length === 0) {
-                    setStatusMessage(`No businesses were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
+                    setStatusMessage(`No businesses were found for ${sanitizeIndustry(industry)} in ${zipCode} within ${radiusMiles} miles. Try a broader radius or industry term.`);
                 } else {
                     setStatusMessage(
                         status.matchStrategy === 'area_results'
-                            ? `Loaded ${liveLeads.length} live businesses from the ${zipCode} area. Yellow Pages did not expose exact ZIPs for these listings.`
+                            ? `Loaded ${liveLeads.length} live businesses within ${radiusMiles} miles of ${zipCode}. Yellow Pages did not expose exact ZIPs for these listings.`
                             : `Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`
                     );
                 }
@@ -285,6 +287,19 @@ export function BusinessFinderClient({
                         <p className="text-xs text-gray-500 mt-1">Existing leads already stored in Pipeline CRM</p>
                     </CardContent>
                 </Card>
+
+                <Card className="bg-[#111] border-white/5 shadow-md">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
+                            Search Radius
+                            <MapPin className="w-4 h-4 text-gray-500" />
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-extrabold text-white">{radiusMiles} mi</div>
+                        <p className="text-xs text-gray-500 mt-1">Fallback area search distance from the ZIP centroid</p>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-8">
@@ -338,6 +353,24 @@ export function BusinessFinderClient({
                         </div>
 
                         <div>
+                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Search Radius</label>
+                            <select
+                                value={radiusMiles}
+                                onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                                className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50 transition-all"
+                            >
+                                {BUSINESS_FINDER_RADIUS_OPTIONS.map((radius) => (
+                                    <option key={radius} value={radius}>
+                                        {radius} miles
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="mt-2 text-xs text-gray-500">
+                                Broadens fallback area results up to 250 miles when exact ZIP matches are sparse.
+                            </p>
+                        </div>
+
+                        <div>
                             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Directory Source</label>
                             <div className="px-4 py-3 rounded-lg bg-[#161616] border border-white/10 text-sm font-medium text-gray-300">
                                 {sourceLabel} (live)
@@ -355,7 +388,7 @@ export function BusinessFinderClient({
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 mb-2">Match Strategy</p>
                             <p className="text-sm text-gray-300 leading-6">
                                 {matchStrategy === 'area_results'
-                                    ? 'This search is showing live directory results from the searched area because Yellow Pages did not expose exact ZIP codes on the listing cards.'
+                                    ? `This search is showing live directory results from within ${radiusMiles} miles of the searched ZIP because Yellow Pages did not expose exact ZIP codes on the listing cards.`
                                     : 'This search prefers live businesses whose listed postal code exactly matches the ZIP code you entered.'}
                             </p>
                         </div>

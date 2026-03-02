@@ -8,6 +8,7 @@ import type {
     BusinessFinderLead,
     BusinessFinderMatchStrategy,
 } from '@/lib/businessFinder';
+import { getSafeSearchRadiusMiles } from '@/lib/businessFinder';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = new IORedis(redisUrl, {
@@ -40,10 +41,11 @@ interface BusinessFinderJobResult {
     diagnostics?: BusinessFinderExtractionDiagnostics;
 }
 
-export async function startBusinessSearchJob(zipCode: string, industry: string, batchSize: number) {
+export async function startBusinessSearchJob(zipCode: string, industry: string, batchSize: number, radiusMiles: number) {
     const normalizedZip = zipCode.trim();
     const normalizedIndustry = industry.trim();
     const safeBatchSize = Math.min(Math.max(batchSize, 1), 100);
+    const safeRadiusMiles = getSafeSearchRadiusMiles(radiusMiles);
 
     if (!/^\d{5}$/.test(normalizedZip)) {
         return { success: false, error: 'Enter a valid 5-digit ZIP code.' };
@@ -64,6 +66,7 @@ export async function startBusinessSearchJob(zipCode: string, industry: string, 
             zipCode: normalizedZip,
             industry: normalizedIndustry,
             batchSize: safeBatchSize,
+            radiusMiles: safeRadiusMiles,
         });
 
         return { success: true, jobId: String(job.id) };

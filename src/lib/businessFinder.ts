@@ -50,8 +50,14 @@ export interface OpenStreetMapSearchResult {
     };
 }
 
+export const BUSINESS_FINDER_RADIUS_OPTIONS = [10, 25, 50, 100, 150, 250] as const;
+
 function getSafeBatchSize(batchSize: number) {
     return Math.min(Math.max(batchSize, 1), 100);
+}
+
+export function getSafeSearchRadiusMiles(radiusMiles: number) {
+    return Math.min(Math.max(Math.round(radiusMiles || 50), 10), 250);
 }
 
 export function getIndustrySearchVariants(industry: string) {
@@ -612,7 +618,7 @@ function escapeOverpassString(value: string) {
     return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-const MAX_AREA_RESULT_DISTANCE_MILES = 50;
+const DEFAULT_SEARCH_RADIUS_MILES = 50;
 
 export async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
     const url = new URL('https://nominatim.openstreetmap.org/search');
@@ -681,12 +687,13 @@ function isWithinSearchArea(
     searchCenter: ZipGeocodeResult | null,
     candidateLat?: number,
     candidateLon?: number,
+    radiusMiles = DEFAULT_SEARCH_RADIUS_MILES,
 ) {
     if (!searchCenter || candidateLat === undefined || candidateLon === undefined) {
         return false;
     }
 
-    return distanceInMiles(searchCenter, { lat: candidateLat, lon: candidateLon }) <= MAX_AREA_RESULT_DISTANCE_MILES;
+    return distanceInMiles(searchCenter, { lat: candidateLat, lon: candidateLon }) <= getSafeSearchRadiusMiles(radiusMiles);
 }
 
 function buildOpenStreetMapAddress(tags: Record<string, string>) {
@@ -724,8 +731,10 @@ export async function searchOpenStreetMapBusinessesByZip(
     zipCode: string,
     industry: string,
     batchSize: number,
+    radiusMiles = DEFAULT_SEARCH_RADIUS_MILES,
 ): Promise<OpenStreetMapSearchResult> {
     const safeBatchSize = getSafeBatchSize(batchSize);
+    const safeRadiusMiles = getSafeSearchRadiusMiles(radiusMiles);
     const geocode = await fetchZipGeocode(zipCode);
     if (!geocode) {
         return {
@@ -741,7 +750,7 @@ export async function searchOpenStreetMapBusinessesByZip(
     }
 
     const tagQueries = getOpenStreetMapTagQueries(industry);
-    const aroundRadius = 50000;
+    const aroundRadius = Math.min(Math.max(Math.round(safeRadiusMiles * 1609.34), 10000), 402336);
     const clauses = getIndustrySearchVariants(industry)
         .flatMap((searchVariant) => {
             const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(searchVariant));
@@ -918,7 +927,7 @@ out center tags;
 
             if (postcode === zipCode) {
                 addLeadIfUnique(exactMatches, lead);
-            } else if (isWithinSearchArea(geocode, resultLat, resultLon)) {
+            } else if (isWithinSearchArea(geocode, resultLat, resultLon, safeRadiusMiles)) {
                 addLeadIfUnique(areaMatches, lead);
             }
 
@@ -965,8 +974,10 @@ export function mapNominatimResultsToBusinessLeads(
     batchSize: number,
     sourceLabel = 'OpenStreetMap Search',
     searchCenter: ZipGeocodeResult | null = null,
+    radiusMiles = DEFAULT_SEARCH_RADIUS_MILES,
 ): OpenStreetMapSearchResult {
     const safeBatchSize = getSafeBatchSize(batchSize);
+    const safeRadiusMiles = getSafeSearchRadiusMiles(radiusMiles);
     const exactMatches = new Map<string, BusinessFinderLead>();
     const areaMatches = new Map<string, BusinessFinderLead>();
 
@@ -1005,7 +1016,7 @@ export function mapNominatimResultsToBusinessLeads(
 
         if (postcode === zipCode) {
             addLeadIfUnique(exactMatches, lead);
-        } else if (isWithinSearchArea(searchCenter, resultLat, resultLon)) {
+        } else if (isWithinSearchArea(searchCenter, resultLat, resultLon, safeRadiusMiles)) {
             addLeadIfUnique(areaMatches, lead);
         }
 

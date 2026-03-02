@@ -10,6 +10,7 @@ import {
     buildBrowserLocationQueries,
     extractBusinessesFromYellowPagesHtml,
     fetchZipGeocode,
+    getSafeSearchRadiusMiles,
     getIndustrySearchVariants,
     mapNominatimResultsToBusinessLeads,
     mergeBusinessLeads,
@@ -36,10 +37,11 @@ interface BusinessFinderPayload {
     zipCode: string;
     industry: string;
     batchSize: number;
+    radiusMiles: number;
 }
 
-function getBusinessFinderCacheKey(zipCode: string, industry: string) {
-    return `business-finder-cache:${zipCode}:${industry.trim().toLowerCase()}`;
+function getBusinessFinderCacheKey(zipCode: string, industry: string, radiusMiles: number) {
+    return `business-finder-cache:${zipCode}:${industry.trim().toLowerCase()}:${getSafeSearchRadiusMiles(radiusMiles)}`;
 }
 
 async function searchBusinessesWithBrowserNominatim(
@@ -47,6 +49,7 @@ async function searchBusinessesWithBrowserNominatim(
     zipCode: string,
     industry: string,
     batchSize: number,
+    radiusMiles: number,
 ) {
     const page = await context.newPage();
 
@@ -89,6 +92,7 @@ async function searchBusinessesWithBrowserNominatim(
             batchSize,
             'OpenStreetMap Browser Search',
             searchCenter,
+            radiusMiles,
         );
     } finally {
         await page.close();
@@ -271,6 +275,7 @@ export const businessFinderWorker = new Worker(
     'BusinessFinderQueue',
     async (job: Job<BusinessFinderPayload>) => {
         console.log(`[BusinessFinderWorker] Started job ${job.id} for ZIP ${job.data.zipCode} / ${job.data.industry}`);
+        const searchRadiusMiles = getSafeSearchRadiusMiles(job.data.radiusMiles);
 
         const org = await prisma.organization.findUnique({ where: { id: job.data.orgId } });
         if (!org) {
@@ -420,6 +425,7 @@ export const businessFinderWorker = new Worker(
                         job.data.zipCode,
                         job.data.industry,
                         job.data.batchSize,
+                        searchRadiusMiles,
                     );
 
                     if (openStreetMapResult.leads.length > 0) {
@@ -435,6 +441,7 @@ export const businessFinderWorker = new Worker(
                             job.data.zipCode,
                             job.data.industry,
                             job.data.batchSize,
+                            searchRadiusMiles,
                         );
 
                         if (browserFallbackResult.leads.length > 0) {
@@ -445,7 +452,9 @@ export const businessFinderWorker = new Worker(
                             };
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
-                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            const cachedResults = await redisConnection.get(
+                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                            );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
                                     leads: typeof finalResult.leads;
@@ -473,6 +482,7 @@ export const businessFinderWorker = new Worker(
                             job.data.zipCode,
                             job.data.industry,
                             job.data.batchSize,
+                            searchRadiusMiles,
                         );
 
                         if (browserFallbackResult.leads.length > 0) {
@@ -483,7 +493,9 @@ export const businessFinderWorker = new Worker(
                             };
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
-                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            const cachedResults = await redisConnection.get(
+                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                            );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
                                     leads: typeof finalResult.leads;
@@ -505,7 +517,9 @@ export const businessFinderWorker = new Worker(
                     } catch (browserFallbackError) {
                         console.error('[BusinessFinderWorker] Browser OpenStreetMap fallback failed:', browserFallbackError);
                         if (yellowPagesBlocked) {
-                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            const cachedResults = await redisConnection.get(
+                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                            );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
                                     leads: typeof finalResult.leads;
@@ -530,7 +544,7 @@ export const businessFinderWorker = new Worker(
 
             if (finalResult.leads.length > 0 && !usedCache) {
                 await redisConnection.set(
-                    getBusinessFinderCacheKey(job.data.zipCode, job.data.industry),
+                    getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles),
                     JSON.stringify({
                         leads: finalResult.leads,
                         matchStrategy: finalResult.matchStrategy,
