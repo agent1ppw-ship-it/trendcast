@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { ensureUserOrganizationByEmail, getUserAuthContextByEmail } from '@/lib/organizationProvisioning';
 
 const providers = [];
 
@@ -60,6 +61,17 @@ export const authOptions: NextAuthOptions = {
     },
     debug: true,
     callbacks: {
+        async signIn({ user }) {
+            if (!user.email) return false;
+
+            try {
+                await ensureUserOrganizationByEmail(user.email);
+                return true;
+            } catch (error) {
+                console.error('--- SIGNIN CALLBACK FAILED ---', error);
+                return false;
+            }
+        },
         async redirect({ url, baseUrl }) {
             console.log('--- REDIRECT FIRED ---', { url, baseUrl });
             if (url.startsWith('/')) return `${baseUrl}${url}`;
@@ -77,6 +89,16 @@ export const authOptions: NextAuthOptions = {
                 token.role = user.role || 'USER';
                 token.orgId = user.orgId ?? null;
             }
+
+            if (token.email) {
+                const authContext = await getUserAuthContextByEmail(token.email);
+                if (authContext) {
+                    token.id = authContext.id;
+                    token.role = authContext.role;
+                    token.orgId = authContext.orgId;
+                }
+            }
+
             return token;
         },
         async session({ session, token }) {
