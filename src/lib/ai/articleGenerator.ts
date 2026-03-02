@@ -389,6 +389,33 @@ function sanitizeGeneratedMarkdown(markdown: string, context: KeywordContext) {
         content = content.replace(pattern, replacement);
     });
 
+    const structuralReplacements: Array<[RegExp, string]> = [
+        [
+            /When a customer needs\s+\*\*?[^.\n]+?\*?\*?, they are usually trying to solve a specific service problem, not just browsing\.\s*/gi,
+            `Customers looking into ${context.serviceTopic} are usually trying to solve a real property or operational problem. `,
+        ],
+        [
+            /They want to understand what the job involves, when it makes sense to call a professional, and what separates a qualified provider from a generic one\.\s*/gi,
+            'They need a clear explanation of the work, the scope, and what makes one approach or contractor a better fit than another. ',
+        ],
+        [
+            /In this case, the real topic is\s+\*\*?[^.\n]+?\*?\*?\.\s*/gi,
+            `For this kind of project, the useful conversation is about ${context.serviceFocus}, how the work is scoped, and what decisions matter before anything is approved. `,
+        ],
+        [
+            /This type of project usually signals the following need:\s*/gi,
+            'At this stage, most customers need:\n',
+        ],
+        [
+            /This version takes a different angle from the prior draft and focuses on[^.\n]*\.\s*/gi,
+            '',
+        ],
+    ];
+
+    structuralReplacements.forEach(([pattern, replacement]) => {
+        content = content.replace(pattern, replacement);
+    });
+
     return content
         .replace(/\n{3,}/g, '\n\n')
         .trim();
@@ -681,6 +708,12 @@ Requirements:
      - ${archetype.sectionHeadings[2]}: ${archetype.sectionInstructions[2]}
    - CTA goal: ${archetype.ctaInstruction}
 21. Do not reuse the same canned headings across drafts unless they are the best fit. Let the archetype drive the structure for this version.
+22. Never use stock lead-ins such as:
+   - "What People Usually Mean When They Search..."
+   - "The Reader Intent Behind This Search"
+   - "When people search for..."
+   - "In this case, the real topic is..."
+   - "This search usually signals..."
 
 Quality bar:
 - The article should still be useful if all related topics were removed.
