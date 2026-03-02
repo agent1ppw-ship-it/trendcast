@@ -153,18 +153,18 @@ export function BlogPostsClient() {
 
                     <Card className="border-white/5 bg-[#111] shadow-md">
                         <CardHeader className="border-b border-white/5 pb-4">
-                            <CardTitle className="text-3xl font-bold tracking-tight text-white">{draft.title}</CardTitle>
+                            <CardTitle className="text-center text-3xl font-bold tracking-tight text-white">{draft.title}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6 pt-6">
                             <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-5">
-                                <div className="flex items-start gap-2 text-sm text-gray-300">
+                                <div className="flex items-start justify-center gap-2 text-center text-sm text-gray-300">
                                     <MapPin className="mt-1 h-4 w-4 shrink-0 text-gray-500" />
-                                    <p>{draft.excerpt}</p>
+                                    <p className="max-w-3xl leading-8">{draft.excerpt}</p>
                                 </div>
                             </div>
 
                             <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
-                                <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300">
+                                <div className="prose prose-invert prose-lg mx-auto max-w-3xl text-center prose-headings:text-center prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-6 prose-h3:mt-10 prose-h3:mb-5 prose-p:my-8 prose-p:leading-[2] prose-strong:text-white prose-ul:my-10 prose-ul:list-none prose-ul:pl-0 prose-ol:my-10 prose-ol:pl-0 prose-li:my-5 prose-li:text-gray-300 prose-p:text-gray-300">
                                     <ReactMarkdown components={{ img: () => null }}>{draft.contentMarkdown}</ReactMarkdown>
                                 </div>
                             </div>

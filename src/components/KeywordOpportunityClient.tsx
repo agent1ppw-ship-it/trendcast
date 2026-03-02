@@ -460,8 +460,8 @@ export function KeywordOpportunityClient({
                                 <div className="space-y-5">
                                     <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-5">
                                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Draft Summary</p>
-                                        <h1 className="text-3xl font-bold tracking-tight text-white">{blogDraft.title}</h1>
-                                        <p className="mt-3 leading-7 text-gray-300">{blogDraft.excerpt}</p>
+                                        <h1 className="text-center text-3xl font-bold tracking-tight text-white">{blogDraft.title}</h1>
+                                        <p className="mx-auto mt-3 max-w-3xl text-center leading-8 text-gray-300">{blogDraft.excerpt}</p>
                                         <div className="mt-4 flex flex-wrap gap-2">
                                             {blogDraft.seoKeywords.map((keyword) => (
                                                 <span key={keyword} className="rounded-full border border-white/10 bg-[#111]/80 px-3 py-1 text-xs text-gray-300">
@@ -475,7 +475,7 @@ export function KeywordOpportunityClient({
                                     </div>
 
                                     <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
-                                        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300">
+                                        <div className="prose prose-invert prose-lg mx-auto max-w-3xl text-center prose-headings:text-center prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-6 prose-h3:mt-10 prose-h3:mb-5 prose-p:my-8 prose-p:leading-[2] prose-strong:text-white prose-ul:my-10 prose-ul:list-none prose-ul:pl-0 prose-ol:my-10 prose-ol:pl-0 prose-li:my-5 prose-li:text-gray-300 prose-p:text-gray-300">
                                             <ReactMarkdown components={{ img: () => null }}>{blogDraft.contentMarkdown}</ReactMarkdown>
                                         </div>
                                     </div>
