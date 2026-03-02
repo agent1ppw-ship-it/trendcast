@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, BarChart3, CheckSquare, FileText, Gauge, Loader2, M
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateKeywordBlogDraft, generateKeywordIdeas } from '@/app/actions/keywords';
 import type { KeywordTargetedBlogDraft } from '@/lib/ai/articleGenerator';
+import { saveLatestBlogDraft } from '@/lib/blogDraftInbox';
 import type { KeywordOpportunityReport } from '@/lib/ai/keywordOpportunities';
 
 const industryOptions = [
@@ -105,6 +106,7 @@ export function KeywordOpportunityClient({
             }
 
             setBlogDraft(result.draft);
+            saveLatestBlogDraft(result.draft);
         });
     };
 
