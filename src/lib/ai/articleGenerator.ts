@@ -30,11 +30,6 @@ function slugify(value: string) {
         .replace(/-+/g, '-');
 }
 
-function buildImagePlaceholder(label: string) {
-    const encodedLabel = encodeURIComponent(label.replace(/\s+/g, ' ').trim());
-    return `![${label}](https://placehold.co/1200x675/111827/F3F4F6?text=${encodedLabel})`;
-}
-
 function buildFallbackBlogDraft(
     primaryKeyword: string,
     supportingKeywords: string[],
@@ -48,8 +43,6 @@ function buildFallbackBlogDraft(
     const slug = slugify(`${primaryKeyword} ${location}`);
 
     const contentMarkdown = `
-${buildImagePlaceholder(`${industry} service in ${location}`)}
-
 ## Why ${primaryKeyword.replace(/\b\w/g, (char) => char.toUpperCase())} Matters In ${location}
 
 When people search for **${primaryKeyword}**, they are usually close to hiring someone. They are trying to solve a real property problem in ${location}, and they want a contractor who understands the local service environment.
@@ -64,8 +57,6 @@ Readers searching this phrase often want:
 - Clear expectations on scope, timing, and pricing factors
 - Confidence that the provider works in ${location}
 - Proof that the contractor understands related issues, such as ${supportingKeywords[0] || `${industry.toLowerCase()} maintenance`} and ${supportingKeywords[1] || `${industry.toLowerCase()} repair`}
-
-${buildImagePlaceholder(`${industry} project details for ${location}`)}
 
 ## How To Make The Page Useful
 
@@ -90,8 +81,6 @@ Each of these should be worked into the article only where they genuinely help t
 Local SEO content performs best when it answers the exact service question quickly. It should show what the service includes, who it is for, and what makes a qualified contractor worth contacting.
 
 Short paragraphs and clear headings matter here. Readers should be able to scan the article and find the main answer without digging through a wall of text.
-
-${buildImagePlaceholder(`${businessName} serving ${location}`)}
 
 ## Call To Action
 
@@ -145,8 +134,7 @@ export async function generateLocalSEOArticle(
        - short paragraphs of 2 to 4 sentences
        - bullet points where useful
        - a strong CTA section near the end
-    4. Include a markdown image placeholder roughly every 300 words using this exact style:
-       ![Descriptive alt text](https://placehold.co/1200x675/111827/F3F4F6?text=YOUR+IMAGE+LABEL)
+    4. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
     5. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
     6. A list of exactly 5 long-tail SEO keywords.
 
@@ -216,8 +204,7 @@ Requirements:
    - no dense text walls
 5. Make the primary keyword a clear SEO target in the title, excerpt, and early body copy.
 6. The tone should be educational first and sales-oriented second.
-7. Insert a markdown image placeholder roughly every 300 words using this exact format:
-   ![Descriptive alt text](https://placehold.co/1200x675/111827/F3F4F6?text=YOUR+IMAGE+LABEL)
+7. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
 8. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
 9. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
 

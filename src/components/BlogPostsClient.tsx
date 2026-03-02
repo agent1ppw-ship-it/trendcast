@@ -164,8 +164,8 @@ export function BlogPostsClient() {
                             </div>
 
                             <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
-                                <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300 prose-img:my-8 prose-img:rounded-2xl prose-img:border prose-img:border-white/10 prose-img:shadow-lg">
-                                    <ReactMarkdown>{draft.contentMarkdown}</ReactMarkdown>
+                                <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300">
+                                    <ReactMarkdown components={{ img: () => null }}>{draft.contentMarkdown}</ReactMarkdown>
                                 </div>
                             </div>
                         </CardContent>
