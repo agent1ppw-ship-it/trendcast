@@ -262,7 +262,20 @@ export const businessFinderWorker = new Worker(
             await page.waitForTimeout(4000);
             await job.updateProgress({ phase: 'Parsing business listings...', percent: 75 });
 
+            const finalUrl = page.url();
+            const pageTitle = await page.title();
             const html = await page.content();
+            const bodyText = await page.locator('body').innerText().catch(() => '');
+            const normalizedBodyText = bodyText.replace(/\s+/g, ' ').trim().toLowerCase();
+            const blocked =
+                normalizedBodyText.includes('captcha') ||
+                normalizedBodyText.includes('access denied') ||
+                normalizedBodyText.includes('unusual traffic') ||
+                normalizedBodyText.includes('verify you are human') ||
+                normalizedBodyText.includes('press and hold') ||
+                normalizedBodyText.includes('security check') ||
+                pageTitle.toLowerCase().includes('access denied');
+
             const result = extractBusinessesFromYellowPagesHtml(
                 html,
                 job.data.zipCode,
@@ -270,13 +283,29 @@ export const businessFinderWorker = new Worker(
                 job.data.batchSize,
             );
 
-            await job.updateProgress({ phase: `Found ${result.leads.length} matching businesses.`, percent: 100 });
+            const blockReason = blocked
+                ? 'Yellow Pages appears to have returned a bot-protection or blocked page.'
+                : undefined;
+
+            await job.updateProgress({
+                phase: `Found ${result.leads.length} matching businesses.`,
+                percent: 100,
+                finalUrl,
+                pageTitle,
+                blocked,
+                extractionDiagnostics: result.diagnostics,
+            });
 
             return {
                 leads: result.leads,
                 matchStrategy: result.matchStrategy,
                 sourceLabel: 'Yellow Pages',
                 searchUrl,
+                finalUrl,
+                pageTitle,
+                blocked,
+                blockReason,
+                diagnostics: result.diagnostics,
             };
         } catch (error) {
             console.error(`[BusinessFinderWorker] Error in job ${job.id}:`, error);

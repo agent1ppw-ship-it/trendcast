@@ -6,7 +6,11 @@ import { Building2, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Send, S
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createLead } from '@/app/actions/crm';
 import { getBusinessSearchStatus, startBusinessSearchJob } from '@/app/actions/businessFinder';
-import type { BusinessFinderLead, BusinessFinderMatchStrategy } from '@/lib/businessFinder';
+import type {
+    BusinessFinderExtractionDiagnostics,
+    BusinessFinderLead,
+    BusinessFinderMatchStrategy,
+} from '@/lib/businessFinder';
 
 const industryOptions = [
     'Roofing',
@@ -43,6 +47,13 @@ export function BusinessFinderClient({
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [isSendingAll, setIsSendingAll] = useState(false);
     const [jobProgress, setJobProgress] = useState<{ phase: string; percent: number } | null>(null);
+    const [searchDiagnostics, setSearchDiagnostics] = useState<{
+        finalUrl?: string;
+        pageTitle?: string;
+        blocked?: boolean;
+        blockReason?: string;
+        diagnostics?: BusinessFinderExtractionDiagnostics;
+    } | null>(null);
 
     const availableIndustries = useMemo(() => {
         const normalizedDefault = sanitizeIndustry(defaultIndustry);
@@ -59,6 +70,7 @@ export function BusinessFinderClient({
     const handleRunBatch = async () => {
         setIsLoading(true);
         setError('');
+        setSearchDiagnostics(null);
         setJobProgress({ phase: 'Queueing live business search...', percent: 5 });
         setStatusMessage('Queueing live business search...');
 
@@ -70,6 +82,7 @@ export function BusinessFinderClient({
             setError(result.error || 'Failed to search businesses.');
             setStatusMessage('No live results were loaded.');
             setMatchStrategy('exact_zip');
+            setSearchDiagnostics(null);
             setJobProgress(null);
             setIsLoading(false);
             return;
@@ -91,14 +104,25 @@ export function BusinessFinderClient({
             if (status.state === 'completed') {
                 clearInterval(pollInterval);
                 const liveLeads = status.results ?? [];
+                const diagnostics = {
+                    finalUrl: status.finalUrl,
+                    pageTitle: status.pageTitle,
+                    blocked: status.blocked,
+                    blockReason: status.blockReason,
+                    diagnostics: status.diagnostics,
+                };
 
                 setResults(liveLeads);
                 setSentIds([]);
                 setSourceLabel(status.sourceLabel || 'Yellow Pages');
                 setMatchStrategy(status.matchStrategy || 'exact_zip');
+                setSearchDiagnostics(diagnostics);
                 setJobProgress(null);
 
-                if (liveLeads.length === 0) {
+                if (status.blocked) {
+                    setError(status.blockReason || 'Yellow Pages appears to be blocking the worker.');
+                    setStatusMessage('The worker reached Yellow Pages, but the returned page looks blocked.');
+                } else if (liveLeads.length === 0) {
                     setStatusMessage(`No businesses were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
                 } else {
                     setStatusMessage(
@@ -115,6 +139,7 @@ export function BusinessFinderClient({
                 clearInterval(pollInterval);
                 setError('The live search job failed.');
                 setStatusMessage('No live results were loaded.');
+                setSearchDiagnostics(null);
                 setJobProgress(null);
                 setIsLoading(false);
             }
@@ -331,6 +356,45 @@ export function BusinessFinderClient({
                         <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-3 text-sm text-gray-400">
                             {statusMessage}
                         </div>
+
+                        {searchDiagnostics && (
+                            <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-4 space-y-3 text-sm">
+                                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Worker Diagnostics</div>
+                                <div className="grid gap-2 text-gray-300">
+                                    <div>
+                                        <span className="text-gray-500">Final URL:</span>{' '}
+                                        <span className="break-all">{searchDiagnostics.finalUrl || 'Unavailable'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Page title:</span>{' '}
+                                        <span>{searchDiagnostics.pageTitle || 'Unavailable'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Blocked:</span>{' '}
+                                        <span>{searchDiagnostics.blocked ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    {searchDiagnostics.blockReason && (
+                                        <div>
+                                            <span className="text-gray-500">Reason:</span>{' '}
+                                            <span>{searchDiagnostics.blockReason}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {searchDiagnostics.diagnostics && (
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 font-mono">
+                                        <div>jsonLdScripts: {searchDiagnostics.diagnostics.jsonLdScriptCount}</div>
+                                        <div>jsonLdBusinesses: {searchDiagnostics.diagnostics.jsonLdBusinessCount}</div>
+                                        <div>resultCards: {searchDiagnostics.diagnostics.resultCardCount}</div>
+                                        <div>textLines: {searchDiagnostics.diagnostics.textLineCount}</div>
+                                        <div>exactZipLeads: {searchDiagnostics.diagnostics.exactZipLeadCount}</div>
+                                        <div>areaLeads: {searchDiagnostics.diagnostics.areaLeadCount}</div>
+                                        <div>textExactLeads: {searchDiagnostics.diagnostics.textExactLeadCount}</div>
+                                        <div>textAreaLeads: {searchDiagnostics.diagnostics.textAreaLeadCount}</div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {isLoading && jobProgress && (
                             <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-4">

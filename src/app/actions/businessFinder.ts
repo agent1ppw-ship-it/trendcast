@@ -3,7 +3,11 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { ensureOrganization } from '@/app/actions/auth';
-import type { BusinessFinderLead, BusinessFinderMatchStrategy } from '@/lib/businessFinder';
+import type {
+    BusinessFinderExtractionDiagnostics,
+    BusinessFinderLead,
+    BusinessFinderMatchStrategy,
+} from '@/lib/businessFinder';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = new IORedis(redisUrl, {
@@ -16,6 +20,10 @@ const businessFinderQueue = new Queue('BusinessFinderQueue', { connection: redis
 interface BusinessFinderProgress {
     phase: string;
     percent: number;
+    finalUrl?: string;
+    pageTitle?: string;
+    blocked?: boolean;
+    extractionDiagnostics?: BusinessFinderExtractionDiagnostics;
 }
 
 interface BusinessFinderJobResult {
@@ -23,6 +31,11 @@ interface BusinessFinderJobResult {
     matchStrategy: BusinessFinderMatchStrategy;
     sourceLabel: string;
     searchUrl: string;
+    finalUrl?: string;
+    pageTitle?: string;
+    blocked?: boolean;
+    blockReason?: string;
+    diagnostics?: BusinessFinderExtractionDiagnostics;
 }
 
 export async function startBusinessSearchJob(zipCode: string, industry: string, batchSize: number) {
@@ -78,6 +91,11 @@ export async function getBusinessSearchStatus(jobId: string) {
             matchStrategy: returnValue?.matchStrategy,
             sourceLabel: returnValue?.sourceLabel,
             searchUrl: returnValue?.searchUrl,
+            finalUrl: returnValue?.finalUrl,
+            pageTitle: returnValue?.pageTitle,
+            blocked: returnValue?.blocked,
+            blockReason: returnValue?.blockReason,
+            diagnostics: returnValue?.diagnostics,
         };
     } catch (error) {
         console.error('Failed to fetch business finder job status:', error);

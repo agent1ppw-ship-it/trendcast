@@ -15,6 +15,23 @@ export interface BusinessFinderLead {
 
 export type BusinessFinderMatchStrategy = 'exact_zip' | 'area_results';
 
+export interface BusinessFinderExtractionDiagnostics {
+    jsonLdScriptCount: number;
+    jsonLdBusinessCount: number;
+    resultCardCount: number;
+    textLineCount: number;
+    exactZipLeadCount: number;
+    areaLeadCount: number;
+    textExactLeadCount: number;
+    textAreaLeadCount: number;
+}
+
+export interface BusinessFinderExtractionResult {
+    leads: BusinessFinderLead[];
+    matchStrategy: BusinessFinderMatchStrategy;
+    diagnostics: BusinessFinderExtractionDiagnostics;
+}
+
 type YellowPagesPostalAddress = {
     streetAddress?: string;
     addressLocality?: string;
@@ -213,6 +230,7 @@ function extractBusinessesFromYellowPagesText(
         return {
             exactLeads: [] as BusinessFinderLead[],
             areaLeads: [] as BusinessFinderLead[],
+            lineCount: lines.length,
         };
     }
 
@@ -295,6 +313,7 @@ function extractBusinessesFromYellowPagesText(
     return {
         exactLeads: Array.from(exactMatches.values()).slice(0, safeBatchSize),
         areaLeads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
+        lineCount: lines.length,
     };
 }
 
@@ -303,7 +322,7 @@ export function extractBusinessesFromYellowPagesHtml(
     zipCode: string,
     industry: string,
     batchSize: number,
-) {
+): BusinessFinderExtractionResult {
     const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
     const $ = cheerio.load(html);
     const exactZipMatches = new Map<string, BusinessFinderLead>();
@@ -320,6 +339,8 @@ export function extractBusinessesFromYellowPagesHtml(
             return [];
         }
     });
+
+    const resultCards = $('.search-results .result, .search-results .v-card, .organic .result, .result');
 
     for (const business of parsedBusinesses) {
         if (!business.name) continue;
@@ -343,7 +364,7 @@ export function extractBusinessesFromYellowPagesHtml(
         }
     }
 
-    $('.search-results .result, .search-results .v-card, .organic .result, .result').each((_, element) => {
+    resultCards.each((_, element) => {
         const card = $(element);
         const name = normalizeText(card.find('.business-name').first().text());
         const streetAddress = normalizeText(card.find('.street-address').first().text());
@@ -385,18 +406,31 @@ export function extractBusinessesFromYellowPagesHtml(
     });
 
     const exactLeads = Array.from(exactZipMatches.values()).slice(0, safeBatchSize);
+    const textFallback = extractBusinessesFromYellowPagesText($('body').text(), zipCode, industry, safeBatchSize);
+    const diagnostics: BusinessFinderExtractionDiagnostics = {
+        jsonLdScriptCount: scripts.length,
+        jsonLdBusinessCount: parsedBusinesses.length,
+        resultCardCount: resultCards.length,
+        textLineCount: textFallback.lineCount,
+        exactZipLeadCount: exactLeads.length,
+        areaLeadCount: Array.from(areaResults.values()).slice(0, safeBatchSize).length,
+        textExactLeadCount: textFallback.exactLeads.length,
+        textAreaLeadCount: textFallback.areaLeads.length,
+    };
+
     if (exactLeads.length > 0) {
         return {
             leads: exactLeads,
             matchStrategy: 'exact_zip' as BusinessFinderMatchStrategy,
+            diagnostics,
         };
     }
 
-    const textFallback = extractBusinessesFromYellowPagesText($('body').text(), zipCode, industry, safeBatchSize);
     if (textFallback.exactLeads.length > 0) {
         return {
             leads: textFallback.exactLeads,
             matchStrategy: 'exact_zip' as BusinessFinderMatchStrategy,
+            diagnostics,
         };
     }
 
@@ -405,11 +439,13 @@ export function extractBusinessesFromYellowPagesHtml(
         return {
             leads: areaLeads,
             matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
+            diagnostics,
         };
     }
 
     return {
         leads: textFallback.areaLeads,
         matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
+        diagnostics,
     };
 }
