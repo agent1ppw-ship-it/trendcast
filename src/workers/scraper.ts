@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { chromium } from 'playwright-extra';
-import type { BrowserContext } from 'playwright';
+import type { Browser, BrowserContext } from 'playwright';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
@@ -14,6 +14,7 @@ import {
     mapNominatimResultsToBusinessLeads,
     mergeBusinessLeads,
     type NominatimSearchResult,
+    searchGooglePlacesBusinessesByZip,
     searchOpenStreetMapBusinessesByZip,
 } from '../lib/businessFinder';
 
@@ -278,22 +279,85 @@ export const businessFinderWorker = new Worker(
             throw new Error('Organization not found.');
         }
 
-        const launchOptions: Parameters<typeof chromium.launch>[0] = {
-            headless: true,
-        };
-
-        if (process.env.PLAYWRIGHT_PROXY_SERVER) {
-            launchOptions.proxy = {
-                server: process.env.PLAYWRIGHT_PROXY_SERVER,
-                username: process.env.PLAYWRIGHT_PROXY_USERNAME,
-                password: process.env.PLAYWRIGHT_PROXY_PASSWORD,
-            };
-        }
-
-        const browser = await chromium.launch(launchOptions);
+        let browser: Browser | null = null;
 
         try {
-            await job.updateProgress({ phase: 'Launching browser...', percent: 10 });
+            await job.updateProgress({ phase: 'Searching Google Places...', percent: 12 });
+
+            const googlePlacesResult = await searchGooglePlacesBusinessesByZip(
+                job.data.zipCode,
+                job.data.industry,
+                job.data.batchSize,
+            );
+
+            if (googlePlacesResult.leads.length > 0) {
+                await redisConnection.set(
+                    getBusinessFinderCacheKey(job.data.zipCode, job.data.industry),
+                    JSON.stringify({
+                        leads: googlePlacesResult.leads,
+                        matchStrategy: googlePlacesResult.matchStrategy,
+                        sourceLabel: googlePlacesResult.sourceLabel,
+                    }),
+                    'EX',
+                    60 * 60 * 24 * 7,
+                );
+
+                await job.updateProgress({
+                    phase: `Found ${googlePlacesResult.leads.length} matching businesses.`,
+                    percent: 100,
+                    finalUrl: 'https://places.googleapis.com/v1/places:searchText',
+                    pageTitle: 'Google Places API',
+                    blocked: false,
+                    usedCache: false,
+                    extractionDiagnostics: {
+                        jsonLdScriptCount: 0,
+                        jsonLdBusinessCount: 0,
+                        resultCardCount: 0,
+                        textLineCount: 0,
+                        exactZipLeadCount: googlePlacesResult.matchStrategy === 'exact_zip' ? googlePlacesResult.leads.length : 0,
+                        areaLeadCount: googlePlacesResult.matchStrategy === 'area_results' ? googlePlacesResult.leads.length : 0,
+                        textExactLeadCount: 0,
+                        textAreaLeadCount: 0,
+                    },
+                });
+
+                return {
+                    leads: googlePlacesResult.leads,
+                    matchStrategy: googlePlacesResult.matchStrategy,
+                    sourceLabel: googlePlacesResult.sourceLabel,
+                    searchUrl: 'https://places.googleapis.com/v1/places:searchText',
+                    usedCache: false,
+                    finalUrl: 'https://places.googleapis.com/v1/places:searchText',
+                    pageTitle: 'Google Places API',
+                    blocked: false,
+                    diagnostics: {
+                        jsonLdScriptCount: 0,
+                        jsonLdBusinessCount: 0,
+                        resultCardCount: 0,
+                        textLineCount: 0,
+                        exactZipLeadCount: googlePlacesResult.matchStrategy === 'exact_zip' ? googlePlacesResult.leads.length : 0,
+                        areaLeadCount: googlePlacesResult.matchStrategy === 'area_results' ? googlePlacesResult.leads.length : 0,
+                        textExactLeadCount: 0,
+                        textAreaLeadCount: 0,
+                    },
+                };
+            }
+
+            const launchOptions: Parameters<typeof chromium.launch>[0] = {
+                headless: true,
+            };
+
+            if (process.env.PLAYWRIGHT_PROXY_SERVER) {
+                launchOptions.proxy = {
+                    server: process.env.PLAYWRIGHT_PROXY_SERVER,
+                    username: process.env.PLAYWRIGHT_PROXY_USERNAME,
+                    password: process.env.PLAYWRIGHT_PROXY_PASSWORD,
+                };
+            }
+
+            browser = await chromium.launch(launchOptions);
+
+            await job.updateProgress({ phase: 'Launching browser fallback...', percent: 22 });
 
             const context = await browser.newContext({
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -325,7 +389,7 @@ export const businessFinderWorker = new Worker(
             let yellowPagesBlocked = false;
             let yellowPagesResult = extractBusinessesFromYellowPagesHtml('', job.data.zipCode, job.data.industry, job.data.batchSize);
 
-            await job.updateProgress({ phase: 'Loading live directory results...', percent: 35 });
+            await job.updateProgress({ phase: 'Loading directory fallback results...', percent: 35 });
 
             for (let variantIndex = 0; variantIndex < yellowPagesVariants.length; variantIndex += 1) {
                 const searchTerm = yellowPagesVariants[variantIndex];
@@ -568,7 +632,9 @@ export const businessFinderWorker = new Worker(
             await job.updateProgress({ phase: 'Live business search failed.', percent: 0, error: true });
             throw error;
         } finally {
-            await browser.close();
+            if (browser) {
+                await browser.close();
+            }
         }
     },
     { connection: redisConnection as never }

@@ -39,10 +39,13 @@ export type ZipGeocodeResult = {
     state: string;
 };
 
-export interface OpenStreetMapSearchResult {
+export interface BusinessFinderSourceResult {
     leads: BusinessFinderLead[];
     matchStrategy: BusinessFinderMatchStrategy;
     sourceLabel: string;
+}
+
+export interface OpenStreetMapSearchResult extends BusinessFinderSourceResult {
     diagnostics?: {
         geocodeFound: boolean;
         overpassElementCount: number;
@@ -562,6 +565,35 @@ type OverpassElement = {
     tags?: Record<string, string>;
 };
 
+type GooglePlacesTextSearchResponse = {
+    places?: GooglePlace[];
+    nextPageToken?: string;
+};
+
+type GooglePlace = {
+    id?: string;
+    displayName?: {
+        text?: string;
+        languageCode?: string;
+    };
+    formattedAddress?: string;
+    nationalPhoneNumber?: string;
+    websiteUri?: string;
+    googleMapsUri?: string;
+    primaryType?: string;
+    businessStatus?: string;
+    location?: {
+        latitude?: number;
+        longitude?: number;
+    };
+    postalAddress?: {
+        postalCode?: string;
+        locality?: string;
+        administrativeArea?: string;
+        addressLines?: string[];
+    };
+};
+
 function getOpenStreetMapNamePattern(industry: string) {
     const normalized = industry.trim().toLowerCase();
 
@@ -613,6 +645,12 @@ function escapeOverpassString(value: string) {
 }
 
 const MAX_AREA_RESULT_DISTANCE_MILES = 50;
+const GOOGLE_PLACES_VIEWPORT_RADIUS_MILES = 20;
+const GOOGLE_PLACES_TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
+
+function getGooglePlacesApiKey() {
+    return process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+}
 
 export async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
     const url = new URL('https://nominatim.openstreetmap.org/search');
@@ -659,6 +697,10 @@ function toRadians(value: number) {
     return (value * Math.PI) / 180;
 }
 
+function toDegrees(value: number) {
+    return (value * 180) / Math.PI;
+}
+
 function distanceInMiles(
     a: { lat: number; lon: number },
     b: { lat: number; lon: number },
@@ -677,6 +719,50 @@ function distanceInMiles(
     return earthRadiusMiles * arc;
 }
 
+function offsetCoordinate(
+    origin: { lat: number; lon: number },
+    distanceMiles: number,
+    bearingDegrees: number,
+) {
+    const earthRadiusMiles = 3958.8;
+    const angularDistance = distanceMiles / earthRadiusMiles;
+    const bearing = toRadians(bearingDegrees);
+    const lat1 = toRadians(origin.lat);
+    const lon1 = toRadians(origin.lon);
+
+    const lat2 = Math.asin(
+        Math.sin(lat1) * Math.cos(angularDistance) +
+        Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
+    );
+    const lon2 = lon1 + Math.atan2(
+        Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+        Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2),
+    );
+
+    return {
+        lat: toDegrees(lat2),
+        lon: toDegrees(lon2),
+    };
+}
+
+function buildViewport(searchCenter: ZipGeocodeResult, radiusMiles: number) {
+    const north = offsetCoordinate(searchCenter, radiusMiles, 0);
+    const south = offsetCoordinate(searchCenter, radiusMiles, 180);
+    const east = offsetCoordinate(searchCenter, radiusMiles, 90);
+    const west = offsetCoordinate(searchCenter, radiusMiles, 270);
+
+    return {
+        low: {
+            latitude: south.lat,
+            longitude: west.lon,
+        },
+        high: {
+            latitude: north.lat,
+            longitude: east.lon,
+        },
+    };
+}
+
 function isWithinSearchArea(
     searchCenter: ZipGeocodeResult | null,
     candidateLat?: number,
@@ -687,6 +773,40 @@ function isWithinSearchArea(
     }
 
     return distanceInMiles(searchCenter, { lat: candidateLat, lon: candidateLon }) <= MAX_AREA_RESULT_DISTANCE_MILES;
+}
+
+function mapIndustryToGoogleIncludedType(industry: string) {
+    switch (industry.trim().toLowerCase()) {
+        case 'plumbing':
+            return 'plumber';
+        case 'electrical':
+            return 'electrician';
+        case 'roofing':
+            return 'roofing_contractor';
+        default:
+            return '';
+    }
+}
+
+function buildGooglePlacesQueries(industry: string) {
+    return getIndustrySearchVariants(industry).slice(0, 4).map((variant) => normalizeText(variant)).filter(Boolean);
+}
+
+function formatGooglePlaceAddress(place: GooglePlace) {
+    const formatted = normalizeText(place.formattedAddress);
+    if (formatted) return formatted;
+
+    const postalAddress = place.postalAddress;
+    if (!postalAddress) return '';
+
+    const lines = postalAddress.addressLines?.map((line) => normalizeText(line)).filter(Boolean) || [];
+    const locality = [
+        normalizeText(postalAddress.locality),
+        normalizeText(postalAddress.administrativeArea),
+        normalizeText(postalAddress.postalCode),
+    ].filter(Boolean).join(' ');
+
+    return [...lines, locality].filter(Boolean).join(', ');
 }
 
 function buildOpenStreetMapAddress(tags: Record<string, string>) {
@@ -718,6 +838,153 @@ function buildLocationQueries(industry: string, zipCode: string, geocode: ZipGeo
     });
 
     return Array.from(new Set(queries.map((query) => normalizeText(query)).filter(Boolean)));
+}
+
+export async function searchGooglePlacesBusinessesByZip(
+    zipCode: string,
+    industry: string,
+    batchSize: number,
+): Promise<BusinessFinderSourceResult> {
+    const apiKey = getGooglePlacesApiKey();
+    if (!apiKey) {
+        return {
+            leads: [],
+            matchStrategy: 'area_results',
+            sourceLabel: 'Google Places',
+        };
+    }
+
+    const safeBatchSize = getSafeBatchSize(batchSize);
+    const geocode = await fetchZipGeocode(zipCode);
+    const includedType = mapIndustryToGoogleIncludedType(industry);
+    const exactMatches = new Map<string, BusinessFinderLead>();
+    const areaMatches = new Map<string, BusinessFinderLead>();
+    const queries = buildGooglePlacesQueries(industry);
+
+    for (const textQuery of queries) {
+        let nextPageToken = '';
+        let pageCount = 0;
+
+        do {
+            const payload: Record<string, unknown> = {
+                textQuery,
+                pageSize: Math.min(20, safeBatchSize),
+                languageCode: 'en',
+                regionCode: 'US',
+                rankPreference: 'DISTANCE',
+                includePureServiceAreaBusinesses: true,
+            };
+
+            if (geocode) {
+                payload.locationRestriction = {
+                    rectangle: buildViewport(geocode, GOOGLE_PLACES_VIEWPORT_RADIUS_MILES),
+                };
+            }
+
+            if (includedType) {
+                payload.includedType = includedType;
+                payload.strictTypeFiltering = false;
+            }
+
+            if (nextPageToken) {
+                payload.pageToken = nextPageToken;
+            }
+
+            const response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': apiKey,
+                    'X-Goog-FieldMask': [
+                        'places.id',
+                        'places.displayName',
+                        'places.formattedAddress',
+                        'places.nationalPhoneNumber',
+                        'places.websiteUri',
+                        'places.googleMapsUri',
+                        'places.location',
+                        'places.postalAddress',
+                        'places.businessStatus',
+                        'nextPageToken',
+                    ].join(','),
+                },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(20000),
+            });
+
+            if (!response.ok) {
+                break;
+            }
+
+            const data = (await response.json()) as GooglePlacesTextSearchResponse;
+            const places = data.places || [];
+
+            for (const place of places) {
+                if (place.businessStatus && place.businessStatus !== 'OPERATIONAL') {
+                    continue;
+                }
+
+                const name = normalizeText(place.displayName?.text);
+                const address = formatGooglePlaceAddress(place);
+                const city = normalizeText(place.postalAddress?.locality);
+                const postcode = normalizeZip(place.postalAddress?.postalCode || address);
+                const latitude = place.location?.latitude;
+                const longitude = place.location?.longitude;
+
+                if (!name || !address) {
+                    continue;
+                }
+
+                const lead = buildLead({
+                    name,
+                    industry,
+                    zipCode,
+                    city,
+                    address,
+                    phone: place.nationalPhoneNumber || '',
+                    website: place.websiteUri || '',
+                    listingUrl: place.googleMapsUri || '',
+                    sourceLabel: 'Google Places',
+                });
+
+                if (postcode === zipCode) {
+                    addLeadIfUnique(exactMatches, lead);
+                } else if (isWithinSearchArea(geocode, latitude, longitude)) {
+                    addLeadIfUnique(areaMatches, lead);
+                }
+
+                if (exactMatches.size >= safeBatchSize || areaMatches.size >= safeBatchSize) {
+                    break;
+                }
+            }
+
+            nextPageToken = data.nextPageToken || '';
+            pageCount += 1;
+
+            if (nextPageToken && exactMatches.size < safeBatchSize && areaMatches.size < safeBatchSize) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+        } while (nextPageToken && pageCount < 3 && exactMatches.size < safeBatchSize && areaMatches.size < safeBatchSize);
+
+        if (exactMatches.size >= safeBatchSize || areaMatches.size >= safeBatchSize) {
+            break;
+        }
+    }
+
+    const exactLeads = Array.from(exactMatches.values()).slice(0, safeBatchSize);
+    if (exactLeads.length > 0) {
+        return {
+            leads: exactLeads,
+            matchStrategy: 'exact_zip',
+            sourceLabel: 'Google Places',
+        };
+    }
+
+    return {
+        leads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
+        matchStrategy: 'area_results',
+        sourceLabel: 'Google Places',
+    };
 }
 
 export async function searchOpenStreetMapBusinessesByZip(
