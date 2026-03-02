@@ -8,6 +8,7 @@ import * as cheerio from 'cheerio';
 import { prisma } from '../lib/prisma';
 import {
     extractBusinessesFromYellowPagesHtml,
+    fetchZipGeocode,
     mapNominatimResultsToBusinessLeads,
     mapIndustryToSearchTerm,
     type NominatimSearchResult,
@@ -44,6 +45,7 @@ async function searchBusinessesWithBrowserNominatim(
     const page = await context.newPage();
 
     try {
+        const searchCenter = await fetchZipGeocode(zipCode).catch(() => null);
         const queries = [
             `${industry} near ${zipCode}`,
             `${mapIndustryToSearchTerm(industry)} near ${zipCode}`,
@@ -84,6 +86,7 @@ async function searchBusinessesWithBrowserNominatim(
             industry,
             batchSize,
             'OpenStreetMap Browser Search',
+            searchCenter,
         );
     } finally {
         await page.close();

@@ -32,6 +32,11 @@ export interface BusinessFinderExtractionResult {
     diagnostics: BusinessFinderExtractionDiagnostics;
 }
 
+export type ZipGeocodeResult = {
+    lat: number;
+    lon: number;
+};
+
 export interface OpenStreetMapSearchResult {
     leads: BusinessFinderLead[];
     matchStrategy: BusinessFinderMatchStrategy;
@@ -467,11 +472,6 @@ export function extractBusinessesFromYellowPagesHtml(
     };
 }
 
-type ZipGeocodeResult = {
-    lat: number;
-    lon: number;
-};
-
 export type NominatimSearchResult = {
     place_id?: number;
     osm_type?: 'node' | 'way' | 'relation';
@@ -546,7 +546,9 @@ function escapeOverpassString(value: string) {
     return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
+const MAX_AREA_RESULT_DISTANCE_MILES = 30;
+
+export async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
     const url = new URL('https://nominatim.openstreetmap.org/search');
     url.searchParams.set('q', `${zipCode}, United States`);
     url.searchParams.set('format', 'jsonv2');
@@ -574,6 +576,37 @@ async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null
         lat: Number(first.lat),
         lon: Number(first.lon),
     };
+}
+
+function toRadians(value: number) {
+    return (value * Math.PI) / 180;
+}
+
+function distanceInMiles(a: ZipGeocodeResult, b: ZipGeocodeResult) {
+    const earthRadiusMiles = 3958.8;
+    const dLat = toRadians(b.lat - a.lat);
+    const dLon = toRadians(b.lon - a.lon);
+    const lat1 = toRadians(a.lat);
+    const lat2 = toRadians(b.lat);
+
+    const haversine =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const arc = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+    return earthRadiusMiles * arc;
+}
+
+function isWithinSearchArea(
+    searchCenter: ZipGeocodeResult | null,
+    candidateLat?: number,
+    candidateLon?: number,
+) {
+    if (!searchCenter || candidateLat === undefined || candidateLon === undefined) {
+        return false;
+    }
+
+    return distanceInMiles(searchCenter, { lat: candidateLat, lon: candidateLon }) <= MAX_AREA_RESULT_DISTANCE_MILES;
 }
 
 function buildOpenStreetMapAddress(tags: Record<string, string>) {
@@ -760,6 +793,8 @@ out center tags;
                 result.address?.hamlet
             );
             const postcode = normalizeZip(result.address?.postcode || address);
+            const resultLat = result.lat ? Number(result.lat) : undefined;
+            const resultLon = result.lon ? Number(result.lon) : undefined;
             const listingUrl = result.osm_type && result.osm_id
                 ? `https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}`
                 : '';
@@ -780,7 +815,7 @@ out center tags;
 
             if (postcode === zipCode) {
                 addLeadIfUnique(exactMatches, lead);
-            } else {
+            } else if (isWithinSearchArea(geocode, resultLat, resultLon)) {
                 addLeadIfUnique(areaMatches, lead);
             }
 
@@ -826,6 +861,7 @@ export function mapNominatimResultsToBusinessLeads(
     industry: string,
     batchSize: number,
     sourceLabel = 'OpenStreetMap Search',
+    searchCenter: ZipGeocodeResult | null = null,
 ): OpenStreetMapSearchResult {
     const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
     const exactMatches = new Map<string, BusinessFinderLead>();
@@ -844,6 +880,8 @@ export function mapNominatimResultsToBusinessLeads(
             result.address?.hamlet
         );
         const postcode = normalizeZip(result.address?.postcode || address);
+        const resultLat = result.lat ? Number(result.lat) : undefined;
+        const resultLon = result.lon ? Number(result.lon) : undefined;
         const listingUrl = result.osm_type && result.osm_id
             ? `https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}`
             : '';
@@ -864,7 +902,7 @@ export function mapNominatimResultsToBusinessLeads(
 
         if (postcode === zipCode) {
             addLeadIfUnique(exactMatches, lead);
-        } else {
+        } else if (isWithinSearchArea(searchCenter, resultLat, resultLon)) {
             addLeadIfUnique(areaMatches, lead);
         }
 
