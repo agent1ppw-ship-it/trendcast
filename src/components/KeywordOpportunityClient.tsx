@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { BarChart3, CheckSquare, FileText, Gauge, Loader2, MapPin, Search, Sparkles, Square, Target } from 'lucide-react';
+import { ArrowDown, ArrowUp, BarChart3, CheckSquare, FileText, Gauge, Loader2, MapPin, Search, Sparkles, Square, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateKeywordBlogDraft, generateKeywordIdeas } from '@/app/actions/keywords';
 import type { KeywordTargetedBlogDraft } from '@/lib/ai/articleGenerator';
@@ -105,6 +105,36 @@ export function KeywordOpportunityClient({
             }
 
             setBlogDraft(result.draft);
+        });
+    };
+
+    const moveSelectedKeyword = (keyword: string, direction: 'up' | 'down') => {
+        setBlogError('');
+
+        setSelectedKeywords((current) => {
+            const index = current.indexOf(keyword);
+            if (index === -1) return current;
+
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            if (targetIndex < 0 || targetIndex >= current.length) return current;
+
+            const next = [...current];
+            [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+            return next;
+        });
+    };
+
+    const makePrimaryKeyword = (keyword: string) => {
+        setBlogError('');
+
+        setSelectedKeywords((current) => {
+            const index = current.indexOf(keyword);
+            if (index <= 0) return current;
+
+            const next = [...current];
+            next.splice(index, 1);
+            next.unshift(keyword);
+            return next;
         });
     };
 
@@ -256,7 +286,7 @@ export function KeywordOpportunityClient({
                                         className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/10 px-4 py-2 text-sm font-medium text-blue-300 transition-all hover:bg-blue-600/20 disabled:opacity-50"
                                     >
                                         {isDraftPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                                        {isDraftPending ? 'Generating Draft...' : 'Import To Blog Generator'}
+                                        {isDraftPending ? 'Generating Draft...' : blogDraft ? 'Regenerate Draft' : 'Import To Blog Generator'}
                                     </button>
                                 </div>
                             </div>
@@ -356,19 +386,52 @@ export function KeywordOpportunityClient({
                                 </p>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="space-y-3">
                                 {selectedKeywords.length === 0 && (
                                     <span className="text-sm text-gray-500">No keywords selected yet.</span>
                                 )}
                                 {selectedKeywords.map((keyword, index) => (
-                                    <span
+                                    <div
                                         key={keyword}
                                         className={index === 0
-                                            ? 'inline-flex rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-300'
-                                            : 'inline-flex rounded-full border border-white/10 bg-[#161616] px-3 py-1 text-xs font-semibold text-gray-300'}
+                                            ? 'flex flex-col gap-3 rounded-xl border border-blue-500/20 bg-blue-600/10 px-4 py-3 md:flex-row md:items-center md:justify-between'
+                                            : 'flex flex-col gap-3 rounded-xl border border-white/10 bg-[#161616] px-4 py-3 md:flex-row md:items-center md:justify-between'}
                                     >
-                                        {index === 0 ? `Primary: ${keyword}` : keyword}
-                                    </span>
+                                        <div className="min-w-0">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+                                                {index === 0 ? 'Primary Keyword' : `Supporting Keyword ${index}`}
+                                            </div>
+                                            <div className={index === 0 ? 'mt-1 font-semibold text-blue-200' : 'mt-1 font-semibold text-gray-200'}>
+                                                {keyword}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {index !== 0 && (
+                                                <button
+                                                    onClick={() => makePrimaryKeyword(keyword)}
+                                                    className="rounded-lg border border-blue-500/20 bg-blue-600/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-all hover:bg-blue-600/20"
+                                                >
+                                                    Make Primary
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => moveSelectedKeyword(keyword, 'up')}
+                                                disabled={index === 0}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-[#111] px-3 py-1.5 text-xs font-medium text-gray-300 transition-all hover:bg-[#1A1A1A] disabled:opacity-40"
+                                            >
+                                                <ArrowUp className="h-3.5 w-3.5" />
+                                                Up
+                                            </button>
+                                            <button
+                                                onClick={() => moveSelectedKeyword(keyword, 'down')}
+                                                disabled={index === selectedKeywords.length - 1}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-[#111] px-3 py-1.5 text-xs font-medium text-gray-300 transition-all hover:bg-[#1A1A1A] disabled:opacity-40"
+                                            >
+                                                <ArrowDown className="h-3.5 w-3.5" />
+                                                Down
+                                            </button>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
 
@@ -396,8 +459,8 @@ export function KeywordOpportunityClient({
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/5 bg-[#161616] p-6">
-                                        <div className="prose prose-invert max-w-none prose-headings:text-white prose-p:text-gray-300 prose-li:text-gray-300">
+                                    <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
+                                        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300">
                                             <ReactMarkdown>{blogDraft.contentMarkdown}</ReactMarkdown>
                                         </div>
                                     </div>
