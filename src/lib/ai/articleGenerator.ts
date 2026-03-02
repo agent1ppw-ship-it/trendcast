@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
 
-// Assuming the API key is provided in the environment variables
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || 'mock-key-for-build',
 });
@@ -25,6 +24,7 @@ interface KeywordContext {
     normalizedPrimaryKeyword: string;
     normalizedSupportingKeywords: string[];
     serviceFocus: string;
+    serviceTopic: string;
     readerIntent: string;
     readerQuestions: string[];
     localAngle: string;
@@ -41,6 +41,10 @@ function slugify(value: string) {
 
 function normalizeKeyword(value: string) {
     return value.replace(/\s+/g, ' ').trim();
+}
+
+function toTitleCase(value: string) {
+    return value.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function dedupeKeywords(primaryKeyword: string, supportingKeywords: string[]) {
@@ -60,6 +64,43 @@ function dedupeKeywords(primaryKeyword: string, supportingKeywords: string[]) {
     };
 }
 
+function extractServiceTopic(primaryKeyword: string, industry: string, location: string) {
+    const stopWords = new Set([
+        'a',
+        'an',
+        'and',
+        'best',
+        'business',
+        'company',
+        'companies',
+        'contractor',
+        'contractors',
+        'expert',
+        'experts',
+        'for',
+        'in',
+        'local',
+        'near',
+        'service',
+        'services',
+        'the',
+    ]);
+
+    const tokensToRemove = new Set([
+        ...normalizeKeyword(industry).toLowerCase().split(/\s+/),
+        ...normalizeKeyword(location).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
+        ...stopWords,
+    ]);
+
+    const remainingTokens = normalizeKeyword(primaryKeyword)
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((token) => !tokensToRemove.has(token));
+
+    const topic = remainingTokens.join(' ').trim();
+    return topic.length >= 4 ? topic : normalizeKeyword(primaryKeyword);
+}
+
 function buildKeywordContext(
     primaryKeyword: string,
     supportingKeywords: string[],
@@ -69,68 +110,69 @@ function buildKeywordContext(
     const { normalizedPrimaryKeyword, normalizedSupportingKeywords } = dedupeKeywords(primaryKeyword, supportingKeywords);
     const lowerKeyword = normalizedPrimaryKeyword.toLowerCase();
     const lowerIndustry = industry.toLowerCase();
+    const serviceTopic = extractServiceTopic(normalizedPrimaryKeyword, industry, location);
 
     const intentPatterns = [
         {
             matches: ['commercial', 'business', 'office', 'retail', 'warehouse'],
-            serviceFocus: `commercial ${industry.toLowerCase()} work`,
-            readerIntent: 'The reader is likely evaluating vendors for a business property and needs clear scope, reliability, and operational fit.',
+            serviceFocus: `commercial ${lowerIndustry} work`,
+            readerIntent: 'The customer is likely comparing vendors for a business property and needs clarity on scope, disruption, reliability, and fit.',
             readerQuestions: [
                 `What does this ${lowerIndustry} service usually include for a commercial property?`,
-                'How do timelines, disruption, and coordination affect the project?',
-                'What makes one contractor more qualified than another for this type of property?',
+                'How do scheduling, access, and disruption affect the project?',
+                'What makes one contractor more qualified than another for this kind of property?',
             ],
         },
         {
             matches: ['repair', 'fix', 'emergency', 'broken', 'replace'],
-            serviceFocus: `${industry.toLowerCase()} diagnosis and repair`,
-            readerIntent: 'The reader likely has an immediate problem and wants to understand urgency, likely causes, and what a contractor should inspect first.',
+            serviceFocus: `${lowerIndustry} diagnosis and repair`,
+            readerIntent: 'The customer likely has an immediate issue and needs to understand urgency, likely causes, and what should be inspected first.',
             readerQuestions: [
-                'What signs show the problem should be addressed quickly?',
-                'What should a contractor inspect before quoting a repair?',
-                'When does repair make sense versus replacement?',
+                'What signs suggest the problem should be handled quickly?',
+                'What should a contractor inspect before recommending a repair?',
+                'When does repair make sense and when is replacement the better choice?',
             ],
         },
         {
             matches: ['install', 'installation', 'design', 'build', 'new'],
-            serviceFocus: `${industry.toLowerCase()} installation and planning`,
-            readerIntent: 'The reader is comparing options and needs help understanding process, planning decisions, and the factors that change cost or quality.',
+            serviceFocus: `${lowerIndustry} installation and planning`,
+            readerIntent: 'The customer is planning a project and needs practical guidance on process, planning decisions, and the factors that shape the final result.',
             readerQuestions: [
                 'What planning decisions matter most before the work starts?',
-                'Which features or material choices change the final result?',
-                'What should the customer ask before signing off on the job?',
+                'Which material, layout, or design choices affect the result the most?',
+                'What should a customer review before approving the final plan?',
             ],
         },
         {
             matches: ['maintenance', 'tune up', 'inspection', 'cleaning', 'service'],
-            serviceFocus: `${industry.toLowerCase()} maintenance and preventive service`,
-            readerIntent: 'The reader is trying to prevent larger problems and wants practical guidance on what the service covers and when it is worth scheduling.',
+            serviceFocus: `${lowerIndustry} maintenance and preventive service`,
+            readerIntent: 'The customer is trying to prevent larger problems and wants to know what the service covers and when it is worth scheduling.',
             readerQuestions: [
-                'What does this maintenance service usually cover?',
+                'What does this maintenance service usually include?',
                 'How often should the work be scheduled?',
                 'Which issues can preventive service help reduce?',
             ],
         },
         {
             matches: ['cost', 'price', 'estimate', 'quote'],
-            serviceFocus: `${industry.toLowerCase()} pricing and job scope`,
-            readerIntent: 'The reader is trying to understand pricing and wants a useful explanation of cost drivers without a fake hard quote.',
+            serviceFocus: `${lowerIndustry} pricing and project scope`,
+            readerIntent: 'The customer is trying to understand pricing and wants a practical explanation of cost drivers without a fake instant quote.',
             readerQuestions: [
                 'What job conditions usually affect price the most?',
-                'What details should be reviewed before giving a quote?',
-                'How can a customer compare estimates intelligently?',
+                'What details should be reviewed before giving an estimate?',
+                'How can a customer compare quotes intelligently?',
             ],
         },
     ];
 
     const matchedPattern = intentPatterns.find((pattern) => pattern.matches.some((token) => lowerKeyword.includes(token)));
     const defaultContext = {
-        serviceFocus: `${industry.toLowerCase()} services related to ${normalizedPrimaryKeyword}`,
-        readerIntent: 'The reader is searching for a specific local service and wants a straightforward explanation of what it involves, when it is needed, and how to choose the right provider.',
+        serviceFocus: `${lowerIndustry} services related to ${serviceTopic}`,
+        readerIntent: 'The customer is searching for a specific local service and wants a clear explanation of what the work involves, when it is needed, and how to evaluate providers.',
         readerQuestions: [
-            `What does ${normalizedPrimaryKeyword} actually include?`,
-            `When should someone in ${location} hire a professional for this work?`,
-            'How should a customer evaluate providers for this kind of job?',
+            `What does ${serviceTopic} usually include?`,
+            `When should someone in ${location} hire a professional for this type of work?`,
+            'What should a customer look for before choosing a contractor?',
         ],
     };
 
@@ -140,14 +182,50 @@ function buildKeywordContext(
         normalizedPrimaryKeyword,
         normalizedSupportingKeywords,
         serviceFocus: baseContext.serviceFocus,
+        serviceTopic,
         readerIntent: baseContext.readerIntent,
         readerQuestions: baseContext.readerQuestions,
-        localAngle: `Ground the article in realistic conditions, expectations, and service considerations for customers in ${location}.`,
+        localAngle: `Keep the advice grounded in realistic project conditions, climate, property constraints, and contractor expectations in ${location}.`,
     };
 }
 
 function stripLeadingH1(markdown: string) {
     return markdown.replace(/^#\s.+\n+/m, '').trim();
+}
+
+function sanitizeGeneratedMarkdown(markdown: string, context: KeywordContext) {
+    const serviceHeading = toTitleCase(context.serviceTopic);
+    let content = stripLeadingH1(markdown || '');
+
+    const headingReplacements: Array<[RegExp, string]> = [
+        [/^##\s*What People Usually Mean When They Search[^\n]*$/gim, `## What ${serviceHeading} Usually Includes`],
+        [/^##\s*The Reader Intent Behind This Search$/gim, '## When This Service Makes Sense'],
+        [/^##\s*Questions The Article Should Answer Clearly$/gim, '## Questions To Ask Before Hiring A Contractor'],
+        [/^##\s*How To Cover Supporting Keywords Without Forcing Them$/gim, '## Related Project Considerations'],
+        [/^##\s*What Makes The Content Valuable For A Local Reader$/gim, `## What Property Owners In ${context.localAngle.match(/in (.+)\.$/)?.[1] || 'Your Area'} Should Know`],
+    ];
+
+    headingReplacements.forEach(([pattern, replacement]) => {
+        content = content.replace(pattern, replacement);
+    });
+
+    const phraseReplacements: Array<[RegExp, string]> = [
+        [/\bwhen people search for\b/gi, 'when a customer needs'],
+        [/\bthis search\b/gi, 'this type of project'],
+        [/\breader intent\b/gi, 'customer needs'],
+        [/\bsearcher\b/gi, 'customer'],
+        [/\bkeyword stuffing\b/gi, 'forced phrasing'],
+        [/\bprimary keyword\b/gi, 'main topic'],
+        [/\bsupporting keywords\b/gi, 'related topics'],
+    ];
+
+    phraseReplacements.forEach(([pattern, replacement]) => {
+        content = content.replace(pattern, replacement);
+    });
+
+    return content
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
 }
 
 function sanitizeArticleData(
@@ -156,14 +234,17 @@ function sanitizeArticleData(
     fallbackSlug: string,
     fallbackExcerpt: string,
     fallbackKeywords: string[],
+    context?: KeywordContext,
 ): ArticleData {
-    const contentMarkdown = stripLeadingH1(parsedData.contentMarkdown || '');
+    const cleanedMarkdown = context
+        ? sanitizeGeneratedMarkdown(parsedData.contentMarkdown || '', context)
+        : stripLeadingH1(parsedData.contentMarkdown || '');
 
     return {
         title: parsedData.title?.trim() || fallbackTitle,
         slug: parsedData.slug?.trim() || fallbackSlug,
         excerpt: parsedData.excerpt?.trim() || fallbackExcerpt,
-        contentMarkdown,
+        contentMarkdown: cleanedMarkdown,
         seoKeywords: parsedData.seoKeywords?.map(normalizeKeyword).filter(Boolean).slice(0, 5) || fallbackKeywords,
     };
 }
@@ -176,55 +257,55 @@ function buildFallbackBlogDraft(
     industry: string,
 ): KeywordTargetedBlogDraft {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
-    const title = `${context.normalizedPrimaryKeyword.replace(/\b\w/g, (char) => char.toUpperCase())}: What ${location} Customers Should Know`;
-    const excerpt = `${businessName} created this localized guide to help readers understand ${context.normalizedPrimaryKeyword} in ${location}. The post is designed to answer the real service question behind the search, not just repeat the keyword.`;
+    const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: What ${location} Customers Should Know`;
+    const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, including what the work involves, what affects the result, and what to ask before hiring a contractor.`;
     const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
     const slug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
+    const primaryRelatedTopic = context.normalizedSupportingKeywords[0] || `${industry.toLowerCase()} material selection`;
+    const secondaryRelatedTopic = context.normalizedSupportingKeywords[1] || `${industry.toLowerCase()} project planning`;
 
     const contentMarkdown = `
-## What People Usually Mean When They Search ${context.normalizedPrimaryKeyword.replace(/\b\w/g, (char) => char.toUpperCase())}
+## What ${toTitleCase(context.serviceTopic)} Usually Includes
 
-When people search for **${context.normalizedPrimaryKeyword}**, they are usually trying to solve a specific service problem, not just browsing. They want to understand what the job involves, when it makes sense to call a professional, and what separates a qualified provider from a generic one.
+${toTitleCase(context.serviceTopic)} usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
-In this case, the real topic is **${context.serviceFocus}**. A useful article should make that clear early and explain the decision in plain language for someone in ${location}.
+For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property.
 
-## The Reader Intent Behind This Search
+## When It Makes Sense To Bring In A Contractor
 
-This search usually signals the following need:
+Most customers should bring in a contractor once they know the problem they are trying to solve with the space. That might mean creating a better area for entertaining, improving traffic flow, replacing a worn-out feature, or making part of the property easier to maintain.
 
-- ${context.readerIntent}
-- A contractor who can explain scope, timing, and what happens next
-- Confidence that the provider understands local service expectations in ${location}
+A contractor is most useful when they can help define scope before money is wasted on the wrong design or material choice. This is especially true when grading, drainage, access, structural support, or long-term maintenance will affect the outcome.
 
-## Questions The Article Should Answer Clearly
+## What A Good Plan Should Cover
 
-To feel complete and useful, the post should directly answer questions like:
+A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan.
 
-${context.readerQuestions.map((question, index) => `${index + 1}. ${question}`).join('\n')}
+- The intended use of the space and how much traffic it will handle
+- Material options and what they mean for maintenance, lifespan, and appearance
+- Drainage, grading, and any site-prep work needed before installation
+- Timeline, crew access, and how the work may affect the rest of the property
+- What is included in the quoted scope and what would count as a change order
 
-## How To Cover Supporting Keywords Without Forcing Them
+## Questions To Ask Before Approving The Work
 
-Supporting keywords should only appear when they help the reader understand a related part of the job. That means they should reinforce the main topic instead of turning the article into a list of disconnected search phrases.
+Customers usually get better results when they ask direct questions before the project starts. A contractor should be able to explain the reasoning behind the plan, not just hand over a sketch and a price.
 
-${allKeywords.map((keyword) => `- ${keyword}`).join('\n')}
+1. What site conditions could change the scope after work begins?
+2. Which material or layout choices have the biggest effect on durability and upkeep?
+3. How will the finished work handle drainage, traffic, and seasonal wear?
+4. What is included in the quoted scope, and what is not?
+5. How does this project connect to related needs such as ${primaryRelatedTopic} or ${secondaryRelatedTopic}?
 
-If a supporting phrase does not fit naturally into the explanation, it should be left out of the final article.
+## What Property Owners In ${location} Should Know
 
-## What Makes The Content Valuable For A Local Reader
+Local conditions affect how well a project performs over time. A design that looks good on paper may still fail if it does not account for water movement, freeze-thaw stress, heavy use, or the way the space connects to existing features on the property.
 
-The strongest local SEO content works because it answers the actual service question quickly and clearly. It should explain the work, set expectations, and help a reader make a better decision, even before they contact anyone.
-
-${context.localAngle} Short paragraphs, clear headings, and practical explanations matter more than squeezing in extra keyword variations.
+That is why the most useful contractor conversations are practical, not promotional. Customers should come away understanding what the work involves, what tradeoffs exist, and what decisions matter most before construction begins.
 
 ## Call To Action
 
-Strong local SEO content should make it easy for the visitor to take the next step. That means ending with a clear, direct invitation to contact **${businessName}** for help with **${context.normalizedPrimaryKeyword}** in **${location}**.
-
-The call to action should stay natural. It should sound like a recommendation from a knowledgeable local provider, not a hard sell.
-
-## Final Takeaway
-
-If your goal is to rank for **${context.normalizedPrimaryKeyword}**, the content should focus on solving the reader's question with complete, useful information. That is what turns a long-tail keyword into actual pipeline activity instead of thin traffic.
+If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense.
 `.trim();
 
     return {
@@ -233,63 +314,63 @@ If your goal is to rank for **${context.normalizedPrimaryKeyword}**, the content
         excerpt,
         contentMarkdown,
         seoKeywords: allKeywords,
-        primaryKeyword,
-        supportingKeywords,
+        primaryKeyword: context.normalizedPrimaryKeyword,
+        supportingKeywords: context.normalizedSupportingKeywords,
         location,
         industry,
         dataSource: 'TEMPLATE_FALLBACK',
     };
 }
 
-/**
- * Generates a keyword-rich, localized long-form SEO article for home service businesses.
- * Used primarily for Tier 1 and Tier 2 plans.
- * 
- * @param topic The core topic (e.g., "roof algae removal")
- * @param location The target city/neighborhood (e.g., "Austin, TX")
- * @param businessName The name of the client's business
- */
 export async function generateLocalSEOArticle(
     topic: string,
     location: string,
-    businessName: string
+    businessName: string,
 ): Promise<ArticleData | null> {
     const prompt = `
-    You are an expert SEO copywriter specializing in local home service businesses.
-    Write a comprehensive, engaging, and highly informative blog article about "${topic}" specifically targeted for homeowners in "${location}".
-    
-    The article is being published by "${businessName}". You must seamlessly integrate this business name as the recommended solution at the end of the post.
+You are an expert SEO copywriter specializing in local home service businesses.
 
-    Requirements:
-    1. A catchy, clickable title containing the location.
-    2. A 2-sentence excerpt summarizing the post.
-    3. The main content in Markdown format (at least 600 words) using:
-       - scannable H2 and H3 subheadings
-       - short paragraphs of 2 to 4 sentences
-       - bullet points where useful
-       - a strong CTA section near the end
-    4. Prioritize reader value over SEO phrasing. The article must read like a complete, coherent explanation written for a real customer.
-    5. Explain the underlying service problem, what the service includes, when someone should call, and what decision factors matter most.
-    6. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
-    7. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
-    8. A list of exactly 5 long-tail SEO keywords.
+Write a comprehensive, highly informative blog article about "${topic}" for property owners in "${location}".
 
-    Output format MUST be a valid JSON object matching this schema:
-    {
-      "title": "...",
-      "slug": "...", // URL-friendly version of title
-      "excerpt": "...",
-      "contentMarkdown": "...",
-      "seoKeywords": ["..."]
-    }
-  `;
+The article is being published by "${businessName}". Position the business naturally near the end as a provider, but keep the article educational first.
+
+Requirements:
+1. Write a compelling title containing the location.
+2. Write a 2-sentence excerpt summarizing the post.
+3. The article must read like a practical service guide for a real customer, not like SEO copy.
+4. Explain the underlying service problem, what the service includes, when someone should call, and what decision factors matter most.
+5. Do not talk about keywords, SEO strategy, search intent, or what people mean when they search.
+6. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
+7. Use markdown with:
+   - scannable H2 and H3 subheadings
+   - short paragraphs of 2 to 4 sentences
+   - bullet points where useful
+   - a strong CTA section near the end
+8. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
+9. Include exactly 5 long-tail SEO keywords.
+
+Output format MUST be a valid JSON object matching this schema:
+{
+  "title": "...",
+  "slug": "...",
+  "excerpt": "...",
+  "contentMarkdown": "...",
+  "seoKeywords": ["..."]
+}
+`;
 
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o',
-            messages: [{ role: 'system', content: prompt }],
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You write practical local service articles for real customers. You do not write meta commentary about searching, SEO, or keywords.',
+                },
+                { role: 'user', content: prompt },
+            ],
             response_format: { type: 'json_object' },
-            temperature: 0.7,
+            temperature: 0.55,
         });
 
         const responseContent = completion.choices[0].message.content;
@@ -299,10 +380,9 @@ export async function generateLocalSEOArticle(
             JSON.parse(responseContent) as ArticleData,
             `${topic} in ${location}`,
             slugify(`${topic} ${location}`),
-            `${businessName} explains what homeowners should know about ${topic} in ${location}.`,
+            `${businessName} explains what property owners should know about ${topic} in ${location}.`,
             [topic, `${topic} ${location}`].map(normalizeKeyword),
         );
-
     } catch (error) {
         console.error('Failed to generate article:', error);
         return null;
@@ -332,10 +412,10 @@ export async function generateKeywordTargetedBlogArticle(
     const prompt = `
 You are an expert local SEO copywriter for home service companies.
 
-Write a long-form blog draft that primarily targets this keyword:
-- Primary keyword: ${context.normalizedPrimaryKeyword}
+Write a long-form blog draft for this primary topic:
+- Primary topic: ${context.normalizedPrimaryKeyword}
 
-Supporting keywords to weave in naturally:
+Related topics that may be used only if they genuinely improve the article:
 ${context.normalizedSupportingKeywords.map((keyword) => `- ${keyword}`).join('\n') || '- none'}
 
 Business:
@@ -343,38 +423,38 @@ Business:
 - Industry: ${industry}
 - Service area: ${location}
 
-Search intent context:
+Context for the article:
 - Core service focus: ${context.serviceFocus}
-- Reader intent: ${context.readerIntent}
-- Local context: ${context.localAngle}
-- Questions that should be answered clearly:
+- Likely customer need: ${context.readerIntent}
+- Local angle: ${context.localAngle}
+- Questions that should be answered:
 ${context.readerQuestions.map((question) => `  - ${question}`).join('\n')}
 
 Requirements:
-1. The article must feel natural, informative, and genuinely useful for a local reader.
-2. Prioritize complete thoughts, practical explanation, and decision-making value over keyword repetition.
-3. Do not keyword-stuff. Use the supporting keywords only where they fit naturally, and omit any that do not improve the article.
-4. The first section should quickly explain what the searcher is actually trying to understand or solve.
-5. The body should explain service scope, when the service is needed, what affects cost or complexity, and how to evaluate a provider.
-6. Include concrete, reader-helpful detail. Avoid vague SEO filler and avoid generic statements that could apply to any service.
-7. Write for a homeowner or property decision-maker, not for a search engine.
-8. Write at least 900 words.
-9. Use markdown with proper blog formatting:
+1. The article must be genuinely useful to a property owner or property decision-maker.
+2. Prioritize practical explanation, clear service guidance, and complete thoughts over keyword coverage.
+3. Do not talk about "the search," "the query," "reader intent," SEO, or keywords inside the article body.
+4. Do not write headings like "What People Usually Mean When They Search..." or "The Reader Intent Behind This Search."
+5. Open by explaining the service itself, what it includes, and why it matters in practical terms.
+6. Explain service scope, planning factors, pricing drivers, common mistakes, and how to evaluate a contractor where relevant.
+7. Use related topics only when they improve the explanation. If they do not fit naturally, leave them out.
+8. Avoid filler, vague statements, and generic marketing language.
+9. Write at least 900 words.
+10. Use markdown with proper blog formatting:
    - H2 and H3 subheadings
    - short paragraphs of 2 to 4 sentences
    - bullet points where useful
    - no dense text walls
-10. Make the primary keyword a clear SEO target in the title, excerpt, and early body copy.
-11. The tone should be educational first and sales-oriented second.
-12. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
-13. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
-14. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
+11. Make the primary topic clear in the title, excerpt, and early body copy, but keep the prose natural.
+12. Keep the tone educational first and sales-oriented second.
+13. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
+14. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
+15. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
 
 Quality bar:
-- The article should still make sense and remain useful even if all supporting keywords were removed.
-- Supporting keywords are secondary and should never break sentence flow.
-- Avoid lists of barely-related phrases or sections that exist only to squeeze in extra keywords.
-- Keep the article tightly aligned to the primary service intent behind "${context.normalizedPrimaryKeyword}".
+- The article should still be useful if all related topics were removed.
+- Every section should answer a real customer question or explain a real project consideration.
+- The piece should read like a service guide, not an SEO exercise.
 
 Return valid JSON only:
 {
@@ -386,9 +466,9 @@ Return valid JSON only:
 }
 `;
 
-    const fallbackTitle = `${context.normalizedPrimaryKeyword.replace(/\b\w/g, (char) => char.toUpperCase())}: What ${location} Customers Should Know`;
+    const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: What ${location} Customers Should Know`;
     const fallbackSlug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
-    const fallbackExcerpt = `${businessName} explains what local customers should know about ${context.normalizedPrimaryKeyword} in ${location}.`;
+    const fallbackExcerpt = `${businessName} explains what local customers should know about ${context.serviceTopic} in ${location}.`;
 
     try {
         const completion = await openai.chat.completions.create({
@@ -396,12 +476,12 @@ Return valid JSON only:
             messages: [
                 {
                     role: 'system',
-                    content: 'You write practical, high-conviction local service articles that help real customers make better decisions. You never force keywords at the expense of clarity.',
+                    content: 'You write practical, high-conviction local service articles that help real customers make better decisions. You never force keywords or meta SEO phrasing at the expense of clarity.',
                 },
                 { role: 'user', content: prompt },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.55,
+            temperature: 0.45,
         });
 
         const responseContent = completion.choices[0].message.content;
@@ -421,11 +501,12 @@ Return valid JSON only:
             fallbackSlug,
             fallbackExcerpt,
             fallbackKeywords,
+            context,
         );
 
         return {
             title: parsedData.title,
-            slug: parsedData.slug || slugify(`${context.normalizedPrimaryKeyword} ${location}`),
+            slug: parsedData.slug || fallbackSlug,
             excerpt: parsedData.excerpt,
             contentMarkdown: parsedData.contentMarkdown,
             seoKeywords: parsedData.seoKeywords?.length ? parsedData.seoKeywords : fallbackKeywords,
