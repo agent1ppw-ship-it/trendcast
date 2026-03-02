@@ -1,9 +1,11 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { BarChart3, FileText, Gauge, Loader2, MapPin, Search, Sparkles, Target } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { BarChart3, CheckSquare, FileText, Gauge, Loader2, MapPin, Search, Sparkles, Square, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { generateKeywordIdeas } from '@/app/actions/keywords';
+import { generateKeywordBlogDraft, generateKeywordIdeas } from '@/app/actions/keywords';
+import type { KeywordTargetedBlogDraft } from '@/lib/ai/articleGenerator';
 import type { KeywordOpportunityReport } from '@/lib/ai/keywordOpportunities';
 
 const industryOptions = [
@@ -29,8 +31,12 @@ export function KeywordOpportunityClient({
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
     const [location, setLocation] = useState('Chicago, IL');
     const [report, setReport] = useState<KeywordOpportunityReport | null>(null);
+    const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+    const [blogDraft, setBlogDraft] = useState<KeywordTargetedBlogDraft | null>(null);
     const [error, setError] = useState('');
+    const [blogError, setBlogError] = useState('');
     const [isPending, startTransition] = useTransition();
+    const [isDraftPending, startDraftTransition] = useTransition();
 
     const availableIndustries = useMemo(() => {
         const normalizedDefault = sanitizeIndustry(defaultIndustry);
@@ -58,6 +64,47 @@ export function KeywordOpportunityClient({
             }
 
             setReport(result.report);
+            setSelectedKeywords([]);
+            setBlogDraft(null);
+            setBlogError('');
+        });
+    };
+
+    const toggleKeywordSelection = (keyword: string) => {
+        setBlogError('');
+
+        setSelectedKeywords((current) => {
+            if (current.includes(keyword)) {
+                return current.filter((entry) => entry !== keyword);
+            }
+
+            if (current.length >= 5) {
+                setBlogError('You can select up to 5 keywords for one blog draft.');
+                return current;
+            }
+
+            return [...current, keyword];
+        });
+    };
+
+    const handleGenerateDraft = () => {
+        if (selectedKeywords.length === 0) {
+            setBlogError('Select at least one keyword to generate a blog draft.');
+            return;
+        }
+
+        setBlogError('');
+
+        startDraftTransition(async () => {
+            const result = await generateKeywordBlogDraft(industry, location, selectedKeywords);
+
+            if (!result.success || !result.draft) {
+                setBlogDraft(null);
+                setBlogError(result.error || 'Failed to generate blog draft.');
+                return;
+            }
+
+            setBlogDraft(result.draft);
         });
     };
 
@@ -194,76 +241,171 @@ export function KeywordOpportunityClient({
                     </CardContent>
                 </Card>
 
-                <Card className="min-w-0 border-white/5 bg-[#111] shadow-md">
-                    <CardHeader className="border-b border-white/5 pb-4">
-                        <CardTitle className="text-lg font-semibold text-white">Long-Tail Opportunities</CardTitle>
-                    </CardHeader>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
-                            <thead className="border-b border-white/5 bg-[#161616] text-xs uppercase text-gray-500">
-                                <tr>
-                                    <th className="px-6 py-4 font-medium tracking-wider">Keyword</th>
-                                    <th className="px-6 py-4 font-medium tracking-wider">Intent</th>
-                                    <th className="px-6 py-4 font-medium tracking-wider">Competition</th>
-                                    <th className="px-6 py-4 font-medium tracking-wider">Opportunity</th>
-                                    <th className="px-6 py-4 font-medium tracking-wider">Best Asset</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {!report && (
+                <div className="grid min-w-0 grid-cols-1 gap-8">
+                    <Card className="min-w-0 border-white/5 bg-[#111] shadow-md">
+                        <CardHeader className="border-b border-white/5 pb-4">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <CardTitle className="text-lg font-semibold text-white">Long-Tail Opportunities</CardTitle>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="rounded-full border border-white/10 bg-[#161616] px-3 py-1 text-xs font-medium text-gray-400">
+                                        {selectedKeywords.length}/5 selected
+                                    </span>
+                                    <button
+                                        onClick={handleGenerateDraft}
+                                        disabled={isDraftPending || selectedKeywords.length === 0}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/10 px-4 py-2 text-sm font-medium text-blue-300 transition-all hover:bg-blue-600/20 disabled:opacity-50"
+                                    >
+                                        {isDraftPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                                        {isDraftPending ? 'Generating Draft...' : 'Import To Blog Generator'}
+                                    </button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-gray-400">
+                                <thead className="border-b border-white/5 bg-[#161616] text-xs uppercase text-gray-500">
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-16 text-center">
-                                            <div className="mx-auto max-w-md">
-                                                <p className="mb-2 text-base text-gray-300">No keyword set generated yet.</p>
-                                                <p className="text-sm text-gray-500">
-                                                    Choose an industry and service area, then generate a localized long-tail keyword list.
-                                                </p>
-                                            </div>
-                                        </td>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Select</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Keyword</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Intent</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Competition</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Opportunity</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Best Asset</th>
                                     </tr>
-                                )}
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {!report && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-16 text-center">
+                                                <div className="mx-auto max-w-md">
+                                                    <p className="mb-2 text-base text-gray-300">No keyword set generated yet.</p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Choose an industry and service area, then generate a localized long-tail keyword list.
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
 
-                                {report?.keywords.map((keyword) => (
-                                    <tr key={keyword.keyword} className="align-top transition-colors hover:bg-[#161616]">
-                                        <td className="px-6 py-5">
-                                            <div className="font-semibold text-gray-100">{keyword.keyword}</div>
-                                            <div className="mt-2 flex items-start gap-2 text-xs text-gray-500">
-                                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                                <span>{report.location}</span>
-                                            </div>
-                                            <p className="mt-3 max-w-xl leading-6 text-gray-400">{keyword.rationale}</p>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={keyword.buyerIntent === 'HIGH'
-                                                ? 'inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300'
-                                                : 'inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300'}>
-                                                {keyword.buyerIntent}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={keyword.competitionOutlook === 'LOW'
-                                                ? 'inline-flex rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-300'
-                                                : keyword.competitionOutlook === 'MEDIUM'
-                                                    ? 'inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-300'
-                                                    : 'inline-flex rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300'}>
-                                                {keyword.competitionOutlook}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="font-mono text-gray-200">{keyword.opportunityScore}/100</div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="inline-flex items-center gap-2 text-gray-300">
-                                                <FileText className="h-4 w-4 text-gray-500" />
-                                                {keyword.suggestedAsset}
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    {report?.keywords.map((keyword) => {
+                                        const isSelected = selectedKeywords.includes(keyword.keyword);
+                                        const isSelectionLocked = !isSelected && selectedKeywords.length >= 5;
+
+                                        return (
+                                            <tr key={keyword.keyword} className="align-top transition-colors hover:bg-[#161616]">
+                                                <td className="px-6 py-5">
+                                                    <button
+                                                        onClick={() => toggleKeywordSelection(keyword.keyword)}
+                                                        disabled={isSelectionLocked}
+                                                        className="inline-flex items-center justify-center text-gray-300 disabled:opacity-40"
+                                                        aria-label={isSelected ? 'Deselect keyword' : 'Select keyword'}
+                                                    >
+                                                        {isSelected ? <CheckSquare className="h-5 w-5 text-blue-400" /> : <Square className="h-5 w-5" />}
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="font-semibold text-gray-100">{keyword.keyword}</div>
+                                                    <div className="mt-2 flex items-start gap-2 text-xs text-gray-500">
+                                                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                                        <span>{report.location}</span>
+                                                    </div>
+                                                    <p className="mt-3 max-w-xl leading-6 text-gray-400">{keyword.rationale}</p>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={keyword.buyerIntent === 'HIGH'
+                                                        ? 'inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300'
+                                                        : 'inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300'}>
+                                                        {keyword.buyerIntent}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={keyword.competitionOutlook === 'LOW'
+                                                        ? 'inline-flex rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-300'
+                                                        : keyword.competitionOutlook === 'MEDIUM'
+                                                            ? 'inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-300'
+                                                            : 'inline-flex rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300'}>
+                                                        {keyword.competitionOutlook}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="font-mono text-gray-200">{keyword.opportunityScore}/100</div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="inline-flex items-center gap-2 text-gray-300">
+                                                        <FileText className="h-4 w-4 text-gray-500" />
+                                                        {keyword.suggestedAsset}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+
+                    <Card className="border-white/5 bg-[#111] shadow-md">
+                        <CardHeader className="border-b border-white/5 pb-4">
+                            <CardTitle className="text-lg font-semibold text-white">Blog Draft Generator</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-5 pt-6">
+                            <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-4">
+                                <p className="text-sm leading-6 text-gray-300">
+                                    Select up to 5 keywords above. The first selected keyword becomes the primary SEO target,
+                                    and the remaining keywords are woven in naturally as supporting terms.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {selectedKeywords.length === 0 && (
+                                    <span className="text-sm text-gray-500">No keywords selected yet.</span>
+                                )}
+                                {selectedKeywords.map((keyword, index) => (
+                                    <span
+                                        key={keyword}
+                                        className={index === 0
+                                            ? 'inline-flex rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-300'
+                                            : 'inline-flex rounded-full border border-white/10 bg-[#161616] px-3 py-1 text-xs font-semibold text-gray-300'}
+                                    >
+                                        {index === 0 ? `Primary: ${keyword}` : keyword}
+                                    </span>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+                            </div>
+
+                            {blogError && (
+                                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                    {blogError}
+                                </div>
+                            )}
+
+                            {blogDraft && (
+                                <div className="space-y-5">
+                                    <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-5">
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Draft Summary</p>
+                                        <h2 className="text-2xl font-bold text-white">{blogDraft.title}</h2>
+                                        <p className="mt-3 leading-7 text-gray-300">{blogDraft.excerpt}</p>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {blogDraft.seoKeywords.map((keyword) => (
+                                                <span key={keyword} className="rounded-full border border-white/10 bg-[#111]/80 px-3 py-1 text-xs text-gray-300">
+                                                    {keyword}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <p className="mt-4 text-xs text-gray-500">
+                                            Source: {blogDraft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-white/5 bg-[#161616] p-6">
+                                        <div className="prose prose-invert max-w-none prose-headings:text-white prose-p:text-gray-300 prose-li:text-gray-300">
+                                            <ReactMarkdown>{blogDraft.contentMarkdown}</ReactMarkdown>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );
