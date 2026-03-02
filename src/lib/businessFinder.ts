@@ -32,6 +32,11 @@ export interface BusinessFinderExtractionResult {
     diagnostics: BusinessFinderExtractionDiagnostics;
 }
 
+export interface OpenStreetMapSearchResult {
+    leads: BusinessFinderLead[];
+    matchStrategy: BusinessFinderMatchStrategy;
+}
+
 type YellowPagesPostalAddress = {
     streetAddress?: string;
     addressLocality?: string;
@@ -110,9 +115,13 @@ function formatAddress(address?: YellowPagesPostalAddress) {
     return parts.join(', ');
 }
 
-function toAbsoluteYellowPagesUrl(url?: string) {
+function normalizeUrl(url?: string, relativeBase?: string) {
     if (!url) return '';
-    return url.startsWith('http') ? url : `https://www.yellowpages.com${url}`;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('//')) return `https:${url}`;
+    if (url.startsWith('www.')) return `https://${url}`;
+    if (relativeBase && url.startsWith('/')) return `${relativeBase}${url}`;
+    return url;
 }
 
 function normalizeZip(value?: string) {
@@ -135,6 +144,7 @@ function buildLead({
     phone,
     website,
     listingUrl,
+    sourceLabel = 'Yellow Pages',
 }: {
     name: string;
     industry: string;
@@ -144,6 +154,7 @@ function buildLead({
     phone?: string;
     website?: string;
     listingUrl?: string;
+    sourceLabel?: string;
 }): BusinessFinderLead {
     const normalizedAddress = normalizeText(address);
     const normalizedName = normalizeText(name);
@@ -156,9 +167,9 @@ function buildLead({
         city: normalizeText(city),
         address: normalizedAddress,
         phone: normalizeText(phone),
-        website: toAbsoluteYellowPagesUrl(website),
-        listingUrl: toAbsoluteYellowPagesUrl(listingUrl),
-        sourceLabel: 'Yellow Pages',
+        website: normalizeUrl(website, 'https://www.yellowpages.com'),
+        listingUrl: normalizeUrl(listingUrl, 'https://www.yellowpages.com'),
+        sourceLabel,
     };
 }
 
@@ -447,5 +458,210 @@ export function extractBusinessesFromYellowPagesHtml(
         leads: textFallback.areaLeads,
         matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
         diagnostics,
+    };
+}
+
+type ZipGeocodeResult = {
+    lat: number;
+    lon: number;
+};
+
+type OverpassElement = {
+    id: number;
+    type: 'node' | 'way' | 'relation';
+    lat?: number;
+    lon?: number;
+    center?: {
+        lat: number;
+        lon: number;
+    };
+    tags?: Record<string, string>;
+};
+
+function getOpenStreetMapNamePattern(industry: string) {
+    const normalized = industry.trim().toLowerCase();
+
+    switch (normalized) {
+        case 'landscaping':
+            return 'landscap|lawn|gardening|tree service';
+        case 'hvac':
+            return 'hvac|heating|cooling|air conditioning';
+        case 'plumbing':
+            return 'plumb';
+        case 'pressure washing':
+            return 'pressure wash|power wash|soft wash';
+        case 'electrical':
+            return 'electric';
+        case 'concrete':
+            return 'concrete|masonry';
+        case 'pest control':
+            return 'pest|exterminat';
+        case 'roofing':
+            return 'roof';
+        default:
+            return normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+}
+
+function getOpenStreetMapTagQueries(industry: string) {
+    const normalized = industry.trim().toLowerCase();
+
+    switch (normalized) {
+        case 'landscaping':
+            return ['["craft"="gardener"]', '["shop"="garden_centre"]'];
+        case 'hvac':
+            return ['["craft"="hvac"]'];
+        case 'plumbing':
+            return ['["craft"="plumber"]'];
+        case 'electrical':
+            return ['["craft"="electrician"]'];
+        case 'roofing':
+            return ['["craft"="roofer"]'];
+        case 'pest control':
+            return ['["craft"="pest_control"]'];
+        default:
+            return [];
+    }
+}
+
+function escapeOverpassString(value: string) {
+    return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', `${zipCode}, United States`);
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('countrycodes', 'us');
+    url.searchParams.set('addressdetails', '1');
+
+    const response = await fetch(url.toString(), {
+        headers: {
+            'User-Agent': 'trendcast-business-finder/1.0',
+            'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const results = (await response.json()) as Array<{ lat: string; lon: string }>;
+    const first = results[0];
+    if (!first) return null;
+
+    return {
+        lat: Number(first.lat),
+        lon: Number(first.lon),
+    };
+}
+
+function buildOpenStreetMapAddress(tags: Record<string, string>) {
+    const street = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
+    const locality = [tags['addr:city'] || tags['addr:town'] || tags['addr:village'], tags['addr:state'], tags['addr:postcode']]
+        .filter(Boolean)
+        .join(' ');
+
+    return [street, locality].filter(Boolean).join(', ');
+}
+
+export async function searchOpenStreetMapBusinessesByZip(
+    zipCode: string,
+    industry: string,
+    batchSize: number,
+): Promise<OpenStreetMapSearchResult> {
+    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const geocode = await fetchZipGeocode(zipCode);
+    if (!geocode) {
+        return { leads: [], matchStrategy: 'area_results' };
+    }
+
+    const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(industry));
+    const tagQueries = getOpenStreetMapTagQueries(industry);
+    const aroundRadius = 16000;
+    const clauses = [
+        `node["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+        `way["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+        `relation["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+        ...tagQueries.flatMap((query) => ([
+            `node${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+            `way${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+            `relation${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+        ])),
+    ];
+
+    const overpassQuery = `
+[out:json][timeout:25];
+(
+${clauses.join('\n')}
+);
+out center tags;
+`;
+
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+            'User-Agent': 'trendcast-business-finder/1.0',
+        },
+        body: overpassQuery,
+        signal: AbortSignal.timeout(25000),
+    });
+
+    if (!response.ok) {
+        return { leads: [], matchStrategy: 'area_results' };
+    }
+
+    const data = (await response.json()) as { elements?: OverpassElement[] };
+    const elements = data.elements || [];
+    const exactMatches = new Map<string, BusinessFinderLead>();
+    const areaMatches = new Map<string, BusinessFinderLead>();
+
+    for (const element of elements) {
+        const tags = element.tags || {};
+        const name = normalizeText(tags.name);
+        if (!name) continue;
+
+        const address = buildOpenStreetMapAddress(tags);
+        const phone = tags.phone || tags['contact:phone'] || '';
+        const website = tags.website || tags['contact:website'] || tags.url || '';
+        const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
+        const listingUrl = `https://www.openstreetmap.org/${element.type}/${element.id}`;
+
+        const lead = buildLead({
+            name,
+            industry,
+            zipCode,
+            city,
+            address: address || `${city} ${zipCode}`.trim(),
+            phone,
+            website,
+            listingUrl,
+            sourceLabel: 'OpenStreetMap',
+        });
+
+        if (!lead.address) continue;
+
+        const postcode = normalizeZip(tags['addr:postcode'] || lead.address);
+        if (postcode === zipCode) {
+            addLeadIfUnique(exactMatches, lead);
+        } else {
+            addLeadIfUnique(areaMatches, lead);
+        }
+    }
+
+    const exactLeads = Array.from(exactMatches.values()).slice(0, safeBatchSize);
+    if (exactLeads.length > 0) {
+        return {
+            leads: exactLeads,
+            matchStrategy: 'exact_zip',
+        };
+    }
+
+    return {
+        leads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
+        matchStrategy: 'area_results',
     };
 }

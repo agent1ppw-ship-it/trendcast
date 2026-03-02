@@ -5,7 +5,11 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
 import { prisma } from '../lib/prisma';
-import { extractBusinessesFromYellowPagesHtml, mapIndustryToSearchTerm } from '../lib/businessFinder';
+import {
+    extractBusinessesFromYellowPagesHtml,
+    mapIndustryToSearchTerm,
+    searchOpenStreetMapBusinessesByZip,
+} from '../lib/businessFinder';
 
 // Add stealth plugin to Playwright
 chromium.use(stealthPlugin());
@@ -267,45 +271,88 @@ export const businessFinderWorker = new Worker(
             const html = await page.content();
             const bodyText = await page.locator('body').innerText().catch(() => '');
             const normalizedBodyText = bodyText.replace(/\s+/g, ' ').trim().toLowerCase();
-            const blocked =
+            const yellowPagesBlocked =
                 normalizedBodyText.includes('captcha') ||
                 normalizedBodyText.includes('access denied') ||
                 normalizedBodyText.includes('unusual traffic') ||
                 normalizedBodyText.includes('verify you are human') ||
                 normalizedBodyText.includes('press and hold') ||
                 normalizedBodyText.includes('security check') ||
-                pageTitle.toLowerCase().includes('access denied');
+                normalizedBodyText.includes('cloudflare') ||
+                pageTitle.toLowerCase().includes('access denied') ||
+                pageTitle.toLowerCase().includes('attention required') ||
+                pageTitle.toLowerCase().includes('cloudflare');
 
-            const result = extractBusinessesFromYellowPagesHtml(
+            const yellowPagesResult = extractBusinessesFromYellowPagesHtml(
                 html,
                 job.data.zipCode,
                 job.data.industry,
                 job.data.batchSize,
             );
 
-            const blockReason = blocked
-                ? 'Yellow Pages appears to have returned a bot-protection or blocked page.'
-                : undefined;
+            let finalResult = yellowPagesResult;
+            let sourceLabel = 'Yellow Pages';
+            let blocked = false;
+            let blockReason: string | undefined;
+
+            if (yellowPagesBlocked || yellowPagesResult.leads.length === 0) {
+                await job.updateProgress({
+                    phase: yellowPagesBlocked
+                        ? 'Yellow Pages blocked the worker. Falling back to OpenStreetMap...'
+                        : 'Yellow Pages returned no results. Falling back to OpenStreetMap...',
+                    percent: 82,
+                    finalUrl,
+                    pageTitle,
+                    blocked: yellowPagesBlocked,
+                    extractionDiagnostics: yellowPagesResult.diagnostics,
+                });
+
+                try {
+                    const openStreetMapResult = await searchOpenStreetMapBusinessesByZip(
+                        job.data.zipCode,
+                        job.data.industry,
+                        job.data.batchSize,
+                    );
+
+                    if (openStreetMapResult.leads.length > 0) {
+                        finalResult = {
+                            ...yellowPagesResult,
+                            leads: openStreetMapResult.leads,
+                            matchStrategy: openStreetMapResult.matchStrategy,
+                        };
+                        sourceLabel = 'OpenStreetMap';
+                    } else if (yellowPagesBlocked) {
+                        blocked = true;
+                        blockReason = 'Yellow Pages returned a Cloudflare block page, and the OpenStreetMap fallback did not return any businesses.';
+                    }
+                } catch (fallbackError) {
+                    console.error('[BusinessFinderWorker] OpenStreetMap fallback failed:', fallbackError);
+                    if (yellowPagesBlocked) {
+                        blocked = true;
+                        blockReason = 'Yellow Pages returned a Cloudflare block page, and the OpenStreetMap fallback request failed.';
+                    }
+                }
+            }
 
             await job.updateProgress({
-                phase: `Found ${result.leads.length} matching businesses.`,
+                phase: `Found ${finalResult.leads.length} matching businesses.`,
                 percent: 100,
                 finalUrl,
                 pageTitle,
                 blocked,
-                extractionDiagnostics: result.diagnostics,
+                extractionDiagnostics: yellowPagesResult.diagnostics,
             });
 
             return {
-                leads: result.leads,
-                matchStrategy: result.matchStrategy,
-                sourceLabel: 'Yellow Pages',
+                leads: finalResult.leads,
+                matchStrategy: finalResult.matchStrategy,
+                sourceLabel,
                 searchUrl,
                 finalUrl,
                 pageTitle,
                 blocked,
                 blockReason,
-                diagnostics: result.diagnostics,
+                diagnostics: yellowPagesResult.diagnostics,
             };
         } catch (error) {
             console.error(`[BusinessFinderWorker] Error in job ${job.id}:`, error);
