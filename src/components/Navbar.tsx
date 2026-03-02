@@ -4,6 +4,27 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+const desktopNavItems = [
+    { href: '/#features', label: 'Features' },
+    { href: '/#pricing', label: 'Pricing' },
+    { href: '/signup?mode=signin', label: 'CRM Login' },
+    { href: '/dashboard/leads', label: 'Lead Extractor' },
+    { href: '/hub', label: 'Resources', accent: true },
+];
+
+const mobileNavItems = [
+    { href: '/#features', label: 'Features' },
+    { href: '/#pricing', label: 'Pricing' },
+    { href: '/signup?mode=signin', label: 'CRM Login' },
+    { href: '/dashboard/leads', label: 'Lead Extractor' },
+    { href: '/dashboard/businesses', label: 'Business Finder' },
+    { href: '/dashboard/keywords', label: 'Keyword Opportunities' },
+    { href: '/dashboard/blog-posts', label: 'Blog Posts' },
+    { href: '/dashboard/analytics', label: 'Analytics' },
+    { href: 'https://clipgenerator.ai', label: 'AI Video Suite', external: true },
+    { href: '/hub', label: 'Resources', accent: true },
+];
+
 export function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -25,21 +46,17 @@ export function Navbar() {
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex space-x-8 items-center">
-                        <Link href="/#features" className="text-gray-300 hover:text-white font-medium transition-colors">
-                            Features
-                        </Link>
-                        <Link href="/#pricing" className="text-gray-300 hover:text-white font-medium transition-colors">
-                            Pricing
-                        </Link>
-                        <Link href="/signup?mode=signin" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
-                            CRM Login
-                        </Link>
-                        <Link href="/dashboard/leads" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
-                            Lead Extractor
-                        </Link>
-                        <Link href="/hub" className="text-blue-400 hover:text-blue-300 font-bold transition-colors">
-                            Resources
-                        </Link>
+                        {desktopNavItems.map(({ href, label, accent }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                className={accent
+                                    ? 'text-blue-400 hover:text-blue-300 font-bold transition-colors'
+                                    : 'text-gray-300 hover:text-white font-medium transition-colors'}
+                            >
+                                {label}
+                            </Link>
+                        ))}
                         <Link
                             href="/signup"
                             className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
@@ -62,42 +79,24 @@ export function Navbar() {
 
             {/* Mobile Navigation Dropdown Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden max-h-[calc(100vh-5rem)] overflow-y-auto overscroll-contain bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-8 space-y-5 rounded-b-2xl">
-                    <Link
-                        href="/#features"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        Features
-                    </Link>
-                    <Link
-                        href="/#pricing"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        Pricing
-                    </Link>
-                    <Link
-                        href="/signup?mode=signin"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        CRM Login
-                    </Link>
-                    <Link
-                        href="/dashboard/leads"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        Lead Extractor
-                    </Link>
-                    <Link
-                        href="/hub"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-blue-400 hover:text-blue-300 font-bold text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        Resources
-                    </Link>
+                <div className="md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] space-y-3 rounded-b-2xl">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-500">
+                        Explore Trendcast
+                    </div>
+                    {mobileNavItems.map(({ href, label, accent, external }) => (
+                        <Link
+                            key={href}
+                            href={href}
+                            target={external ? '_blank' : undefined}
+                            rel={external ? 'noreferrer noopener' : undefined}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={accent
+                                ? 'block border-b border-white/5 pb-3 text-lg font-bold text-blue-400 transition-colors hover:text-blue-300'
+                                : 'block border-b border-white/5 pb-3 text-lg font-medium text-gray-300 transition-colors hover:text-white'}
+                        >
+                            {label}
+                        </Link>
+                    ))}
                     <Link
                         href="/signup"
                         onClick={() => setIsMobileMenuOpen(false)}
