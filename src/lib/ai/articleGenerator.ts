@@ -16,6 +16,8 @@ export interface ArticleData {
 export interface KeywordTargetedBlogDraft extends ArticleData {
     primaryKeyword: string;
     supportingKeywords: string[];
+    location: string;
+    industry: string;
     dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
 }
 
@@ -110,6 +112,8 @@ If your goal is to rank for **${primaryKeyword}**, the content should focus on c
         seoKeywords: allKeywords,
         primaryKeyword,
         supportingKeywords,
+        location,
+        industry,
         dataSource: 'TEMPLATE_FALLBACK',
     };
 }
@@ -252,6 +256,8 @@ Return valid JSON only:
                 : [primaryKeyword, ...supportingKeywords].slice(0, 5),
             primaryKeyword,
             supportingKeywords,
+            location,
+            industry,
             dataSource: 'AI_ESTIMATE',
         };
     } catch (error) {

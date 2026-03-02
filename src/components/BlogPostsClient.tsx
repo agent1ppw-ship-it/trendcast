@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { FileText, MapPin, Sparkles } from 'lucide-react';
+import { FileText, Loader2, MapPin, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { KeywordTargetedBlogDraft } from '@/lib/ai/articleGenerator';
-import { loadLatestBlogDraft, markBlogDraftAsViewed, subscribeToBlogDraftInbox } from '@/lib/blogDraftInbox';
+import { generateKeywordBlogDraft } from '@/app/actions/keywords';
+import { clearLatestBlogDraft, loadLatestBlogDraft, markBlogDraftAsViewed, saveLatestBlogDraft, subscribeToBlogDraftInbox } from '@/lib/blogDraftInbox';
 
 export function BlogPostsClient() {
     const draft = useSyncExternalStore(
@@ -13,10 +14,45 @@ export function BlogPostsClient() {
         loadLatestBlogDraft,
         (): KeywordTargetedBlogDraft | null => null,
     );
+    const [error, setError] = useState('');
+    const [isRegenerating, startRegenerating] = useTransition();
 
     useEffect(() => {
         markBlogDraftAsViewed();
     }, []);
+
+    const canRegenerate = Boolean(draft?.industry && draft?.location && draft?.primaryKeyword);
+
+    const handleDelete = () => {
+        setError('');
+        clearLatestBlogDraft();
+    };
+
+    const handleRegenerate = () => {
+        if (!draft) return;
+        if (!canRegenerate) {
+            setError('This draft is missing its original keyword metadata. Generate a fresh draft from Keyword Opportunities first.');
+            return;
+        }
+
+        setError('');
+
+        startRegenerating(async () => {
+            const result = await generateKeywordBlogDraft(
+                draft.industry,
+                draft.location,
+                [draft.primaryKeyword, ...draft.supportingKeywords].filter(Boolean).slice(0, 5),
+            );
+
+            if (!result.success || !result.draft) {
+                setError(result.error || 'Failed to regenerate blog draft.');
+                return;
+            }
+
+            saveLatestBlogDraft(result.draft);
+            markBlogDraftAsViewed();
+        });
+    };
 
     return (
         <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
@@ -75,12 +111,43 @@ export function BlogPostsClient() {
                             </div>
 
                             <div>
+                                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Industry / Location</div>
+                                <div className="mt-2 text-sm text-gray-300">
+                                    {draft.industry || 'Unknown industry'}{draft.location ? ` / ${draft.location}` : ''}
+                                </div>
+                            </div>
+
+                            <div>
                                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Source</div>
                                 <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-300">
                                     <FileText className="h-3.5 w-3.5" />
                                     {draft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
                                 </div>
                             </div>
+
+                            <div className="space-y-3 pt-2">
+                                <button
+                                    onClick={handleRegenerate}
+                                    disabled={isRegenerating || !canRegenerate}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-600/10 px-4 py-2.5 text-sm font-medium text-blue-300 transition-all hover:bg-blue-600/20 disabled:opacity-50"
+                                >
+                                    {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                    {isRegenerating ? 'Regenerating...' : 'Regenerate Draft'}
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete Draft
+                                </button>
+                            </div>
+
+                            {error && (
+                                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                    {error}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

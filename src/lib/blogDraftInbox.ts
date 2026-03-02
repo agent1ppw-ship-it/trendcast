@@ -42,6 +42,8 @@ function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
         seoKeywords?: unknown;
         primaryKeyword?: unknown;
         supportingKeywords?: unknown;
+        location?: unknown;
+        industry?: unknown;
         dataSource?: unknown;
     };
 
@@ -72,6 +74,8 @@ function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
         seoKeywords,
         primaryKeyword,
         supportingKeywords,
+        location: typeof candidate.location === 'string' ? candidate.location : '',
+        industry: typeof candidate.industry === 'string' ? candidate.industry : '',
         dataSource: candidate.dataSource === 'TEMPLATE_FALLBACK' ? 'TEMPLATE_FALLBACK' : 'AI_ESTIMATE',
     };
 }
@@ -107,6 +111,21 @@ export function hasUnreadBlogDraft() {
 
 export function markBlogDraftAsViewed() {
     writeStorage(BLOG_DRAFT_UNREAD_KEY, 'false');
+    window.dispatchEvent(new Event(BLOG_DRAFT_UPDATED_EVENT));
+}
+
+export function clearLatestBlogDraft() {
+    if (!canUseStorage()) return;
+
+    try {
+        window.localStorage.removeItem(BLOG_DRAFT_STORAGE_KEY);
+        window.localStorage.setItem(BLOG_DRAFT_UNREAD_KEY, 'false');
+    } catch {
+        // Ignore storage failures.
+    }
+
+    cachedDraftRaw = null;
+    cachedDraftParsed = null;
     window.dispatchEvent(new Event(BLOG_DRAFT_UPDATED_EVENT));
 }
 
