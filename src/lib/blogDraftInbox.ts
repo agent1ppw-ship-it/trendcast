@@ -4,6 +4,9 @@ const BLOG_DRAFT_STORAGE_KEY = 'trendcast:latest-blog-draft';
 const BLOG_DRAFT_UNREAD_KEY = 'trendcast:latest-blog-draft-unread';
 export const BLOG_DRAFT_UPDATED_EVENT = 'trendcast:blog-draft-updated';
 
+let cachedDraftRaw: string | null = null;
+let cachedDraftParsed: KeywordTargetedBlogDraft | null = null;
+
 function canUseStorage() {
     return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
@@ -83,9 +86,17 @@ export function loadLatestBlogDraft(): KeywordTargetedBlogDraft | null {
     const rawDraft = readStorage(BLOG_DRAFT_STORAGE_KEY);
     if (!rawDraft) return null;
 
+    if (rawDraft === cachedDraftRaw) {
+        return cachedDraftParsed;
+    }
+
     try {
-        return normalizeStoredDraft(JSON.parse(rawDraft));
+        cachedDraftRaw = rawDraft;
+        cachedDraftParsed = normalizeStoredDraft(JSON.parse(rawDraft));
+        return cachedDraftParsed;
     } catch {
+        cachedDraftRaw = rawDraft;
+        cachedDraftParsed = null;
         return null;
     }
 }
