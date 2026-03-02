@@ -10,14 +10,15 @@ import { prisma } from '@/lib/prisma';
 export default async function DashboardOverview({
     searchParams
 }: {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+    const resolvedSearchParams = await searchParams;
     const orgId = await ensureOrganization();
     if (!orgId) redirect('/signup');
 
     // Intercept Google OAuth callbacks with attached checkout intents
-    if (searchParams.checkout) {
-        const tier = searchParams.checkout as 'INTRO' | 'PRO' | 'ULTIMATE';
+    if (resolvedSearchParams.checkout) {
+        const tier = resolvedSearchParams.checkout as 'INTRO' | 'PRO' | 'ULTIMATE';
         const result = await createCheckoutSession(tier);
         if (result.success && result.url) {
             redirect(result.url);

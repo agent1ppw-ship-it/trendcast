@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 interface Props {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 // Mock database fetch for service areas
@@ -27,7 +27,8 @@ async function getServiceArea(slug: string) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const serviceArea = await getServiceArea(params.slug);
+  const { slug } = await params;
+  const serviceArea = await getServiceArea(slug);
 
   if (!serviceArea) {
     return {
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ServiceAreaPage({ params }: Props) {
-  const serviceArea = await getServiceArea(params.slug);
+  const { slug } = await params;
+  const serviceArea = await getServiceArea(slug);
 
   if (!serviceArea) {
     notFound();
