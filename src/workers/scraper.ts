@@ -1,13 +1,16 @@
 import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { chromium } from 'playwright-extra';
+import type { BrowserContext } from 'playwright';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
 import { prisma } from '../lib/prisma';
 import {
     extractBusinessesFromYellowPagesHtml,
+    mapNominatimResultsToBusinessLeads,
     mapIndustryToSearchTerm,
+    type NominatimSearchResult,
     searchOpenStreetMapBusinessesByZip,
 } from '../lib/businessFinder';
 
@@ -30,6 +33,61 @@ interface BusinessFinderPayload {
     zipCode: string;
     industry: string;
     batchSize: number;
+}
+
+async function searchBusinessesWithBrowserNominatim(
+    context: BrowserContext,
+    zipCode: string,
+    industry: string,
+    batchSize: number,
+) {
+    const page = await context.newPage();
+
+    try {
+        const queries = [
+            `${industry} near ${zipCode}`,
+            `${mapIndustryToSearchTerm(industry)} near ${zipCode}`,
+            `${industry} ${zipCode}`,
+        ];
+
+        const combinedResults: NominatimSearchResult[] = [];
+
+        for (const query of queries) {
+            const url = new URL('https://nominatim.openstreetmap.org/search');
+            url.searchParams.set('q', query);
+            url.searchParams.set('format', 'jsonv2');
+            url.searchParams.set('limit', String(Math.min(Math.max(batchSize, 1), 50) * 2));
+            url.searchParams.set('countrycodes', 'us');
+            url.searchParams.set('addressdetails', '1');
+            url.searchParams.set('extratags', '1');
+
+            await page.goto(url.toString(), {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+            });
+
+            await page.waitForTimeout(1500);
+
+            const bodyText = await page.locator('body').innerText();
+
+            try {
+                const parsed = JSON.parse(bodyText) as NominatimSearchResult[];
+                combinedResults.push(...parsed);
+            } catch (error) {
+                console.error('[BusinessFinderWorker] Failed to parse browser Nominatim response:', error);
+            }
+        }
+
+        return mapNominatimResultsToBusinessLeads(
+            combinedResults,
+            zipCode,
+            industry,
+            batchSize,
+            'OpenStreetMap Browser Search',
+        );
+    } finally {
+        await page.close();
+    }
 }
 
 export const scraperWorker = new Worker(
@@ -321,15 +379,53 @@ export const businessFinderWorker = new Worker(
                             matchStrategy: openStreetMapResult.matchStrategy,
                         };
                         sourceLabel = openStreetMapResult.sourceLabel;
-                    } else if (yellowPagesBlocked) {
-                        blocked = true;
-                        blockReason = 'Yellow Pages returned a Cloudflare block page, and the OpenStreetMap fallback did not return any businesses.';
+                    } else {
+                        const browserFallbackResult = await searchBusinessesWithBrowserNominatim(
+                            context,
+                            job.data.zipCode,
+                            job.data.industry,
+                            job.data.batchSize,
+                        );
+
+                        if (browserFallbackResult.leads.length > 0) {
+                            finalResult = {
+                                ...yellowPagesResult,
+                                leads: browserFallbackResult.leads,
+                                matchStrategy: browserFallbackResult.matchStrategy,
+                            };
+                            sourceLabel = browserFallbackResult.sourceLabel;
+                        } else if (yellowPagesBlocked) {
+                            blocked = true;
+                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                        }
                     }
                 } catch (fallbackError) {
                     console.error('[BusinessFinderWorker] OpenStreetMap fallback failed:', fallbackError);
-                    if (yellowPagesBlocked) {
-                        blocked = true;
-                        blockReason = 'Yellow Pages returned a Cloudflare block page, and the OpenStreetMap fallback request failed.';
+                    try {
+                        const browserFallbackResult = await searchBusinessesWithBrowserNominatim(
+                            context,
+                            job.data.zipCode,
+                            job.data.industry,
+                            job.data.batchSize,
+                        );
+
+                        if (browserFallbackResult.leads.length > 0) {
+                            finalResult = {
+                                ...yellowPagesResult,
+                                leads: browserFallbackResult.leads,
+                                matchStrategy: browserFallbackResult.matchStrategy,
+                            };
+                            sourceLabel = browserFallbackResult.sourceLabel;
+                        } else if (yellowPagesBlocked) {
+                            blocked = true;
+                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                        }
+                    } catch (browserFallbackError) {
+                        console.error('[BusinessFinderWorker] Browser OpenStreetMap fallback failed:', browserFallbackError);
+                        if (yellowPagesBlocked) {
+                            blocked = true;
+                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback request paths failed.';
+                        }
                     }
                 }
             }

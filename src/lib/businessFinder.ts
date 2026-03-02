@@ -472,7 +472,7 @@ type ZipGeocodeResult = {
     lon: number;
 };
 
-type NominatimSearchResult = {
+export type NominatimSearchResult = {
     place_id?: number;
     osm_type?: 'node' | 'way' | 'relation';
     osm_id?: number;
@@ -817,5 +817,74 @@ out center tags;
             overpassElementCount: elements.length,
             nominatimResultCount,
         },
+    };
+}
+
+export function mapNominatimResultsToBusinessLeads(
+    results: NominatimSearchResult[],
+    zipCode: string,
+    industry: string,
+    batchSize: number,
+    sourceLabel = 'OpenStreetMap Search',
+): OpenStreetMapSearchResult {
+    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const exactMatches = new Map<string, BusinessFinderLead>();
+    const areaMatches = new Map<string, BusinessFinderLead>();
+
+    for (const result of results) {
+        const address = normalizeText(result.display_name);
+        const name = normalizeText(result.name || address.split(',')[0]);
+        const tags = result.extratags || {};
+        const phone = tags.phone || tags['contact:phone'] || '';
+        const website = tags.website || tags['contact:website'] || tags.url || '';
+        const city = normalizeText(
+            result.address?.city ||
+            result.address?.town ||
+            result.address?.village ||
+            result.address?.hamlet
+        );
+        const postcode = normalizeZip(result.address?.postcode || address);
+        const listingUrl = result.osm_type && result.osm_id
+            ? `https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}`
+            : '';
+
+        if (!name || !address) continue;
+
+        const lead = buildLead({
+            name,
+            industry,
+            zipCode,
+            city,
+            address,
+            phone,
+            website,
+            listingUrl,
+            sourceLabel,
+        });
+
+        if (postcode === zipCode) {
+            addLeadIfUnique(exactMatches, lead);
+        } else {
+            addLeadIfUnique(areaMatches, lead);
+        }
+
+        if (exactMatches.size >= safeBatchSize || areaMatches.size >= safeBatchSize) {
+            break;
+        }
+    }
+
+    const exactLeads = Array.from(exactMatches.values()).slice(0, safeBatchSize);
+    if (exactLeads.length > 0) {
+        return {
+            leads: exactLeads,
+            matchStrategy: 'exact_zip',
+            sourceLabel,
+        };
+    }
+
+    return {
+        leads: Array.from(areaMatches.values()).slice(0, safeBatchSize),
+        matchStrategy: 'area_results',
+        sourceLabel,
     };
 }
