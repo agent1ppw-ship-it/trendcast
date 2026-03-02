@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, User } from 'lucide-react';
 import { registerWithEmailPassword } from '@/app/actions/auth';
@@ -11,6 +11,7 @@ type AuthMode = 'signin' | 'signup';
 function SignUpContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { status } = useSession();
     const checkout = searchParams.get('checkout');
     const requestedMode = searchParams.get('mode');
     const callbackUrl = checkout ? `/dashboard?checkout=${checkout}` : '/dashboard/crm';
@@ -36,6 +37,13 @@ function SignUpContent() {
                 : 'Use your email/password account or continue with Google.',
         [mode]
     );
+
+    useEffect(() => {
+        if (status === 'authenticated') {
+            router.replace(callbackUrl);
+            router.refresh();
+        }
+    }, [callbackUrl, router, status]);
 
     const handleGoogle = async () => {
         await signIn('google', { callbackUrl });
@@ -72,6 +80,14 @@ function SignUpContent() {
         router.push(signInResult.url || callbackUrl);
         router.refresh();
     };
+
+    if (status === 'authenticated') {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-gray-300">
+                Redirecting to your CRM dashboard...
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col min-h-screen items-center justify-center p-6 bg-[#0A0A0A] relative overflow-hidden">
