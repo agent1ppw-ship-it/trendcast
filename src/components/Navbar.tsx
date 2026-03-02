@@ -62,7 +62,7 @@ export function Navbar() {
 
             {/* Mobile Navigation Dropdown Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-8 space-y-5 rounded-b-2xl">
+                <div className="md:hidden max-h-[calc(100vh-5rem)] overflow-y-auto overscroll-contain bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-8 space-y-5 rounded-b-2xl">
                     <Link
                         href="/#features"
                         onClick={() => setIsMobileMenuOpen(false)}
