@@ -42,6 +42,11 @@ export async function generateKeywordBlogDraft(
     location: string,
     selectedKeywords: string[],
     regenerationSeed?: string,
+    previousDraft?: {
+        title: string;
+        excerpt: string;
+        contentMarkdown: string;
+    },
 ) {
     const normalizedIndustry = industry.trim();
     const normalizedLocation = location.trim();
@@ -81,6 +86,7 @@ export async function generateKeywordBlogDraft(
             org?.name || 'TrendCast Client',
             normalizedIndustry,
             regenerationSeed,
+            previousDraft,
         );
 
         return {

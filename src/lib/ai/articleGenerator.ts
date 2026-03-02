@@ -20,6 +20,12 @@ export interface KeywordTargetedBlogDraft extends ArticleData {
     dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
 }
 
+interface PreviousDraftContext {
+    title: string;
+    excerpt: string;
+    contentMarkdown: string;
+}
+
 const FALLBACK_INTRO_VARIANTS = [
     'A strong contractor should explain the work in plain language before talking about upgrades or add-ons.',
     'The most useful draft starts by clarifying the job itself, not by jumping straight into promotional language.',
@@ -41,6 +47,72 @@ interface KeywordContext {
     readerQuestions: string[];
     localAngle: string;
 }
+
+interface FocusAngle {
+    titleSuffix: string;
+    sectionHeading: string;
+    description: string;
+    promptInstruction: string;
+    fallbackQuestions: string[];
+}
+
+const REGENERATION_ANGLES: FocusAngle[] = [
+    {
+        titleSuffix: 'Planning Considerations',
+        sectionHeading: 'How To Plan The Project Correctly',
+        description: 'planning decisions, site evaluation, layout, scope definition, and prep work before the project begins',
+        promptInstruction: 'Make planning and early project decisions the main angle for this version.',
+        fallbackQuestions: [
+            'What should be evaluated on the property before the plan is finalized?',
+            'Which planning decisions are hardest to change later?',
+            'What should be clarified before the scope is approved?',
+        ],
+    },
+    {
+        titleSuffix: 'Cost And Scope Factors',
+        sectionHeading: 'What Actually Affects Cost And Scope',
+        description: 'pricing drivers, scope risk, labor complexity, and how customers should compare proposals',
+        promptInstruction: 'Make cost, scope, and proposal comparison the main angle for this version.',
+        fallbackQuestions: [
+            'Which site conditions usually change the price the most?',
+            'What details should be included in a serious quote?',
+            'How can a customer tell the difference between a complete scope and an incomplete one?',
+        ],
+    },
+    {
+        titleSuffix: 'Common Mistakes To Avoid',
+        sectionHeading: 'Mistakes That Cause Problems Later',
+        description: 'avoidable mistakes, shortcuts, poor planning, and contractor-selection errors that create rework',
+        promptInstruction: 'Make avoidable mistakes and how to prevent them the main angle for this version.',
+        fallbackQuestions: [
+            'What decisions commonly create avoidable rework later?',
+            'Which shortcuts usually cause the biggest quality problems?',
+            'What should a customer verify before work starts?',
+        ],
+    },
+    {
+        titleSuffix: 'Material And Durability Decisions',
+        sectionHeading: 'Material Choices And Long-Term Performance',
+        description: 'material tradeoffs, long-term durability, upkeep, and choosing options that fit the property',
+        promptInstruction: 'Make materials, durability, and long-term performance the main angle for this version.',
+        fallbackQuestions: [
+            'Which material decisions affect longevity the most?',
+            'How do maintenance expectations change between options?',
+            'What should a customer ask about long-term performance?',
+        ],
+    },
+    {
+        titleSuffix: 'Questions To Ask Before Hiring',
+        sectionHeading: 'What To Ask Before Choosing A Contractor',
+        description: 'contractor selection, proposal review, communication, and how to judge qualifications before hiring',
+        promptInstruction: 'Make hiring decisions and contractor evaluation the main angle for this version.',
+        fallbackQuestions: [
+            'What should a customer ask to confirm the contractor understands the work?',
+            'How should a customer compare two different proposals?',
+            'What communication or process details matter before work begins?',
+        ],
+    },
+];
 
 function slugify(value: string) {
     return value
@@ -258,6 +330,19 @@ function pickVariant<T>(variants: T[], seed: number) {
     return variants[seed % variants.length];
 }
 
+function selectFocusAngle(context: KeywordContext, regenerationSeed?: string) {
+    const seed = createStableSeed([
+        context.normalizedPrimaryKeyword,
+        context.normalizedSupportingKeywords.join('|'),
+        regenerationSeed || 'initial-draft',
+    ].join('|'));
+
+    return {
+        seed,
+        angle: pickVariant(REGENERATION_ANGLES, seed),
+    };
+}
+
 function sanitizeArticleData(
     parsedData: ArticleData,
     fallbackTitle: string,
@@ -286,27 +371,26 @@ function buildFallbackBlogDraft(
     businessName: string,
     industry: string,
     regenerationSeed?: string,
+    previousDraft?: PreviousDraftContext,
 ): KeywordTargetedBlogDraft {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
-    const fallbackSeed = createStableSeed([
-        context.normalizedPrimaryKeyword,
-        location,
-        industry,
-        regenerationSeed || '',
-    ].join('|'));
-    const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: What ${location} Customers Should Know`;
-    const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, including what the work involves, what affects the result, and what to ask before hiring a contractor.`;
+    const { seed: fallbackSeed, angle } = selectFocusAngle(context, regenerationSeed);
+    const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
+    const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, with a focus on ${angle.description}.`;
     const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
     const slug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
     const primaryRelatedTopic = context.normalizedSupportingKeywords[0] || `${industry.toLowerCase()} material selection`;
     const secondaryRelatedTopic = context.normalizedSupportingKeywords[1] || `${industry.toLowerCase()} project planning`;
+    const freshnessLine = previousDraft
+        ? `This version takes a different angle from the prior draft and focuses on ${angle.description}.`
+        : pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed);
 
     const contentMarkdown = `
 ## What ${toTitleCase(context.serviceTopic)} Usually Includes
 
 ${toTitleCase(context.serviceTopic)} usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
-For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed)}
+For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine}
 
 ## When It Makes Sense To Bring In A Contractor
 
@@ -314,9 +398,9 @@ Most customers should bring in a contractor once they know the problem they are 
 
 A contractor is most useful when they can help define scope before money is wasted on the wrong design or material choice. This is especially true when grading, drainage, access, structural support, or long-term maintenance will affect the outcome.
 
-## What A Good Plan Should Cover
+## ${angle.sectionHeading}
 
-A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan.
+A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this version, the central lens is ${angle.description}.
 
 - The intended use of the space and how much traffic it will handle
 - Material options and what they mean for maintenance, lifespan, and appearance
@@ -328,11 +412,11 @@ A useful proposal should explain more than the visual design. It should show how
 
 Customers usually get better results when they ask direct questions before the project starts. A contractor should be able to explain the reasoning behind the plan, not just hand over a sketch and a price.
 
-1. What site conditions could change the scope after work begins?
-2. Which material or layout choices have the biggest effect on durability and upkeep?
-3. How will the finished work handle drainage, traffic, and seasonal wear?
-4. What is included in the quoted scope, and what is not?
-5. How does this project connect to related needs such as ${primaryRelatedTopic} or ${secondaryRelatedTopic}?
+1. ${angle.fallbackQuestions[0]}
+2. ${angle.fallbackQuestions[1]}
+3. ${angle.fallbackQuestions[2]}
+4. How does this project connect to related needs such as ${primaryRelatedTopic} or ${secondaryRelatedTopic}?
+5. What is included in the quoted scope, and what is not?
 
 ## What Property Owners In ${location} Should Know
 
@@ -433,9 +517,11 @@ export async function generateKeywordTargetedBlogArticle(
     businessName: string,
     industry: string,
     regenerationSeed?: string,
+    previousDraft?: PreviousDraftContext,
 ): Promise<KeywordTargetedBlogDraft> {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const fallbackKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
+    const { angle } = selectFocusAngle(context, regenerationSeed);
 
     if (!process.env.OPENAI_API_KEY) {
         return buildFallbackBlogDraft(
@@ -445,6 +531,7 @@ export async function generateKeywordTargetedBlogArticle(
             businessName,
             industry,
             regenerationSeed,
+            previousDraft,
         );
     }
 
@@ -466,9 +553,11 @@ Context for the article:
 - Core service focus: ${context.serviceFocus}
 - Likely customer need: ${context.readerIntent}
 - Local angle: ${context.localAngle}
+- Fresh angle for this version: ${angle.description}
 - Questions that should be answered:
 ${context.readerQuestions.map((question) => `  - ${question}`).join('\n')}
 - Regeneration hint: ${regenerationSeed || 'initial-draft'}
+${previousDraft ? `- Previous draft title to avoid repeating: ${previousDraft.title}\n- Previous draft excerpt to avoid repeating: ${previousDraft.excerpt}` : ''}
 
 Requirements:
 1. The article must be genuinely useful to a property owner or property decision-maker.
@@ -491,11 +580,15 @@ Requirements:
 14. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
 15. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
 16. If this is a regeneration request, produce a meaningfully fresh draft with different section phrasing, examples, and transitions while keeping the same topic and usefulness level.
+17. ${angle.promptInstruction}
+18. Do not simply paraphrase the prior article. Make the fresh angle drive the structure and examples.
+19. Keep the keyword set relevant, but let the new angle determine the article's central topic.
 
 Quality bar:
 - The article should still be useful if all related topics were removed.
 - Every section should answer a real customer question or explain a real project consideration.
 - The piece should read like a service guide, not an SEO exercise.
+- The new version should feel like a different article, not a rewrite of the same outline.
 
 Return valid JSON only:
 {
@@ -507,9 +600,9 @@ Return valid JSON only:
 }
 `;
 
-    const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: What ${location} Customers Should Know`;
+    const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
     const fallbackSlug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
-    const fallbackExcerpt = `${businessName} explains what local customers should know about ${context.serviceTopic} in ${location}.`;
+    const fallbackExcerpt = `${businessName} explains what local customers should know about ${context.serviceTopic} in ${location}, with a focus on ${angle.description}.`;
 
     try {
         const completion = await openai.chat.completions.create({
@@ -522,7 +615,7 @@ Return valid JSON only:
                 { role: 'user', content: prompt },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.45,
+            temperature: 0.55,
         });
 
         const responseContent = completion.choices[0].message.content;
@@ -534,6 +627,7 @@ Return valid JSON only:
                 businessName,
                 industry,
                 regenerationSeed,
+                previousDraft,
             );
         }
 
@@ -567,6 +661,7 @@ Return valid JSON only:
             businessName,
             industry,
             regenerationSeed,
+            previousDraft,
         );
     }
 }

@@ -43,6 +43,11 @@ export function BlogPostsClient() {
                 draft.location,
                 [draft.primaryKeyword, ...draft.supportingKeywords].filter(Boolean).slice(0, 5),
                 `regenerate-${Date.now()}`,
+                {
+                    title: draft.title,
+                    excerpt: draft.excerpt,
+                    contentMarkdown: draft.contentMarkdown,
+                },
             );
 
             if (!result.success || !result.draft) {
