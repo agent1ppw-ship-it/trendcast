@@ -41,7 +41,7 @@ interface BusinessFinderJobResult {
 export async function startBusinessSearchJob(zipCode: string, industry: string, batchSize: number) {
     const normalizedZip = zipCode.trim();
     const normalizedIndustry = industry.trim();
-    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const safeBatchSize = Math.min(Math.max(batchSize, 1), 100);
 
     if (!/^\d{5}$/.test(normalizedZip)) {
         return { success: false, error: 'Enter a valid 5-digit ZIP code.' };

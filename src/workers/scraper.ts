@@ -10,8 +10,9 @@ import {
     buildBrowserLocationQueries,
     extractBusinessesFromYellowPagesHtml,
     fetchZipGeocode,
+    getIndustrySearchVariants,
     mapNominatimResultsToBusinessLeads,
-    mapIndustryToSearchTerm,
+    mergeBusinessLeads,
     type NominatimSearchResult,
     searchOpenStreetMapBusinessesByZip,
 } from '../lib/businessFinder';
@@ -312,41 +313,85 @@ export const businessFinderWorker = new Worker(
                 await route.continue();
             });
 
-            const searchTerm = mapIndustryToSearchTerm(job.data.industry);
-            const searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(job.data.zipCode)}`;
+            const yellowPagesCollections: ReturnType<typeof extractBusinessesFromYellowPagesHtml>[] = [];
+            const yellowPagesVariants = getIndustrySearchVariants(job.data.industry).slice(0, 3);
+            let searchUrl = '';
+            let finalUrl = '';
+            let pageTitle = '';
+            let yellowPagesBlocked = false;
+            let yellowPagesResult = extractBusinessesFromYellowPagesHtml('', job.data.zipCode, job.data.industry, job.data.batchSize);
 
             await job.updateProgress({ phase: 'Loading live directory results...', percent: 35 });
-            await page.goto(searchUrl, {
-                waitUntil: 'domcontentloaded',
-                timeout: 45000,
-            });
 
-            await page.waitForTimeout(4000);
-            await job.updateProgress({ phase: 'Parsing business listings...', percent: 75 });
+            for (let variantIndex = 0; variantIndex < yellowPagesVariants.length; variantIndex += 1) {
+                const searchTerm = yellowPagesVariants[variantIndex];
 
-            const finalUrl = page.url();
-            const pageTitle = await page.title();
-            const html = await page.content();
-            const bodyText = await page.locator('body').innerText().catch(() => '');
-            const normalizedBodyText = bodyText.replace(/\s+/g, ' ').trim().toLowerCase();
-            const yellowPagesBlocked =
-                normalizedBodyText.includes('captcha') ||
-                normalizedBodyText.includes('access denied') ||
-                normalizedBodyText.includes('unusual traffic') ||
-                normalizedBodyText.includes('verify you are human') ||
-                normalizedBodyText.includes('press and hold') ||
-                normalizedBodyText.includes('security check') ||
-                normalizedBodyText.includes('cloudflare') ||
-                pageTitle.toLowerCase().includes('access denied') ||
-                pageTitle.toLowerCase().includes('attention required') ||
-                pageTitle.toLowerCase().includes('cloudflare');
+                for (let pageNumber = 1; pageNumber <= 2; pageNumber += 1) {
+                    searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(job.data.zipCode)}${pageNumber > 1 ? `&page=${pageNumber}` : ''}`;
 
-            const yellowPagesResult = extractBusinessesFromYellowPagesHtml(
-                html,
-                job.data.zipCode,
-                job.data.industry,
-                job.data.batchSize,
-            );
+                    await page.goto(searchUrl, {
+                        waitUntil: 'domcontentloaded',
+                        timeout: 45000,
+                    });
+
+                    await page.waitForTimeout(3500);
+                    await job.updateProgress({
+                        phase: `Scanning live directory results (${variantIndex + 1}/${yellowPagesVariants.length}, page ${pageNumber})...`,
+                        percent: 45 + ((variantIndex * 2 + (pageNumber - 1)) * 8),
+                    });
+
+                    finalUrl = page.url();
+                    pageTitle = await page.title();
+                    const html = await page.content();
+                    const bodyText = await page.locator('body').innerText().catch(() => '');
+                    const normalizedBodyText = bodyText.replace(/\s+/g, ' ').trim().toLowerCase();
+                    yellowPagesBlocked =
+                        normalizedBodyText.includes('captcha') ||
+                        normalizedBodyText.includes('access denied') ||
+                        normalizedBodyText.includes('unusual traffic') ||
+                        normalizedBodyText.includes('verify you are human') ||
+                        normalizedBodyText.includes('press and hold') ||
+                        normalizedBodyText.includes('security check') ||
+                        normalizedBodyText.includes('cloudflare') ||
+                        pageTitle.toLowerCase().includes('access denied') ||
+                        pageTitle.toLowerCase().includes('attention required') ||
+                        pageTitle.toLowerCase().includes('cloudflare');
+
+                    if (yellowPagesBlocked) {
+                        break;
+                    }
+
+                    const pageResult = extractBusinessesFromYellowPagesHtml(
+                        html,
+                        job.data.zipCode,
+                        job.data.industry,
+                        job.data.batchSize,
+                    );
+
+                    yellowPagesCollections.push(pageResult);
+
+                    const mergedLeads = mergeBusinessLeads(
+                        yellowPagesCollections.map((collection) => collection.leads),
+                        job.data.batchSize,
+                    );
+
+                    yellowPagesResult = {
+                        leads: mergedLeads,
+                        matchStrategy: yellowPagesCollections.some((collection) => collection.matchStrategy === 'exact_zip')
+                            ? 'exact_zip'
+                            : 'area_results',
+                        diagnostics: pageResult.diagnostics,
+                    };
+
+                    if (mergedLeads.length >= job.data.batchSize) {
+                        break;
+                    }
+                }
+
+                if (yellowPagesBlocked || yellowPagesResult.leads.length >= job.data.batchSize) {
+                    break;
+                }
+            }
 
             let finalResult = yellowPagesResult;
             let sourceLabel = 'Yellow Pages';

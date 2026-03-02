@@ -50,6 +50,85 @@ export interface OpenStreetMapSearchResult {
     };
 }
 
+function getSafeBatchSize(batchSize: number) {
+    return Math.min(Math.max(batchSize, 1), 100);
+}
+
+export function getIndustrySearchVariants(industry: string) {
+    const normalized = industry.trim().toLowerCase();
+    const variants = new Set<string>();
+
+    switch (normalized) {
+        case 'hvac':
+            variants.add('air conditioning contractors systems');
+            variants.add('hvac');
+            variants.add('heating and air conditioning');
+            variants.add('air conditioning repair');
+            break;
+        case 'landscaping':
+            variants.add('landscaping lawn services');
+            variants.add('landscaping');
+            variants.add('lawn care');
+            variants.add('tree service');
+            break;
+        case 'plumbing':
+            variants.add('plumbers');
+            variants.add('plumbing');
+            variants.add('plumbing contractors');
+            variants.add('drain cleaning');
+            break;
+        case 'pressure washing':
+            variants.add('pressure washing');
+            variants.add('power washing');
+            variants.add('soft washing');
+            variants.add('exterior cleaning');
+            break;
+        case 'electrical':
+            variants.add('electricians');
+            variants.add('electrical contractors');
+            variants.add('electrical services');
+            break;
+        case 'concrete':
+            variants.add('concrete contractors');
+            variants.add('concrete');
+            variants.add('masonry');
+            break;
+        case 'pest control':
+            variants.add('pest control services');
+            variants.add('pest control');
+            variants.add('exterminators');
+            break;
+        case 'roofing':
+            variants.add('roofing contractors');
+            variants.add('roofers');
+            variants.add('roof repair');
+            break;
+        default:
+            variants.add(normalized);
+            break;
+    }
+
+    return Array.from(variants);
+}
+
+export function mergeBusinessLeads(collections: BusinessFinderLead[][], batchSize: number) {
+    const merged = new Map<string, BusinessFinderLead>();
+
+    for (const collection of collections) {
+        for (const lead of collection) {
+            if (!merged.has(lead.id)) {
+                merged.set(lead.id, lead);
+            }
+
+            if (merged.size >= getSafeBatchSize(batchSize)) {
+                return Array.from(merged.values());
+            }
+        }
+    }
+
+    return Array.from(merged.values());
+}
+
 type YellowPagesPostalAddress = {
     streetAddress?: string;
     addressLocality?: string;
@@ -66,26 +145,7 @@ type YellowPagesBusiness = {
 };
 
 export function mapIndustryToSearchTerm(industry: string) {
-    const normalized = industry.trim().toLowerCase();
-
-    switch (normalized) {
-        case 'hvac':
-            return 'air conditioning contractors systems';
-        case 'landscaping':
-            return 'landscaping lawn services';
-        case 'plumbing':
-            return 'plumbers';
-        case 'pressure washing':
-            return 'pressure washing';
-        case 'electrical':
-            return 'electricians';
-        case 'concrete':
-            return 'concrete contractors';
-        case 'pest control':
-            return 'pest control services';
-        default:
-            return normalized;
-    }
+    return getIndustrySearchVariants(industry)[0] || industry.trim().toLowerCase();
 }
 
 function isLocalBusiness(node: unknown): node is YellowPagesBusiness {
@@ -347,7 +407,7 @@ export function extractBusinessesFromYellowPagesHtml(
     industry: string,
     batchSize: number,
 ): BusinessFinderExtractionResult {
-    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const safeBatchSize = getSafeBatchSize(batchSize);
     const $ = cheerio.load(html);
     const exactZipMatches = new Map<string, BusinessFinderLead>();
     const areaResults = new Map<string, BusinessFinderLead>();
@@ -639,22 +699,23 @@ function buildOpenStreetMapAddress(tags: Record<string, string>) {
 }
 
 function buildLocationQueries(industry: string, zipCode: string, geocode: ZipGeocodeResult | null) {
-    const searchTerm = mapIndustryToSearchTerm(industry);
     const locationParts = [geocode?.city, geocode?.state].filter(Boolean).join(', ');
 
-    const queries = [
-        `${industry} near ${zipCode}`,
-        `${searchTerm} near ${zipCode}`,
-        `${industry} ${zipCode}`,
-    ];
+    const queries = getIndustrySearchVariants(industry).flatMap((searchTerm) => {
+        const variantQueries = [
+            `${searchTerm} near ${zipCode}`,
+            `${searchTerm} ${zipCode}`,
+        ];
 
-    if (locationParts) {
-        queries.unshift(
-            `${industry} near ${locationParts}`,
-            `${searchTerm} near ${locationParts}`,
-            `${industry} ${locationParts}`,
-        );
-    }
+        if (locationParts) {
+            variantQueries.unshift(
+                `${searchTerm} near ${locationParts}`,
+                `${searchTerm} ${locationParts}`,
+            );
+        }
+
+        return variantQueries;
+    });
 
     return Array.from(new Set(queries.map((query) => normalizeText(query)).filter(Boolean)));
 }
@@ -664,7 +725,7 @@ export async function searchOpenStreetMapBusinessesByZip(
     industry: string,
     batchSize: number,
 ): Promise<OpenStreetMapSearchResult> {
-    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const safeBatchSize = getSafeBatchSize(batchSize);
     const geocode = await fetchZipGeocode(zipCode);
     if (!geocode) {
         return {
@@ -679,19 +740,24 @@ export async function searchOpenStreetMapBusinessesByZip(
         };
     }
 
-    const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(industry));
     const tagQueries = getOpenStreetMapTagQueries(industry);
-    const aroundRadius = 16000;
-    const clauses = [
-        `node["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-        `way["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-        `relation["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-        ...tagQueries.flatMap((query) => ([
-            `node${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-            `way${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-            `relation${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
-        ])),
-    ];
+    const aroundRadius = 32000;
+    const clauses = getIndustrySearchVariants(industry)
+        .flatMap((searchVariant) => {
+            const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(searchVariant));
+            return [
+                `node["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+                `way["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+                `relation["name"~"${namePattern}",i](around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+            ];
+        })
+        .concat(
+            tagQueries.flatMap((query) => ([
+                `node${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+                `way${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+                `relation${query}(around:${aroundRadius},${geocode.lat},${geocode.lon});`,
+            ]))
+        );
 
     const overpassQuery = `
 [out:json][timeout:25];
@@ -797,7 +863,7 @@ out center tags;
         const url = new URL('https://nominatim.openstreetmap.org/search');
         url.searchParams.set('q', query);
         url.searchParams.set('format', 'jsonv2');
-        url.searchParams.set('limit', String(safeBatchSize * 2));
+        url.searchParams.set('limit', String(Math.min(safeBatchSize * 4, 100)));
         url.searchParams.set('countrycodes', 'us');
         url.searchParams.set('addressdetails', '1');
         url.searchParams.set('extratags', '1');
@@ -900,7 +966,7 @@ export function mapNominatimResultsToBusinessLeads(
     sourceLabel = 'OpenStreetMap Search',
     searchCenter: ZipGeocodeResult | null = null,
 ): OpenStreetMapSearchResult {
-    const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
+    const safeBatchSize = getSafeBatchSize(batchSize);
     const exactMatches = new Map<string, BusinessFinderLead>();
     const areaMatches = new Map<string, BusinessFinderLead>();
 

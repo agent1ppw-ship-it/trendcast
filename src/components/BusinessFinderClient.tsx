@@ -38,7 +38,7 @@ export function BusinessFinderClient({
 }) {
     const [zipCode, setZipCode] = useState('75201');
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
-    const [batchSize, setBatchSize] = useState(15);
+    const [batchSize, setBatchSize] = useState(25);
     const [sourceLabel, setSourceLabel] = useState('Yellow Pages');
     const [matchStrategy, setMatchStrategy] = useState<BusinessFinderMatchStrategy>('exact_zip');
     const [isLoading, setIsLoading] = useState(false);
@@ -325,7 +325,7 @@ export function BusinessFinderClient({
                                 onChange={(e) => setBatchSize(Number(e.target.value))}
                                 className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50 transition-all"
                             >
-                                {[10, 15, 25, 50].map((size) => (
+                                {[10, 25, 50, 75, 100].map((size) => (
                                     <option key={size} value={size}>
                                         {size} businesses
                                     </option>
