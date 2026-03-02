@@ -38,11 +38,11 @@ export function LeadCard({ lead }: { lead: any }) {
     return (
         <Card className={`bg-[#1A1A1A] border-white/5 hover:border-white/20 transition-all border-l-4 ${lead.status === 'WON' ? 'border-l-green-500' : lead.status === 'LOST' ? 'border-l-red-500' : 'border-l-blue-500'} shadow-md relative group ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
             <CardHeader className="p-4 pb-2">
-                <div className="flex justify-between items-start">
-                    <CardTitle className="text-base font-bold text-gray-100 truncate pr-2">
+                <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="min-w-0 flex-1 pr-2 text-base font-bold leading-tight text-gray-100 whitespace-normal break-words [overflow-wrap:anywhere]">
                         {lead.name}
                     </CardTitle>
-                    <span className="text-[10px] font-semibold px-2 py-1 bg-[#2A2A2A] text-gray-400 rounded border border-white/5 whitespace-nowrap">
+                    <span className="shrink-0 whitespace-nowrap rounded border border-white/5 bg-[#2A2A2A] px-2 py-1 text-[10px] font-semibold text-gray-400">
                         {lead.source}
                     </span>
                 </div>
