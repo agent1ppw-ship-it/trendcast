@@ -1,6 +1,7 @@
 'use server';
 
 import * as cheerio from 'cheerio';
+import type { Browser } from 'playwright';
 
 export interface BusinessFinderLead {
     id: string;
@@ -114,9 +115,7 @@ export async function searchBusinessesByZip(zipCode: string, industry: string, b
     const searchTerm = mapIndustryToSearchTerm(normalizedIndustry);
     const searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(normalizedZip)}`;
 
-    let browser: {
-        close: () => Promise<void>;
-    } | null = null;
+    let browser: Browser | null = null;
 
     try {
         const { chromium } = await import('playwright-extra');
