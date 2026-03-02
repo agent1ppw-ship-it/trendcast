@@ -8,36 +8,94 @@ function canUseStorage() {
     return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-export function saveLatestBlogDraft(draft: KeywordTargetedBlogDraft) {
+function readStorage(key: string) {
+    if (!canUseStorage()) return null;
+
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeStorage(key: string, value: string) {
     if (!canUseStorage()) return;
 
-    window.localStorage.setItem(BLOG_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-    window.localStorage.setItem(BLOG_DRAFT_UNREAD_KEY, 'true');
+    try {
+        window.localStorage.setItem(key, value);
+    } catch {
+        // Ignore storage write failures so the UI does not hard-crash.
+    }
+}
+
+function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
+    if (!value || typeof value !== 'object') return null;
+
+    const candidate = value as Partial<KeywordTargetedBlogDraft> & {
+        title?: unknown;
+        slug?: unknown;
+        excerpt?: unknown;
+        contentMarkdown?: unknown;
+        seoKeywords?: unknown;
+        primaryKeyword?: unknown;
+        supportingKeywords?: unknown;
+        dataSource?: unknown;
+    };
+
+    if (
+        typeof candidate.title !== 'string' ||
+        typeof candidate.slug !== 'string' ||
+        typeof candidate.excerpt !== 'string' ||
+        typeof candidate.contentMarkdown !== 'string'
+    ) {
+        return null;
+    }
+
+    const seoKeywords = Array.isArray(candidate.seoKeywords)
+        ? candidate.seoKeywords.filter((keyword): keyword is string => typeof keyword === 'string')
+        : [];
+    const primaryKeyword = typeof candidate.primaryKeyword === 'string'
+        ? candidate.primaryKeyword
+        : seoKeywords[0] || '';
+    const supportingKeywords = Array.isArray(candidate.supportingKeywords)
+        ? candidate.supportingKeywords.filter((keyword): keyword is string => typeof keyword === 'string')
+        : seoKeywords.filter((keyword) => keyword !== primaryKeyword).slice(0, 4);
+
+    return {
+        title: candidate.title,
+        slug: candidate.slug,
+        excerpt: candidate.excerpt,
+        contentMarkdown: candidate.contentMarkdown,
+        seoKeywords,
+        primaryKeyword,
+        supportingKeywords,
+        dataSource: candidate.dataSource === 'TEMPLATE_FALLBACK' ? 'TEMPLATE_FALLBACK' : 'AI_ESTIMATE',
+    };
+}
+
+export function saveLatestBlogDraft(draft: KeywordTargetedBlogDraft) {
+    writeStorage(BLOG_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    writeStorage(BLOG_DRAFT_UNREAD_KEY, 'true');
     window.dispatchEvent(new Event(BLOG_DRAFT_UPDATED_EVENT));
 }
 
 export function loadLatestBlogDraft(): KeywordTargetedBlogDraft | null {
-    if (!canUseStorage()) return null;
-
-    const rawDraft = window.localStorage.getItem(BLOG_DRAFT_STORAGE_KEY);
+    const rawDraft = readStorage(BLOG_DRAFT_STORAGE_KEY);
     if (!rawDraft) return null;
 
     try {
-        return JSON.parse(rawDraft) as KeywordTargetedBlogDraft;
+        return normalizeStoredDraft(JSON.parse(rawDraft));
     } catch {
         return null;
     }
 }
 
 export function hasUnreadBlogDraft() {
-    if (!canUseStorage()) return false;
-    return window.localStorage.getItem(BLOG_DRAFT_UNREAD_KEY) === 'true';
+    return readStorage(BLOG_DRAFT_UNREAD_KEY) === 'true';
 }
 
 export function markBlogDraftAsViewed() {
-    if (!canUseStorage()) return;
-
-    window.localStorage.setItem(BLOG_DRAFT_UNREAD_KEY, 'false');
+    writeStorage(BLOG_DRAFT_UNREAD_KEY, 'false');
     window.dispatchEvent(new Event(BLOG_DRAFT_UPDATED_EVENT));
 }
 
