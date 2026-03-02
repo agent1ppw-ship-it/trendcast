@@ -21,7 +21,7 @@ interface Lead {
 
 export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
     const router = useRouter();
-    const [zipCode, setZipCode] = useState('75201');
+    const [zipCode, setZipCode] = useState('');
     const [isScraping, setIsScraping] = useState(false);
     const [activeJobId, setActiveJobId] = useState<string | null>(null);
     const [jobProgress, setJobProgress] = useState<{ phase: string; percent: number } | null>(null);
@@ -151,6 +151,7 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
                                         type="text"
                                         value={zipCode}
                                         onChange={(e) => setZipCode(e.target.value)}
+                                        placeholder="75201"
                                         className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-mono"
                                     />
                                 </div>
