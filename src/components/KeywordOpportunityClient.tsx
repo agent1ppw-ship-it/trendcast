@@ -324,10 +324,23 @@ export function KeywordOpportunityClient({
                                         const isSelectionLocked = !isSelected && selectedKeywords.length >= 5;
 
                                         return (
-                                            <tr key={keyword.keyword} className="align-top transition-colors hover:bg-[#161616]">
+                                            <tr
+                                                key={keyword.keyword}
+                                                onClick={() => {
+                                                    if (!isSelectionLocked) {
+                                                        toggleKeywordSelection(keyword.keyword);
+                                                    }
+                                                }}
+                                                className={isSelectionLocked
+                                                    ? 'align-top transition-colors'
+                                                    : 'align-top cursor-pointer transition-colors hover:bg-[#161616]'}
+                                            >
                                                 <td className="px-6 py-5">
                                                     <button
-                                                        onClick={() => toggleKeywordSelection(keyword.keyword)}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            toggleKeywordSelection(keyword.keyword);
+                                                        }}
                                                         disabled={isSelectionLocked}
                                                         className="inline-flex items-center justify-center text-gray-300 disabled:opacity-40"
                                                         aria-label={isSelected ? 'Deselect keyword' : 'Select keyword'}
@@ -447,7 +460,7 @@ export function KeywordOpportunityClient({
                                 <div className="space-y-5">
                                     <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-5">
                                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Draft Summary</p>
-                                        <h2 className="text-2xl font-bold text-white">{blogDraft.title}</h2>
+                                        <h1 className="text-3xl font-bold tracking-tight text-white">{blogDraft.title}</h1>
                                         <p className="mt-3 leading-7 text-gray-300">{blogDraft.excerpt}</p>
                                         <div className="mt-4 flex flex-wrap gap-2">
                                             {blogDraft.seoKeywords.map((keyword) => (
@@ -462,7 +475,7 @@ export function KeywordOpportunityClient({
                                     </div>
 
                                     <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
-                                        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300">
+                                        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-6 prose-p:indent-6 prose-p:leading-8 prose-strong:text-white prose-ul:my-7 prose-ul:pl-6 prose-ol:my-7 prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-300 prose-p:text-gray-300 prose-img:my-8 prose-img:rounded-2xl prose-img:border prose-img:border-white/10 prose-img:shadow-lg">
                                             <ReactMarkdown>{blogDraft.contentMarkdown}</ReactMarkdown>
                                         </div>
                                     </div>
