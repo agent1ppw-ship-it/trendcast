@@ -38,6 +38,10 @@ interface BusinessFinderPayload {
     batchSize: number;
 }
 
+function getBusinessFinderCacheKey(zipCode: string, industry: string) {
+    return `business-finder-cache:${zipCode}:${industry.trim().toLowerCase()}`;
+}
+
 async function searchBusinessesWithBrowserNominatim(
     context: BrowserContext,
     zipCode: string,
@@ -396,6 +400,7 @@ export const businessFinderWorker = new Worker(
             let finalResult = yellowPagesResult;
             let sourceLabel = 'Yellow Pages';
             let blocked = false;
+            let usedCache = false;
             let blockReason: string | undefined;
 
             if (yellowPagesBlocked || yellowPagesResult.leads.length === 0) {
@@ -440,8 +445,24 @@ export const businessFinderWorker = new Worker(
                             };
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
-                            blocked = true;
-                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            if (cachedResults) {
+                                const parsedCache = JSON.parse(cachedResults) as {
+                                    leads: typeof finalResult.leads;
+                                    matchStrategy: typeof finalResult.matchStrategy;
+                                    sourceLabel: string;
+                                };
+                                finalResult = {
+                                    ...yellowPagesResult,
+                                    leads: parsedCache.leads.slice(0, job.data.batchSize),
+                                    matchStrategy: parsedCache.matchStrategy,
+                                };
+                                sourceLabel = parsedCache.sourceLabel || 'Cached Lead List';
+                                usedCache = true;
+                            } else {
+                                blocked = true;
+                                blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                            }
                         }
                     }
                 } catch (fallbackError) {
@@ -462,17 +483,62 @@ export const businessFinderWorker = new Worker(
                             };
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
-                            blocked = true;
-                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            if (cachedResults) {
+                                const parsedCache = JSON.parse(cachedResults) as {
+                                    leads: typeof finalResult.leads;
+                                    matchStrategy: typeof finalResult.matchStrategy;
+                                    sourceLabel: string;
+                                };
+                                finalResult = {
+                                    ...yellowPagesResult,
+                                    leads: parsedCache.leads.slice(0, job.data.batchSize),
+                                    matchStrategy: parsedCache.matchStrategy,
+                                };
+                                sourceLabel = parsedCache.sourceLabel || 'Cached Lead List';
+                                usedCache = true;
+                            } else {
+                                blocked = true;
+                                blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback paths returned no businesses.';
+                            }
                         }
                     } catch (browserFallbackError) {
                         console.error('[BusinessFinderWorker] Browser OpenStreetMap fallback failed:', browserFallbackError);
                         if (yellowPagesBlocked) {
-                            blocked = true;
-                            blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback request paths failed.';
+                            const cachedResults = await redisConnection.get(getBusinessFinderCacheKey(job.data.zipCode, job.data.industry));
+                            if (cachedResults) {
+                                const parsedCache = JSON.parse(cachedResults) as {
+                                    leads: typeof finalResult.leads;
+                                    matchStrategy: typeof finalResult.matchStrategy;
+                                    sourceLabel: string;
+                                };
+                                finalResult = {
+                                    ...yellowPagesResult,
+                                    leads: parsedCache.leads.slice(0, job.data.batchSize),
+                                    matchStrategy: parsedCache.matchStrategy,
+                                };
+                                sourceLabel = parsedCache.sourceLabel || 'Cached Lead List';
+                                usedCache = true;
+                            } else {
+                                blocked = true;
+                                blockReason = 'Yellow Pages returned a Cloudflare block page, and both OpenStreetMap fallback request paths failed.';
+                            }
                         }
                     }
                 }
+            }
+
+            if (finalResult.leads.length > 0 && !usedCache) {
+                await redisConnection.set(
+                    getBusinessFinderCacheKey(job.data.zipCode, job.data.industry),
+                    JSON.stringify({
+                        leads: finalResult.leads,
+                        matchStrategy: finalResult.matchStrategy,
+                        sourceLabel,
+                    }),
+                    'EX',
+                    60 * 60 * 24 * 7,
+                );
             }
 
             await job.updateProgress({
@@ -481,6 +547,7 @@ export const businessFinderWorker = new Worker(
                 finalUrl,
                 pageTitle,
                 blocked,
+                usedCache,
                 extractionDiagnostics: yellowPagesResult.diagnostics,
             });
 
@@ -489,6 +556,7 @@ export const businessFinderWorker = new Worker(
                 matchStrategy: finalResult.matchStrategy,
                 sourceLabel,
                 searchUrl,
+                usedCache,
                 finalUrl,
                 pageTitle,
                 blocked,

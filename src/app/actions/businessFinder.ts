@@ -23,6 +23,7 @@ interface BusinessFinderProgress {
     finalUrl?: string;
     pageTitle?: string;
     blocked?: boolean;
+    usedCache?: boolean;
     extractionDiagnostics?: BusinessFinderExtractionDiagnostics;
 }
 
@@ -31,6 +32,7 @@ interface BusinessFinderJobResult {
     matchStrategy: BusinessFinderMatchStrategy;
     sourceLabel: string;
     searchUrl: string;
+    usedCache?: boolean;
     finalUrl?: string;
     pageTitle?: string;
     blocked?: boolean;
@@ -91,6 +93,7 @@ export async function getBusinessSearchStatus(jobId: string) {
             matchStrategy: returnValue?.matchStrategy,
             sourceLabel: returnValue?.sourceLabel,
             searchUrl: returnValue?.searchUrl,
+            usedCache: returnValue?.usedCache,
             finalUrl: returnValue?.finalUrl,
             pageTitle: returnValue?.pageTitle,
             blocked: returnValue?.blocked,

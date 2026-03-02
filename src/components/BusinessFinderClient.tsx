@@ -53,6 +53,7 @@ export function BusinessFinderClient({
         finalUrl?: string;
         pageTitle?: string;
         blocked?: boolean;
+        usedCache?: boolean;
         blockReason?: string;
         diagnostics?: BusinessFinderExtractionDiagnostics;
     } | null>(null);
@@ -110,6 +111,7 @@ export function BusinessFinderClient({
                     finalUrl: status.finalUrl,
                     pageTitle: status.pageTitle,
                     blocked: status.blocked,
+                    usedCache: status.usedCache,
                     blockReason: status.blockReason,
                     diagnostics: status.diagnostics,
                 };
@@ -121,7 +123,9 @@ export function BusinessFinderClient({
                 setSearchDiagnostics(diagnostics);
                 setJobProgress(null);
 
-                if (status.blocked) {
+                if (status.usedCache) {
+                    setStatusMessage(`Loaded ${liveLeads.length} cached local businesses for ${zipCode} because live sources were temporarily unavailable.`);
+                } else if (status.blocked) {
                     setError(status.blockReason || 'Yellow Pages appears to be blocking the worker.');
                     setStatusMessage('The worker reached Yellow Pages, but the returned page looks blocked.');
                 } else if (liveLeads.length === 0) {
@@ -381,6 +385,10 @@ export function BusinessFinderClient({
                                     <div>
                                         <span className="text-gray-500">Blocked:</span>{' '}
                                         <span>{searchDiagnostics.blocked ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Used cache:</span>{' '}
+                                        <span>{searchDiagnostics.usedCache ? 'Yes' : 'No'}</span>
                                     </div>
                                     {searchDiagnostics.blockReason && (
                                         <div>
