@@ -231,7 +231,7 @@ function dedupeKeywords(primaryKeyword: string, supportingKeywords: string[]) {
 }
 
 function extractServiceTopic(primaryKeyword: string, industry: string, location: string) {
-    const stopWords = new Set([
+    const fillerWords = new Set([
         'a',
         'an',
         'and',
@@ -252,19 +252,53 @@ function extractServiceTopic(primaryKeyword: string, industry: string, location:
         'the',
     ]);
 
-    const tokensToRemove = new Set([
-        ...normalizeKeyword(industry).toLowerCase().split(/\s+/),
-        ...normalizeKeyword(location).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
-        ...stopWords,
-    ]);
-
+    const industryTokens = normalizeKeyword(industry).toLowerCase().split(/\s+/).filter(Boolean);
+    const locationTokens = normalizeKeyword(location).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     const remainingTokens = normalizeKeyword(primaryKeyword)
         .toLowerCase()
         .split(/\s+/)
-        .filter((token) => !tokensToRemove.has(token));
+        .filter((token) => token && !locationTokens.includes(token) && !fillerWords.has(token));
 
-    const topic = remainingTokens.join(' ').trim();
+    const topicTokens = [...remainingTokens];
+
+    industryTokens.forEach((industryToken) => {
+        if (!topicTokens.includes(industryToken)) {
+            topicTokens.push(industryToken);
+        }
+    });
+
+    const dedupedTokens = topicTokens.filter((token, index) => topicTokens.indexOf(token) === index);
+
+    const topic = dedupedTokens.join(' ').trim();
     return topic.length >= 4 ? topic : normalizeKeyword(primaryKeyword);
+}
+
+function buildReadableServiceLabel(context: KeywordContext, industry: string) {
+    const lowerIndustry = industry.toLowerCase();
+    let label = context.serviceTopic.toLowerCase();
+
+    if (!label.includes(lowerIndustry)) {
+        if (label === 'commercial' || label === 'residential') {
+            label = `${label} ${lowerIndustry}`;
+        } else {
+            label = `${label} ${lowerIndustry}`.trim();
+        }
+    }
+
+    return label.replace(/\s+/g, ' ').trim();
+}
+
+function buildReadableProjectLabel(context: KeywordContext, industry: string) {
+    const serviceLabel = buildReadableServiceLabel(context, industry)
+        .replace(/\b(contractor|contractors|company|companies|expert|experts)\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (serviceLabel.endsWith('work') || serviceLabel.endsWith('service') || serviceLabel.endsWith('project')) {
+        return serviceLabel;
+    }
+
+    return `${serviceLabel} work`.trim();
 }
 
 function buildKeywordContext(
@@ -489,8 +523,10 @@ function buildFallbackBlogDraft(
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const { seed: fallbackSeed, angle } = selectFocusAngle(context, regenerationSeed);
     const { archetype } = selectOutlineArchetype(context, regenerationSeed);
+    const readableServiceLabel = buildReadableServiceLabel(context, industry);
+    const readableProjectLabel = buildReadableProjectLabel(context, industry);
     const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
-    const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, with a focus on ${angle.description}.`;
+    const excerpt = `${businessName} created this guide to help property owners understand ${readableServiceLabel} in ${location}, with a focus on ${angle.description}.`;
     const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
     const slug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
     const primaryRelatedTopic = context.normalizedSupportingKeywords[0] || `${industry.toLowerCase()} material selection`;
@@ -502,7 +538,7 @@ function buildFallbackBlogDraft(
     const contentMarkdown = `
 ## ${archetype.openingHeading}
 
-${toTitleCase(context.serviceTopic)} usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
+A ${readableProjectLabel} project usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
 For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine}
 
@@ -734,7 +770,7 @@ Return valid JSON only:
 
     const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
     const fallbackSlug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
-    const fallbackExcerpt = `${businessName} explains what local customers should know about ${context.serviceTopic} in ${location}, with a focus on ${angle.description}.`;
+    const fallbackExcerpt = `${businessName} explains what local customers should know about ${buildReadableServiceLabel(context, industry)} in ${location}, with a focus on ${angle.description}.`;
 
     try {
         const completion = await openai.chat.completions.create({
