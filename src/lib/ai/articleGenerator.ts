@@ -256,7 +256,7 @@ function extractServiceTopic(primaryKeyword: string, industry: string, location:
     const locationTokens = normalizeKeyword(location).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     const remainingTokens = normalizeKeyword(primaryKeyword)
         .toLowerCase()
-        .split(/\s+/)
+        .split(/[^a-z0-9]+/)
         .filter((token) => token && !locationTokens.includes(token) && !fillerWords.has(token));
 
     const topicTokens = [...remainingTokens];
@@ -289,16 +289,28 @@ function buildReadableServiceLabel(context: KeywordContext, industry: string) {
 }
 
 function buildReadableProjectLabel(context: KeywordContext, industry: string) {
+    const industryTokens = normalizeKeyword(industry).toLowerCase().split(/\s+/).filter(Boolean);
     const serviceLabel = buildReadableServiceLabel(context, industry)
         .replace(/\b(contractor|contractors|company|companies|expert|experts)\b/g, '')
         .replace(/\s+/g, ' ')
         .trim();
 
+    const serviceTokens = serviceLabel.split(/\s+/).filter(Boolean);
+    const nonIndustryTokens = serviceTokens.filter((token) => !industryTokens.includes(token));
+
+    const compactLabel = nonIndustryTokens.length >= 2
+        ? nonIndustryTokens.join(' ')
+        : serviceLabel;
+
     if (serviceLabel.endsWith('work') || serviceLabel.endsWith('service') || serviceLabel.endsWith('project')) {
-        return serviceLabel;
+        return compactLabel;
     }
 
-    return `${serviceLabel} work`.trim();
+    if (compactLabel.includes('design') || compactLabel.includes('installation') || compactLabel.includes('repair')) {
+        return `${compactLabel} project`.trim();
+    }
+
+    return `${compactLabel} work`.trim();
 }
 
 function buildKeywordContext(
@@ -444,6 +456,14 @@ function sanitizeGeneratedMarkdown(markdown: string, context: KeywordContext) {
             /This version takes a different angle from the prior draft and focuses on[^.\n]*\.\s*/gi,
             '',
         ],
+        [
+            /In this version, the central lens is[^.\n]*\.\s*/gi,
+            '',
+        ],
+        [
+            /For this version,? /gi,
+            '',
+        ],
     ];
 
     structuralReplacements.forEach(([pattern, replacement]) => {
@@ -532,7 +552,7 @@ function buildFallbackBlogDraft(
     const primaryRelatedTopic = context.normalizedSupportingKeywords[0] || `${industry.toLowerCase()} material selection`;
     const secondaryRelatedTopic = context.normalizedSupportingKeywords[1] || `${industry.toLowerCase()} project planning`;
     const freshnessLine = previousDraft
-        ? `This version takes a different angle from the prior draft and focuses on ${angle.description}.`
+        ? `For customers in ${location}, this article focuses on ${angle.description}.`
         : pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed);
 
     const contentMarkdown = `
@@ -550,7 +570,7 @@ A contractor is most useful when they can help define scope before money is wast
 
 ## ${archetype.sectionHeadings[1]}
 
-A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this version, the central lens is ${angle.description}. ${archetype.sectionInstructions[1]}
+    A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this case, the most useful focus is ${angle.description}. ${archetype.sectionInstructions[1]}
 
 - The intended use of the space and how much traffic it will handle
 - Material options and what they mean for maintenance, lifespan, and appearance
