@@ -2,7 +2,7 @@ import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import AnalyticsClient from './AnalyticsClient';
-import { Layers, Zap, TrendingUp, Search } from 'lucide-react';
+import { Layers, Zap, TrendingUp, Search, Building2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 export default async function AnalyticsPage() {
@@ -22,6 +22,8 @@ export default async function AnalyticsPage() {
     const totalLeads = org.leads.length;
     const wonLeads = org.leads.filter(l => l.status === 'WON').length;
     const conversionRate = totalLeads ? Math.round((wonLeads / totalLeads) * 100) : 0;
+    const businessFinderLeads = org.leads.filter((lead) => lead.source === 'BUSINESS_SCRAPER').length;
+    const businessFinderShare = totalLeads ? Math.round((businessFinderLeads / totalLeads) * 100) : 0;
 
     // Monthly lead aggregation for chart
     const monthlyLeads = org.leads.reduce((acc, lead) => {
@@ -33,6 +35,12 @@ export default async function AnalyticsPage() {
     // Status distribution
     const statusDistribution = org.leads.reduce((acc, lead) => {
         acc[lead.status] = (acc[lead.status] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sourceDistribution = org.leads.reduce((acc, lead) => {
+        const sourceName = lead.source === 'BUSINESS_SCRAPER' ? 'Business Finder' : lead.source;
+        acc[sourceName] = (acc[sourceName] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
@@ -49,6 +57,11 @@ export default async function AnalyticsPage() {
         value
     }));
 
+    const sourceData = Object.entries(sourceDistribution).map(([name, value]) => ({
+        name,
+        value,
+    }));
+
     return (
         <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
             <div className="mb-10">
@@ -56,7 +69,7 @@ export default async function AnalyticsPage() {
                 <p className="text-gray-400 font-light">Deep insights into your pipeline, API usage, and conversion metrics.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-10">
                 <Card className="bg-[#111] border-white/5 shadow-md relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-indigo-500/20 transition-all"></div>
                     <CardHeader className="pb-2">
@@ -120,11 +133,28 @@ export default async function AnalyticsPage() {
                         </p>
                     </CardContent>
                 </Card>
+
+                <Card className="bg-[#111] border-white/5 shadow-md relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-sky-500/20 transition-all"></div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
+                            Business Finder Leads
+                            <Building2 className="w-4 h-4 text-gray-500" />
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-extrabold text-white mb-1">{businessFinderLeads}</div>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                            {businessFinderShare}% of total CRM leads
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
 
             <AnalyticsClient
                 initialChartData={chartData}
                 initialStatusData={statusData}
+                initialSourceData={sourceData}
             />
         </div>
     );

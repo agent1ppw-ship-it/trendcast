@@ -9,11 +9,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 interface AnalyticsClientProps {
     initialChartData: { month: string; leads: number }[];
     initialStatusData: { name: string; value: number }[];
+    initialSourceData: { name: string; value: number }[];
 }
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
-export default function AnalyticsClient({ initialChartData, initialStatusData }: AnalyticsClientProps) {
+export default function AnalyticsClient({ initialChartData, initialStatusData, initialSourceData }: AnalyticsClientProps) {
     // Provide visually appealing placeholder mock data if the user's DB is completely empty.
     const chartData = initialChartData.length > 0 ? initialChartData : [
         { month: 'Jan', leads: 40 },
@@ -32,10 +33,17 @@ export default function AnalyticsClient({ initialChartData, initialStatusData }:
         { name: 'LOST', value: 5 },
     ];
 
+    const sourceData = initialSourceData.length > 0 ? initialSourceData : [
+        { name: 'Business Finder', value: 24 },
+        { name: 'SCRAPER', value: 38 },
+        { name: 'MANUAL', value: 12 },
+        { name: 'ORGANIC', value: 9 },
+    ];
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             {/* Main Lead Volume Area Chart */}
-            <div className="lg:col-span-2">
+            <div className="xl:col-span-2">
                 <Card className="bg-[#111] border-white/5 shadow-md h-full">
                     <CardHeader className="border-b border-white/5 pb-4">
                         <CardTitle className="text-lg font-semibold text-white">Lead Volume Over Time</CardTitle>
@@ -64,8 +72,7 @@ export default function AnalyticsClient({ initialChartData, initialStatusData }:
                 </Card>
             </div>
 
-            {/* Status Distribution Pie Chart */}
-            <div className="lg:col-span-1">
+            <div className="xl:col-span-1 grid grid-cols-1 gap-8">
                 <Card className="bg-[#111] border-white/5 shadow-md h-full flex flex-col">
                     <CardHeader className="border-b border-white/5 pb-4">
                         <CardTitle className="text-lg font-semibold text-white">Pipeline Distribution</CardTitle>
@@ -86,6 +93,38 @@ export default function AnalyticsClient({ initialChartData, initialStatusData }:
                                 >
                                     {statusData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1A1A1A', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
+                                    itemStyle={{ color: '#fff' }}
+                                />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-[#111] border-white/5 shadow-md h-full flex flex-col">
+                    <CardHeader className="border-b border-white/5 pb-4">
+                        <CardTitle className="text-lg font-semibold text-white">Lead Source Mix</CardTitle>
+                        <p className="text-xs text-gray-500 mt-1">Business Finder activity alongside other acquisition sources</p>
+                    </CardHeader>
+                    <CardContent className="pt-6 flex-1 h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={sourceData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {sourceData.map((entry, index) => (
+                                        <Cell key={`source-cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip
