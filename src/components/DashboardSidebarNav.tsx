@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart, Building2, Home, Layers, Settings, Users } from 'lucide-react';
+import { BarChart, Building2, Home, Layers, Settings, Target, Users } from 'lucide-react';
 
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: Home },
     { href: '/dashboard/crm', label: 'Pipeline CRM', icon: Layers },
     { href: '/dashboard/leads', label: 'Lead Scraper', icon: Users },
     { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
+    { href: '/dashboard/keywords', label: 'Keyword Opportunities', icon: Target },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
