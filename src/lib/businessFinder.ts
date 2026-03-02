@@ -612,7 +612,7 @@ function escapeOverpassString(value: string) {
     return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-const MAX_AREA_RESULT_DISTANCE_MILES = 30;
+const MAX_AREA_RESULT_DISTANCE_MILES = 50;
 
 export async function fetchZipGeocode(zipCode: string): Promise<ZipGeocodeResult | null> {
     const url = new URL('https://nominatim.openstreetmap.org/search');
@@ -741,7 +741,7 @@ export async function searchOpenStreetMapBusinessesByZip(
     }
 
     const tagQueries = getOpenStreetMapTagQueries(industry);
-    const aroundRadius = 32000;
+    const aroundRadius = 50000;
     const clauses = getIndustrySearchVariants(industry)
         .flatMap((searchVariant) => {
             const namePattern = escapeOverpassString(getOpenStreetMapNamePattern(searchVariant));
