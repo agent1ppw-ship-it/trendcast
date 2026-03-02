@@ -56,6 +56,15 @@ interface FocusAngle {
     fallbackQuestions: string[];
 }
 
+interface OutlineArchetype {
+    name: string;
+    openingHeading: string;
+    openingInstruction: string;
+    sectionHeadings: [string, string, string];
+    sectionInstructions: [string, string, string];
+    ctaInstruction: string;
+}
+
 const REGENERATION_ANGLES: FocusAngle[] = [
     {
         titleSuffix: 'Planning Considerations',
@@ -111,6 +120,69 @@ const REGENERATION_ANGLES: FocusAngle[] = [
             'How should a customer compare two different proposals?',
             'What communication or process details matter before work begins?',
         ],
+    },
+];
+
+const ARTICLE_ARCHETYPES: OutlineArchetype[] = [
+    {
+        name: 'Decision Guide',
+        openingHeading: 'What This Service Actually Solves',
+        openingInstruction: 'Open by explaining the real property or operational problem the service is meant to solve.',
+        sectionHeadings: ['How The Work Is Usually Scoped', 'What Changes The Outcome', 'How To Compare Providers'],
+        sectionInstructions: [
+            'Explain how professionals scope the work and what should be clarified early.',
+            'Explain which project conditions, materials, or site constraints affect the result most.',
+            'Explain how a customer should compare proposals or providers without relying on generic advice.',
+        ],
+        ctaInstruction: 'End with a calm, practical CTA based on next steps and project fit.',
+    },
+    {
+        name: 'Mistake Prevention',
+        openingHeading: 'Where Projects Usually Go Wrong',
+        openingInstruction: 'Open with the mistakes, blind spots, or bad assumptions that commonly create problems later.',
+        sectionHeadings: ['What Should Be Decided Early', 'What Customers Often Overlook', 'How To Avoid Rework'],
+        sectionInstructions: [
+            'Explain the early choices that are hardest to reverse later.',
+            'Explain the site conditions, scope details, or communication issues customers often miss.',
+            'Explain how the customer can reduce risk before work starts.',
+        ],
+        ctaInstruction: 'End by recommending a site review or planning conversation before committing to the work.',
+    },
+    {
+        name: 'Owner Checklist',
+        openingHeading: 'What To Review Before Moving Forward',
+        openingInstruction: 'Open with a checklist-style framing that helps the customer understand what should be reviewed before committing.',
+        sectionHeadings: ['What Should Be In The Proposal', 'Questions Worth Asking', 'What A Solid Plan Looks Like'],
+        sectionInstructions: [
+            'Break down what a credible proposal or scope should include.',
+            'Give practical questions that expose weak planning or vague estimates.',
+            'Describe what a well-scoped, well-communicated plan looks like in practice.',
+        ],
+        ctaInstruction: 'End by inviting the reader to use the checklist in a conversation with a local contractor.',
+    },
+    {
+        name: 'Scope Breakdown',
+        openingHeading: 'What Is Usually Included In The Work',
+        openingInstruction: 'Open by breaking the service into its major parts instead of starting with generic context.',
+        sectionHeadings: ['What A Contractor Should Evaluate', 'What Affects Timeline And Budget', 'What Matters After The Work Is Done'],
+        sectionInstructions: [
+            'Explain what should be inspected or evaluated before recommendations are made.',
+            'Explain what drives timeline changes, pricing, and project complexity.',
+            'Explain what affects long-term performance, maintenance, or follow-up decisions.',
+        ],
+        ctaInstruction: 'End by positioning the business as a provider that can explain the scope clearly before quoting.',
+    },
+    {
+        name: 'Planning Primer',
+        openingHeading: 'How To Plan The Job The Right Way',
+        openingInstruction: 'Open with the planning lens and explain why early decisions shape the final result.',
+        sectionHeadings: ['What Needs To Be Clarified First', 'Which Choices Matter Most', 'How To Know The Plan Is Ready'],
+        sectionInstructions: [
+            'Explain the first questions that should be answered before design or pricing goes too far.',
+            'Explain which choices have the biggest effect on quality, maintenance, or total scope.',
+            'Explain how a customer can tell the project is properly defined before approving it.',
+        ],
+        ctaInstruction: 'End with a CTA that emphasizes clarity, scope review, and practical next steps.',
     },
 ];
 
@@ -343,6 +415,20 @@ function selectFocusAngle(context: KeywordContext, regenerationSeed?: string) {
     };
 }
 
+function selectOutlineArchetype(context: KeywordContext, regenerationSeed?: string) {
+    const seed = createStableSeed([
+        'outline',
+        context.normalizedPrimaryKeyword,
+        context.normalizedSupportingKeywords.join('|'),
+        regenerationSeed || 'initial-draft',
+    ].join('|'));
+
+    return {
+        seed,
+        archetype: pickVariant(ARTICLE_ARCHETYPES, seed),
+    };
+}
+
 function sanitizeArticleData(
     parsedData: ArticleData,
     fallbackTitle: string,
@@ -375,6 +461,7 @@ function buildFallbackBlogDraft(
 ): KeywordTargetedBlogDraft {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const { seed: fallbackSeed, angle } = selectFocusAngle(context, regenerationSeed);
+    const { archetype } = selectOutlineArchetype(context, regenerationSeed);
     const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
     const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, with a focus on ${angle.description}.`;
     const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
@@ -386,21 +473,21 @@ function buildFallbackBlogDraft(
         : pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed);
 
     const contentMarkdown = `
-## What ${toTitleCase(context.serviceTopic)} Usually Includes
+## ${archetype.openingHeading}
 
 ${toTitleCase(context.serviceTopic)} usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
 For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine}
 
-## When It Makes Sense To Bring In A Contractor
+## ${archetype.sectionHeadings[0]}
 
 Most customers should bring in a contractor once they know the problem they are trying to solve with the space. That might mean creating a better area for entertaining, improving traffic flow, replacing a worn-out feature, or making part of the property easier to maintain.
 
-A contractor is most useful when they can help define scope before money is wasted on the wrong design or material choice. This is especially true when grading, drainage, access, structural support, or long-term maintenance will affect the outcome.
+A contractor is most useful when they can help define scope before money is wasted on the wrong design or material choice. This is especially true when grading, drainage, access, structural support, or long-term maintenance will affect the outcome. ${archetype.sectionInstructions[0]}
 
-## ${angle.sectionHeading}
+## ${archetype.sectionHeadings[1]}
 
-A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this version, the central lens is ${angle.description}.
+A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this version, the central lens is ${angle.description}. ${archetype.sectionInstructions[1]}
 
 - The intended use of the space and how much traffic it will handle
 - Material options and what they mean for maintenance, lifespan, and appearance
@@ -408,9 +495,9 @@ A useful proposal should explain more than the visual design. It should show how
 - Timeline, crew access, and how the work may affect the rest of the property
 - What is included in the quoted scope and what would count as a change order
 
-## Questions To Ask Before Approving The Work
+## ${archetype.sectionHeadings[2]}
 
-Customers usually get better results when they ask direct questions before the project starts. A contractor should be able to explain the reasoning behind the plan, not just hand over a sketch and a price.
+Customers usually get better results when they ask direct questions before the project starts. A contractor should be able to explain the reasoning behind the plan, not just hand over a sketch and a price. ${archetype.sectionInstructions[2]}
 
 1. ${angle.fallbackQuestions[0]}
 2. ${angle.fallbackQuestions[1]}
@@ -426,7 +513,7 @@ That is why the most useful contractor conversations are practical, not promotio
 
 ## Call To Action
 
-If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense. ${pickVariant(FALLBACK_CTA_VARIANTS, fallbackSeed + 1)}
+If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense. ${archetype.ctaInstruction} ${pickVariant(FALLBACK_CTA_VARIANTS, fallbackSeed + 1)}
 `.trim();
 
     return {
@@ -522,6 +609,7 @@ export async function generateKeywordTargetedBlogArticle(
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const fallbackKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
     const { angle } = selectFocusAngle(context, regenerationSeed);
+    const { archetype } = selectOutlineArchetype(context, regenerationSeed);
 
     if (!process.env.OPENAI_API_KEY) {
         return buildFallbackBlogDraft(
@@ -554,6 +642,7 @@ Context for the article:
 - Likely customer need: ${context.readerIntent}
 - Local angle: ${context.localAngle}
 - Fresh angle for this version: ${angle.description}
+- Outline archetype for this version: ${archetype.name}
 - Questions that should be answered:
 ${context.readerQuestions.map((question) => `  - ${question}`).join('\n')}
 - Regeneration hint: ${regenerationSeed || 'initial-draft'}
@@ -583,12 +672,22 @@ Requirements:
 17. ${angle.promptInstruction}
 18. Do not simply paraphrase the prior article. Make the fresh angle drive the structure and examples.
 19. Keep the keyword set relevant, but let the new angle determine the article's central topic.
+20. Use this structure family for the article:
+   - Opening heading: ${archetype.openingHeading}
+   - Opening goal: ${archetype.openingInstruction}
+   - Mid-section headings should follow this family:
+     - ${archetype.sectionHeadings[0]}: ${archetype.sectionInstructions[0]}
+     - ${archetype.sectionHeadings[1]}: ${archetype.sectionInstructions[1]}
+     - ${archetype.sectionHeadings[2]}: ${archetype.sectionInstructions[2]}
+   - CTA goal: ${archetype.ctaInstruction}
+21. Do not reuse the same canned headings across drafts unless they are the best fit. Let the archetype drive the structure for this version.
 
 Quality bar:
 - The article should still be useful if all related topics were removed.
 - Every section should answer a real customer question or explain a real project consideration.
 - The piece should read like a service guide, not an SEO exercise.
 - The new version should feel like a different article, not a rewrite of the same outline.
+- The outline should feel intentional and specific to this version, not like a default template reused every time.
 
 Return valid JSON only:
 {
