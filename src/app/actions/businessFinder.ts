@@ -118,11 +118,7 @@ export async function searchBusinessesByZip(zipCode: string, industry: string, b
     let browser: Browser | null = null;
 
     try {
-        const { chromium } = await import('playwright-extra');
-        const stealthModule = await import('puppeteer-extra-plugin-stealth');
-        const stealthPlugin = stealthModule.default;
-
-        chromium.use(stealthPlugin() as never);
+        const { chromium } = await import('playwright');
 
         browser = await chromium.launch({
             headless: true,
@@ -138,6 +134,10 @@ export async function searchBusinessesByZip(zipCode: string, industry: string, b
         const page = await browser.newPage({
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             viewport: { width: 1440, height: 2400 },
+        });
+
+        await page.setExtraHTTPHeaders({
+            'accept-language': 'en-US,en;q=0.9',
         });
 
         await page.route('**/*', async (route) => {
