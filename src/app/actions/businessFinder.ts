@@ -3,7 +3,7 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { ensureOrganization } from '@/app/actions/auth';
-import type { BusinessFinderLead } from '@/lib/businessFinder';
+import type { BusinessFinderLead, BusinessFinderMatchStrategy } from '@/lib/businessFinder';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = new IORedis(redisUrl, {
@@ -20,6 +20,7 @@ interface BusinessFinderProgress {
 
 interface BusinessFinderJobResult {
     leads: BusinessFinderLead[];
+    matchStrategy: BusinessFinderMatchStrategy;
     sourceLabel: string;
     searchUrl: string;
 }
@@ -74,6 +75,7 @@ export async function getBusinessSearchStatus(jobId: string) {
             state,
             progress,
             results: returnValue?.leads,
+            matchStrategy: returnValue?.matchStrategy,
             sourceLabel: returnValue?.sourceLabel,
             searchUrl: returnValue?.searchUrl,
         };

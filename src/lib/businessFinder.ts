@@ -13,6 +13,8 @@ export interface BusinessFinderLead {
     sourceLabel: string;
 }
 
+export type BusinessFinderMatchStrategy = 'exact_zip' | 'area_results';
+
 type YellowPagesPostalAddress = {
     streetAddress?: string;
     addressLocality?: string;
@@ -96,6 +98,69 @@ function toAbsoluteYellowPagesUrl(url?: string) {
     return url.startsWith('http') ? url : `https://www.yellowpages.com${url}`;
 }
 
+function normalizeZip(value?: string) {
+    if (!value) return '';
+
+    const match = value.match(/\b\d{5}(?:-\d{4})?\b/);
+    return match ? match[0].slice(0, 5) : '';
+}
+
+function normalizeText(value?: string | null) {
+    return value?.replace(/\s+/g, ' ').trim() || '';
+}
+
+function buildLead({
+    name,
+    industry,
+    zipCode,
+    city,
+    address,
+    phone,
+    website,
+    listingUrl,
+}: {
+    name: string;
+    industry: string;
+    zipCode: string;
+    city?: string;
+    address?: string;
+    phone?: string;
+    website?: string;
+    listingUrl?: string;
+}): BusinessFinderLead {
+    const normalizedAddress = normalizeText(address);
+    const normalizedName = normalizeText(name);
+
+    return {
+        id: `${normalizedName}-${normalizedAddress}`.toLowerCase(),
+        name: normalizedName,
+        industry,
+        zipCode,
+        city: normalizeText(city),
+        address: normalizedAddress,
+        phone: normalizeText(phone),
+        website: toAbsoluteYellowPagesUrl(website),
+        listingUrl: toAbsoluteYellowPagesUrl(listingUrl),
+        sourceLabel: 'Yellow Pages',
+    };
+}
+
+function extractCityFromLocality(localityText: string) {
+    const normalized = normalizeText(localityText);
+    if (!normalized) return '';
+
+    const city = normalized.split(',')[0];
+    return normalizeText(city);
+}
+
+function addLeadIfUnique(target: Map<string, BusinessFinderLead>, lead: BusinessFinderLead) {
+    if (!lead.name || !lead.address) return;
+    if (!lead.phone && !lead.website && !lead.listingUrl) return;
+    if (!target.has(lead.id)) {
+        target.set(lead.id, lead);
+    }
+}
+
 export function extractBusinessesFromYellowPagesHtml(
     html: string,
     zipCode: string,
@@ -104,6 +169,9 @@ export function extractBusinessesFromYellowPagesHtml(
 ) {
     const safeBatchSize = Math.min(Math.max(batchSize, 1), 50);
     const $ = cheerio.load(html);
+    const exactZipMatches = new Map<string, BusinessFinderLead>();
+    const areaResults = new Map<string, BusinessFinderLead>();
+
     const scripts = $('script[type="application/ld+json"]')
         .map((_, element) => $(element).text())
         .get();
@@ -116,32 +184,79 @@ export function extractBusinessesFromYellowPagesHtml(
         }
     });
 
-    const uniqueBusinesses = new Map<string, BusinessFinderLead>();
-
     for (const business of parsedBusinesses) {
-        const postalCode = business.address?.postalCode?.trim();
-        if (postalCode !== zipCode) continue;
-        if (!business.name || !business.telephone) continue;
-
+        if (!business.name) continue;
         const address = formatAddress(business.address);
-        const key = `${business.name}-${address}`.toLowerCase();
-        if (uniqueBusinesses.has(key)) continue;
-
-        uniqueBusinesses.set(key, {
-            id: key,
+        const postalCode = normalizeZip(business.address?.postalCode || address);
+        const lead = buildLead({
             name: business.name,
             industry,
             zipCode,
             city: business.address?.addressLocality || '',
             address,
-            phone: business.telephone,
-            website: toAbsoluteYellowPagesUrl(business.url),
-            listingUrl: toAbsoluteYellowPagesUrl(business.url),
-            sourceLabel: 'Yellow Pages',
+            phone: business.telephone || '',
+            website: business.url,
+            listingUrl: business.url,
         });
 
-        if (uniqueBusinesses.size >= safeBatchSize) break;
+        if (postalCode === zipCode) {
+            addLeadIfUnique(exactZipMatches, lead);
+        } else {
+            addLeadIfUnique(areaResults, lead);
+        }
     }
 
-    return Array.from(uniqueBusinesses.values());
+    $('.search-results .result, .search-results .v-card, .organic .result, .result').each((_, element) => {
+        const card = $(element);
+        const name = normalizeText(card.find('.business-name').first().text());
+        const streetAddress = normalizeText(card.find('.street-address').first().text());
+        const locality = normalizeText(card.find('.locality').first().text());
+        const combinedAddress = normalizeText([streetAddress, locality].filter(Boolean).join(', '));
+        const phone = normalizeText(
+            card.find('.phones.phone.primary').first().text() ||
+            card.find('.phones').first().text() ||
+            card.find('.phone').first().text()
+        );
+        const listingUrl = card.find('.business-name').first().attr('href') || '';
+        const website =
+            card.find('.track-visit-website').first().attr('href') ||
+            card.find('a[href*="website"]').first().attr('href') ||
+            listingUrl;
+
+        if (!name || !combinedAddress) return;
+
+        const lead = buildLead({
+            name,
+            industry,
+            zipCode,
+            city: extractCityFromLocality(locality),
+            address: combinedAddress,
+            phone,
+            website,
+            listingUrl,
+        });
+
+        const cardZip = normalizeZip(combinedAddress);
+        if (cardZip === zipCode) {
+            addLeadIfUnique(exactZipMatches, lead);
+            return;
+        }
+
+        if (!cardZip) {
+            addLeadIfUnique(areaResults, lead);
+        }
+    });
+
+    const exactLeads = Array.from(exactZipMatches.values()).slice(0, safeBatchSize);
+    if (exactLeads.length > 0) {
+        return {
+            leads: exactLeads,
+            matchStrategy: 'exact_zip' as BusinessFinderMatchStrategy,
+        };
+    }
+
+    return {
+        leads: Array.from(areaResults.values()).slice(0, safeBatchSize),
+        matchStrategy: 'area_results' as BusinessFinderMatchStrategy,
+    };
 }

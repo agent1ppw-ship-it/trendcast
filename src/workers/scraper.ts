@@ -1,10 +1,8 @@
 import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { chromium } from 'playwright-extra';
-// @ts-ignore
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
-import { faker } from '@faker-js/faker';
 
 import { prisma } from '../lib/prisma';
 import { extractBusinessesFromYellowPagesHtml, mapIndustryToSearchTerm } from '../lib/businessFinder';
@@ -44,7 +42,7 @@ export const scraperWorker = new Worker(
         await job.updateProgress({ phase: 'Initializing Playwright cluster...', percent: 5 });
 
         // Prepare launch options
-        const launchOptions: any = {
+        const launchOptions: Parameters<typeof chromium.launch>[0] = {
             headless: true, // Run headless in production, false for local debugging
         };
 
@@ -199,7 +197,7 @@ export const scraperWorker = new Worker(
             await browser.close();
         }
     },
-    { connection: redisConnection as any }
+    { connection: redisConnection as never }
 );
 
 export const businessFinderWorker = new Worker(
@@ -213,7 +211,7 @@ export const businessFinderWorker = new Worker(
             throw new Error('Organization not found.');
         }
 
-        const launchOptions: any = {
+        const launchOptions: Parameters<typeof chromium.launch>[0] = {
             headless: true,
         };
 
@@ -265,17 +263,18 @@ export const businessFinderWorker = new Worker(
             await job.updateProgress({ phase: 'Parsing business listings...', percent: 75 });
 
             const html = await page.content();
-            const leads = extractBusinessesFromYellowPagesHtml(
+            const result = extractBusinessesFromYellowPagesHtml(
                 html,
                 job.data.zipCode,
                 job.data.industry,
                 job.data.batchSize,
             );
 
-            await job.updateProgress({ phase: `Found ${leads.length} matching businesses.`, percent: 100 });
+            await job.updateProgress({ phase: `Found ${result.leads.length} matching businesses.`, percent: 100 });
 
             return {
-                leads,
+                leads: result.leads,
+                matchStrategy: result.matchStrategy,
                 sourceLabel: 'Yellow Pages',
                 searchUrl,
             };
@@ -287,7 +286,7 @@ export const businessFinderWorker = new Worker(
             await browser.close();
         }
     },
-    { connection: redisConnection as any }
+    { connection: redisConnection as never }
 );
 
 scraperWorker.on('completed', (job) => {

@@ -6,7 +6,7 @@ import { Building2, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Send, S
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createLead } from '@/app/actions/crm';
 import { getBusinessSearchStatus, startBusinessSearchJob } from '@/app/actions/businessFinder';
-import type { BusinessFinderLead } from '@/lib/businessFinder';
+import type { BusinessFinderLead, BusinessFinderMatchStrategy } from '@/lib/businessFinder';
 
 const industryOptions = [
     'Roofing',
@@ -34,6 +34,7 @@ export function BusinessFinderClient({
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
     const [batchSize, setBatchSize] = useState(15);
     const [sourceLabel, setSourceLabel] = useState('Yellow Pages');
+    const [matchStrategy, setMatchStrategy] = useState<BusinessFinderMatchStrategy>('exact_zip');
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState<BusinessFinderLead[]>([]);
     const [sentIds, setSentIds] = useState<string[]>([]);
@@ -68,6 +69,7 @@ export function BusinessFinderClient({
             setSentIds([]);
             setError(result.error || 'Failed to search businesses.');
             setStatusMessage('No live results were loaded.');
+            setMatchStrategy('exact_zip');
             setJobProgress(null);
             setIsLoading(false);
             return;
@@ -93,12 +95,17 @@ export function BusinessFinderClient({
                 setResults(liveLeads);
                 setSentIds([]);
                 setSourceLabel(status.sourceLabel || 'Yellow Pages');
+                setMatchStrategy(status.matchStrategy || 'exact_zip');
                 setJobProgress(null);
 
                 if (liveLeads.length === 0) {
-                    setStatusMessage(`No exact ZIP matches were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
+                    setStatusMessage(`No businesses were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
                 } else {
-                    setStatusMessage(`Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`);
+                    setStatusMessage(
+                        status.matchStrategy === 'area_results'
+                            ? `Loaded ${liveLeads.length} live businesses from the ${zipCode} area. Yellow Pages did not expose exact ZIPs for these listings.`
+                            : `Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`
+                    );
                 }
 
                 setIsLoading(false);
@@ -307,9 +314,11 @@ export function BusinessFinderClient({
                         </div>
 
                         <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 mb-2">Live ZIP Match</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 mb-2">Match Strategy</p>
                             <p className="text-sm text-gray-300 leading-6">
-                                This search scrapes live Yellow Pages results and only keeps businesses whose listed postal code exactly matches the ZIP code you entered.
+                                {matchStrategy === 'area_results'
+                                    ? 'This search is showing live directory results from the searched area because Yellow Pages did not expose exact ZIP codes on the listing cards.'
+                                    : 'This search prefers live businesses whose listed postal code exactly matches the ZIP code you entered.'}
                             </p>
                         </div>
 
