@@ -69,14 +69,16 @@ export function BusinessFinderClient({
             return;
         }
 
-        setResults(result.leads);
+        const liveLeads = result.leads ?? [];
+
+        setResults(liveLeads);
         setSentIds([]);
         setSourceLabel(result.sourceLabel || 'Yellow Pages');
 
-        if (result.leads.length === 0) {
+        if (liveLeads.length === 0) {
             setStatusMessage(`No exact ZIP matches were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
         } else {
-            setStatusMessage(`Loaded ${result.leads.length} real businesses located in ZIP ${zipCode}.`);
+            setStatusMessage(`Loaded ${liveLeads.length} real businesses located in ZIP ${zipCode}.`);
         }
 
         setIsLoading(false);
