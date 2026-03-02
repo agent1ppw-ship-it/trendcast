@@ -42,6 +42,7 @@ export function BlogPostsClient() {
                 draft.industry,
                 draft.location,
                 [draft.primaryKeyword, ...draft.supportingKeywords].filter(Boolean).slice(0, 5),
+                `regenerate-${Date.now()}`,
             );
 
             if (!result.success || !result.draft) {

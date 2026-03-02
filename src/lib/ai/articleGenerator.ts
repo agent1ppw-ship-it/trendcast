@@ -20,6 +20,18 @@ export interface KeywordTargetedBlogDraft extends ArticleData {
     dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
 }
 
+const FALLBACK_INTRO_VARIANTS = [
+    'A strong contractor should explain the work in plain language before talking about upgrades or add-ons.',
+    'The most useful draft starts by clarifying the job itself, not by jumping straight into promotional language.',
+    'Good service content should help a customer understand the project before they ever compare bids.',
+];
+
+const FALLBACK_CTA_VARIANTS = [
+    'The next step should be a site review and a practical conversation about what fits the property.',
+    'A contractor should be able to walk through the property, explain realistic options, and narrow the scope before quoting.',
+    'The right provider should help turn the idea into a workable plan, not just hand over a generic estimate.',
+];
+
 interface KeywordContext {
     normalizedPrimaryKeyword: string;
     normalizedSupportingKeywords: string[];
@@ -45,6 +57,16 @@ function normalizeKeyword(value: string) {
 
 function toTitleCase(value: string) {
     return value.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function createStableSeed(value: string) {
+    let hash = 0;
+
+    for (let index = 0; index < value.length; index += 1) {
+        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+    }
+
+    return hash;
 }
 
 function dedupeKeywords(primaryKeyword: string, supportingKeywords: string[]) {
@@ -228,6 +250,14 @@ function sanitizeGeneratedMarkdown(markdown: string, context: KeywordContext) {
         .trim();
 }
 
+function pickVariant<T>(variants: T[], seed: number) {
+    if (variants.length === 0) {
+        throw new Error('pickVariant requires at least one variant.');
+    }
+
+    return variants[seed % variants.length];
+}
+
 function sanitizeArticleData(
     parsedData: ArticleData,
     fallbackTitle: string,
@@ -255,8 +285,15 @@ function buildFallbackBlogDraft(
     location: string,
     businessName: string,
     industry: string,
+    regenerationSeed?: string,
 ): KeywordTargetedBlogDraft {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
+    const fallbackSeed = createStableSeed([
+        context.normalizedPrimaryKeyword,
+        location,
+        industry,
+        regenerationSeed || '',
+    ].join('|'));
     const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: What ${location} Customers Should Know`;
     const excerpt = `${businessName} created this guide to help property owners understand ${context.serviceTopic} in ${location}, including what the work involves, what affects the result, and what to ask before hiring a contractor.`;
     const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
@@ -269,7 +306,7 @@ function buildFallbackBlogDraft(
 
 ${toTitleCase(context.serviceTopic)} usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
-For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property.
+For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed)}
 
 ## When It Makes Sense To Bring In A Contractor
 
@@ -305,7 +342,7 @@ That is why the most useful contractor conversations are practical, not promotio
 
 ## Call To Action
 
-If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense.
+If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense. ${pickVariant(FALLBACK_CTA_VARIANTS, fallbackSeed + 1)}
 `.trim();
 
     return {
@@ -395,6 +432,7 @@ export async function generateKeywordTargetedBlogArticle(
     location: string,
     businessName: string,
     industry: string,
+    regenerationSeed?: string,
 ): Promise<KeywordTargetedBlogDraft> {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const fallbackKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
@@ -406,6 +444,7 @@ export async function generateKeywordTargetedBlogArticle(
             location,
             businessName,
             industry,
+            regenerationSeed,
         );
     }
 
@@ -429,6 +468,7 @@ Context for the article:
 - Local angle: ${context.localAngle}
 - Questions that should be answered:
 ${context.readerQuestions.map((question) => `  - ${question}`).join('\n')}
+- Regeneration hint: ${regenerationSeed || 'initial-draft'}
 
 Requirements:
 1. The article must be genuinely useful to a property owner or property decision-maker.
@@ -450,6 +490,7 @@ Requirements:
 13. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
 14. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
 15. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
+16. If this is a regeneration request, produce a meaningfully fresh draft with different section phrasing, examples, and transitions while keeping the same topic and usefulness level.
 
 Quality bar:
 - The article should still be useful if all related topics were removed.
@@ -492,6 +533,7 @@ Return valid JSON only:
                 location,
                 businessName,
                 industry,
+                regenerationSeed,
             );
         }
 
@@ -524,6 +566,7 @@ Return valid JSON only:
             location,
             businessName,
             industry,
+            regenerationSeed,
         );
     }
 }
