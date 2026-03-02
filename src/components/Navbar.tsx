@@ -31,9 +31,6 @@ export function Navbar() {
                         <Link href="/#pricing" className="text-gray-300 hover:text-white font-medium transition-colors">
                             Pricing
                         </Link>
-                        <Link href="/#testimonials" className="text-gray-300 hover:text-white font-medium transition-colors">
-                            Testimonials
-                        </Link>
                         <Link href="/signup?mode=signin" className="text-gray-300 hover:text-white font-medium transition-colors flex items-center gap-1">
                             CRM Login
                         </Link>
@@ -44,10 +41,10 @@ export function Navbar() {
                             Resources
                         </Link>
                         <Link
-                            href="/demo"
+                            href="/signup"
                             className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
                         >
-                            Book Demo
+                            Login / Signup
                         </Link>
                     </div>
 
@@ -81,13 +78,6 @@ export function Navbar() {
                         Pricing
                     </Link>
                     <Link
-                        href="/#testimonials"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
-                    >
-                        Testimonials
-                    </Link>
-                    <Link
                         href="/signup?mode=signin"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block text-gray-300 hover:text-white font-medium text-lg transition-colors border-b border-white/5 pb-3"
@@ -109,11 +99,11 @@ export function Navbar() {
                         Resources
                     </Link>
                     <Link
-                        href="/demo"
+                        href="/signup"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
                     >
-                        Book Demo
+                        Login / Signup
                     </Link>
                 </div>
             )}
