@@ -5,21 +5,7 @@ import Link from 'next/link';
 import { Building2, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Send, Sparkles, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createLead } from '@/app/actions/crm';
-
-type BusinessLead = {
-    id: string;
-    name: string;
-    industry: string;
-    zipCode: string;
-    city: string;
-    address: string;
-    phone: string;
-    email: string;
-    website: string;
-    contactName: string;
-    employeeRange: string;
-    sourceLabel: string;
-};
+import { searchBusinessesByZip, type BusinessFinderLead } from '@/app/actions/businessFinder';
 
 const industryOptions = [
     'Roofing',
@@ -32,57 +18,8 @@ const industryOptions = [
     'Pest Control',
 ];
 
-const sourceOptions = ['Google Maps', 'Yelp', 'Chamber', 'Trade Directories'];
-
-const cityByZip: Record<string, string> = {
-    '75201': 'Dallas, TX',
-    '77002': 'Houston, TX',
-    '60601': 'Chicago, IL',
-    '33130': 'Miami, FL',
-    '85004': 'Phoenix, AZ',
-};
-
-const firstWords = ['Atlas', 'Summit', 'BlueLine', 'Northstar', 'Prime', 'Beacon', 'Ironwood', 'Elevate', 'Civic', 'TruePoint'];
-const secondWords = ['Commercial', 'Service', 'Partners', 'Systems', 'Solutions', 'Works', 'Group', 'Pros', 'Network', 'Collective'];
-const employeeBands = ['1-10', '11-25', '26-50', '51-100'];
-const contacts = ['Alex Carter', 'Morgan Lee', 'Jordan Diaz', 'Taylor Brooks', 'Cameron Ross', 'Riley Patel', 'Avery Hall', 'Parker Reed'];
-
 function sanitizeIndustry(industry: string) {
     return industry.trim() || 'Home Services';
-}
-
-function formatWebsite(name: string) {
-    return `https://${name.toLowerCase().replace(/[^a-z0-9]+/g, '')}.com`;
-}
-
-function formatPhone(index: number) {
-    const base = 1000 + index * 37;
-    return `(214) 555-${String(base).slice(-4)}`;
-}
-
-function buildBusinessBatch(zipCode: string, industry: string, batchSize: number, sourceLabel: string): BusinessLead[] {
-    const safeIndustry = sanitizeIndustry(industry);
-    const city = cityByZip[zipCode] || 'Target Market';
-
-    return Array.from({ length: batchSize }, (_, index) => {
-        const name = `${firstWords[index % firstWords.length]} ${safeIndustry} ${secondWords[index % secondWords.length]}`;
-        const website = formatWebsite(name);
-
-        return {
-            id: `${zipCode}-${safeIndustry}-${index}`,
-            name,
-            industry: safeIndustry,
-            zipCode,
-            city,
-            address: `${200 + index * 7} Market Street, ${city} ${zipCode}`,
-            phone: formatPhone(index),
-            email: `hello@${website.replace('https://', '')}`,
-            website,
-            contactName: contacts[index % contacts.length],
-            employeeRange: employeeBands[index % employeeBands.length],
-            sourceLabel,
-        };
-    });
 }
 
 export function BusinessFinderClient({
@@ -95,14 +32,15 @@ export function BusinessFinderClient({
     const [zipCode, setZipCode] = useState('75201');
     const [industry, setIndustry] = useState(sanitizeIndustry(defaultIndustry));
     const [batchSize, setBatchSize] = useState(15);
-    const [sourceLabel, setSourceLabel] = useState(sourceOptions[0]);
+    const [sourceLabel, setSourceLabel] = useState('Yellow Pages');
     const [isLoading, setIsLoading] = useState(false);
-    const [results, setResults] = useState<BusinessLead[]>([]);
+    const [results, setResults] = useState<BusinessFinderLead[]>([]);
     const [sentIds, setSentIds] = useState<string[]>([]);
     const [error, setError] = useState('');
-    const [statusMessage, setStatusMessage] = useState('Run a batch search to populate your lead list.');
+    const [statusMessage, setStatusMessage] = useState('Run a live directory search to populate your lead list.');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [isSendingAll, setIsSendingAll] = useState(false);
+
     const availableIndustries = useMemo(() => {
         const normalizedDefault = sanitizeIndustry(defaultIndustry);
         return industryOptions.includes(normalizedDefault)
@@ -118,18 +56,33 @@ export function BusinessFinderClient({
     const handleRunBatch = async () => {
         setIsLoading(true);
         setError('');
-        setStatusMessage('Scraping business directories and compiling contact records...');
+        setStatusMessage('Searching live directory listings and verifying postal codes...');
 
-        await new Promise((resolve) => setTimeout(resolve, 900));
+        const result = await searchBusinessesByZip(zipCode, industry, batchSize);
 
-        const nextResults = buildBusinessBatch(zipCode, industry, batchSize, sourceLabel);
-        setResults(nextResults);
+        if (!result.success) {
+            setResults([]);
+            setSentIds([]);
+            setError(result.error || 'Failed to search businesses.');
+            setStatusMessage('No live results were loaded.');
+            setIsLoading(false);
+            return;
+        }
+
+        setResults(result.leads);
         setSentIds([]);
-        setStatusMessage(`Loaded ${nextResults.length} business leads for ${sanitizeIndustry(industry)} in ${zipCode}.`);
+        setSourceLabel(result.sourceLabel || 'Yellow Pages');
+
+        if (result.leads.length === 0) {
+            setStatusMessage(`No exact ZIP matches were found for ${sanitizeIndustry(industry)} in ${zipCode}. Try a nearby ZIP or a broader industry term.`);
+        } else {
+            setStatusMessage(`Loaded ${result.leads.length} real businesses located in ZIP ${zipCode}.`);
+        }
+
         setIsLoading(false);
     };
 
-    const handleSendSingle = async (lead: BusinessLead) => {
+    const handleSendSingle = async (lead: BusinessFinderLead) => {
         setSendingId(lead.id);
         setError('');
 
@@ -188,7 +141,7 @@ export function BusinessFinderClient({
                 <div className="max-w-3xl">
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Business Finder</h1>
                     <p className="text-gray-400 font-light leading-7">
-                        Search by ZIP code and industry, pull a batch of business records, review contact details in a lead list,
+                        Search by ZIP code and industry, pull a live batch of business records, review contact details in a lead list,
                         and send selected companies directly into your Pipeline CRM.
                     </p>
                 </div>
@@ -220,7 +173,7 @@ export function BusinessFinderClient({
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-extrabold text-white">{results.length}</div>
-                        <p className="text-xs text-gray-500 mt-1">Businesses loaded into the lead list</p>
+                        <p className="text-xs text-gray-500 mt-1">Real businesses loaded into the lead list</p>
                     </CardContent>
                 </Card>
 
@@ -246,7 +199,7 @@ export function BusinessFinderClient({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-extrabold text-white">{sanitizeIndustry(industry)}</div>
-                        <p className="text-xs text-gray-500 mt-1">Current search vertical for batch generation</p>
+                        <p className="text-xs text-gray-500 mt-1">Current live search vertical</p>
                     </CardContent>
                 </Card>
 
@@ -316,26 +269,15 @@ export function BusinessFinderClient({
 
                         <div>
                             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Directory Source</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {sourceOptions.map((option) => (
-                                    <button
-                                        key={option}
-                                        type="button"
-                                        onClick={() => setSourceLabel(option)}
-                                        className={option === sourceLabel
-                                            ? 'px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm font-medium'
-                                            : 'px-3 py-2 rounded-lg bg-[#161616] border border-white/10 text-gray-400 text-sm font-medium hover:text-white'}
-                                    >
-                                        {option}
-                                    </button>
-                                ))}
+                            <div className="px-4 py-3 rounded-lg bg-[#161616] border border-white/10 text-sm font-medium text-gray-300">
+                                {sourceLabel} (live)
                             </div>
                         </div>
 
                         <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 mb-2">First Pass Layout</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 mb-2">Live ZIP Match</p>
                             <p className="text-sm text-gray-300 leading-6">
-                                This page is set up as the product surface for batch business discovery. The UI flow is ready for a real scraper service to replace the generated batch data.
+                                This search scrapes live Yellow Pages results and only keeps businesses whose listed postal code exactly matches the ZIP code you entered.
                             </p>
                         </div>
 
@@ -355,7 +297,7 @@ export function BusinessFinderClient({
                             className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:bg-blue-500 disabled:opacity-60"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                            {isLoading ? 'Running Batch Search...' : 'Run Batch Search'}
+                            {isLoading ? 'Running Live Search...' : 'Run Live Search'}
                         </button>
                     </CardContent>
                 </Card>
@@ -384,7 +326,7 @@ export function BusinessFinderClient({
                                         <td colSpan={5} className="px-6 py-16 text-center">
                                             <div className="max-w-md mx-auto">
                                                 <p className="text-base text-gray-300 mb-2">No business leads loaded yet.</p>
-                                                <p className="text-sm text-gray-500">Choose a ZIP code and industry, then run a batch search to fill this lead list.</p>
+                                                <p className="text-sm text-gray-500">Choose a ZIP code and industry, then run a live search to fill this lead list.</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -392,33 +334,32 @@ export function BusinessFinderClient({
 
                                 {results.map((lead) => {
                                     const isSent = sentIds.includes(lead.id);
+                                    const destinationUrl = lead.website || lead.listingUrl;
 
                                     return (
                                         <tr key={lead.id} className="hover:bg-[#161616] transition-colors align-top">
                                             <td className="px-6 py-5">
                                                 <div className="font-semibold text-gray-100">{lead.name}</div>
-                                                <div className="text-xs text-gray-500 mt-2">{lead.industry} · {lead.employeeRange} employees</div>
-                                                <a
-                                                    href={lead.website}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mt-3"
-                                                >
-                                                    <Globe className="w-3.5 h-3.5" />
-                                                    {lead.website.replace('https://', '')}
-                                                    <ExternalLink className="w-3 h-3" />
-                                                </a>
+                                                <div className="text-xs text-gray-500 mt-2">{lead.industry}</div>
+                                                {destinationUrl && (
+                                                    <a
+                                                        href={destinationUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mt-3"
+                                                    >
+                                                        <Globe className="w-3.5 h-3.5" />
+                                                        {destinationUrl.replace('https://', '')}
+                                                        <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                )}
                                             </td>
                                             <td className="px-6 py-5">
-                                                <div className="flex items-center gap-2 text-gray-200">
-                                                    <Users className="w-4 h-4 text-gray-500" />
-                                                    {lead.contactName}
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-3">
+                                                <div className="flex items-center gap-2 mt-1">
                                                     <Phone className="w-4 h-4 text-gray-500" />
-                                                    <span className="font-mono text-gray-300">{lead.phone}</span>
+                                                    <span className="font-mono text-gray-300">{lead.phone || 'No phone listed'}</span>
                                                 </div>
-                                                <div className="mt-3 text-xs text-gray-400">{lead.email}</div>
+                                                <div className="mt-3 text-xs text-gray-500">Verified from live directory result</div>
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-start gap-2 text-gray-300">
