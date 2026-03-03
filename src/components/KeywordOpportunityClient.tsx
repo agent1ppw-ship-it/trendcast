@@ -467,7 +467,7 @@ export function KeywordOpportunityClient({
 
                     <Card className="border-white/5 bg-[#111] shadow-md">
                         <CardHeader className="border-b border-white/5 pb-4">
-                            <CardTitle className="text-lg font-semibold text-white">Blog Draft Generator</CardTitle>
+                            <CardTitle className="text-lg font-semibold text-white">Blog Draft Generator (Beta)</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-5 pt-6">
                             <div className="rounded-xl border border-white/5 bg-[#161616] px-4 py-4">
@@ -546,7 +546,7 @@ export function KeywordOpportunityClient({
                                             ))}
                                         </div>
                                         <p className="mt-4 text-xs text-gray-500">
-                                            Source: {blogDraft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
+                                            Source: {blogDraft.generatorVersion === 'legacy' ? 'Legacy Draft' : 'LLM Beta'}
                                         </p>
                                         <p className="mt-1 text-xs text-gray-500">
                                             Generator Version: {blogDraft.generatorVersion}

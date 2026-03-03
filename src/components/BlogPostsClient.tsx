@@ -63,7 +63,7 @@ export function BlogPostsClient() {
     return (
         <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
             <div className="mb-10">
-                <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">Blog Posts</h1>
+                <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">Blog Posts (Beta)</h1>
                 <p className="font-light text-gray-400">
                     Review the latest keyword-targeted blog draft generated from the Keyword Opportunities tool.
                 </p>
@@ -127,7 +127,7 @@ export function BlogPostsClient() {
                                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Source</div>
                                 <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-300">
                                     <FileText className="h-3.5 w-3.5" />
-                                    {draft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
+                                    {draft.generatorVersion === 'legacy' ? 'Legacy Draft' : 'LLM Beta'}
                                 </div>
                                 <div className="mt-2 text-xs text-gray-500">
                                     Generator Version: {draft.generatorVersion}

@@ -77,7 +77,7 @@ function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
         supportingKeywords,
         location: typeof candidate.location === 'string' ? candidate.location : '',
         industry: typeof candidate.industry === 'string' ? candidate.industry : '',
-        dataSource: candidate.dataSource === 'TEMPLATE_FALLBACK' ? 'TEMPLATE_FALLBACK' : 'AI_ESTIMATE',
+        dataSource: candidate.dataSource === 'LLM_BETA' ? 'LLM_BETA' : 'LLM_BETA',
         generatorVersion: typeof candidate.generatorVersion === 'string' ? candidate.generatorVersion : 'legacy',
     };
 }

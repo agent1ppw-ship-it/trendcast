@@ -17,11 +17,11 @@ export interface KeywordTargetedBlogDraft extends ArticleData {
     supportingKeywords: string[];
     location: string;
     industry: string;
-    dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
+    dataSource: 'LLM_BETA';
     generatorVersion: string;
 }
 
-export const BLOG_GENERATOR_VERSION = 'v4-style-blueprints';
+export const BLOG_GENERATOR_VERSION = 'v5-llm-only-beta';
 
 interface PreviousDraftContext {
     title: string;
@@ -1078,7 +1078,7 @@ If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${
         supportingKeywords: context.normalizedSupportingKeywords,
         location,
         industry,
-        dataSource: 'TEMPLATE_FALLBACK',
+        dataSource: 'LLM_BETA',
         generatorVersion: BLOG_GENERATOR_VERSION,
     };
 }
@@ -1166,15 +1166,7 @@ export async function generateKeywordTargetedBlogArticle(
     const { style } = selectStyleBlueprint(context, regenerationSeed);
 
     if (getBlogAiProvider() === 'fallback') {
-        return buildFallbackBlogDraft(
-            context.normalizedPrimaryKeyword,
-            context.normalizedSupportingKeywords,
-            location,
-            businessName,
-            industry,
-            regenerationSeed,
-            previousDraft,
-        );
+        throw new Error('Blog generator beta requires a configured language model. Add OPENAI_API_KEY or ANTHROPIC_API_KEY.');
     }
 
     const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
@@ -1238,19 +1230,11 @@ export async function generateKeywordTargetedBlogArticle(
             supportingKeywords: context.normalizedSupportingKeywords,
             location,
             industry,
-            dataSource: 'AI_ESTIMATE',
+            dataSource: 'LLM_BETA',
             generatorVersion: BLOG_GENERATOR_VERSION,
         };
     } catch (error) {
         console.error('Failed to generate keyword-targeted blog article:', error);
-        return buildFallbackBlogDraft(
-            context.normalizedPrimaryKeyword,
-            context.normalizedSupportingKeywords,
-            location,
-            businessName,
-            industry,
-            regenerationSeed,
-            previousDraft,
-        );
+        throw new Error(error instanceof Error ? error.message : 'Blog generator beta failed to get a valid LLM response.');
     }
 }
