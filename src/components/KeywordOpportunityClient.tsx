@@ -474,8 +474,8 @@ export function KeywordOpportunityClient({
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
-                                        <div className="prose prose-invert prose-lg mx-auto max-w-3xl text-center prose-headings:text-center prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-6 prose-h3:mt-10 prose-h3:mb-5 prose-p:my-8 prose-p:leading-[2] prose-strong:text-white prose-ul:my-10 prose-ul:list-none prose-ul:pl-0 prose-ol:my-10 prose-ol:pl-0 prose-li:my-5 prose-li:text-gray-300 prose-p:text-gray-300">
+                                    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">
+                                        <div className="prose prose-invert prose-lg mx-auto w-full max-w-3xl break-words text-center prose-headings:break-words prose-headings:text-center prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-6 prose-h3:mt-10 prose-h3:mb-5 prose-p:my-8 prose-p:break-words prose-p:leading-[2] prose-strong:text-white prose-ul:my-10 prose-ul:list-none prose-ul:pl-0 prose-ol:my-10 prose-ol:pl-0 prose-li:my-5 prose-li:break-words prose-li:text-gray-300 prose-p:text-gray-300">
                                             <ReactMarkdown components={{ img: () => null }}>{blogDraft.contentMarkdown}</ReactMarkdown>
                                         </div>
                                     </div>
