@@ -289,7 +289,7 @@ export async function sendMailCampaign(campaignId: string) {
         let recipientZip = localParsed.zip || null;
         let lobVerificationId: string | null = null;
 
-        if (recipient && mode === 'live') {
+        if (recipient && mode === 'live' && lobEnvironment === 'live') {
             try {
                 const verification = await verifyAddressWithLob(recipient);
                 deliverable = verification.deliverable;
@@ -312,6 +312,7 @@ export async function sendMailCampaign(campaignId: string) {
                 lobId: lobVerificationId,
                 metadata: {
                     mode,
+                    lobEnvironment,
                 } as Prisma.InputJsonValue,
             },
         });
