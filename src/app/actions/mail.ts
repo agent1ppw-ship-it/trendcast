@@ -250,6 +250,7 @@ export async function sendMailCampaign(campaignId: string) {
     let failedCount = 0;
     let lobCreatedCount = 0;
     const lobErrors: string[] = [];
+    const skippedAddressErrors: string[] = [];
 
     await prisma.mailOrder.deleteMany({
         where: {
@@ -261,6 +262,7 @@ export async function sendMailCampaign(campaignId: string) {
     for (const lead of leads) {
         if (!lead.address) {
             failedCount += 1;
+            skippedAddressErrors.push(`Lead "${lead.name}" is missing an address.`);
             await prisma.mailOrder.create({
                 data: {
                     orgId,
@@ -284,6 +286,9 @@ export async function sendMailCampaign(campaignId: string) {
 
         const localParsed = parseAddressString(lead.address);
         const recipient = buildRecipientAddress(mergeLead);
+        if (!recipient) {
+            skippedAddressErrors.push(`Lead "${lead.name}" does not have a mail-ready address: ${lead.address}`);
+        }
 
         let deliverable = !!recipient;
         let standardizedAddress = lead.address;
@@ -440,6 +445,8 @@ export async function sendMailCampaign(campaignId: string) {
             lobEnvironment,
             error: lobErrors[0]
                 ? `Lob rejected this campaign: ${lobErrors[0]}`
+                : skippedAddressErrors[0]
+                    ? skippedAddressErrors[0]
                 : 'Lob did not accept any mail pieces for this campaign. Check the sender profile, recipient addresses, and Lob account environment.',
         };
     }

@@ -27,6 +27,59 @@ export type SenderProfile = {
     zip?: string | null;
 };
 
+const STATE_ABBREVIATIONS: Record<string, string> = {
+    alabama: 'AL',
+    alaska: 'AK',
+    arizona: 'AZ',
+    arkansas: 'AR',
+    california: 'CA',
+    colorado: 'CO',
+    connecticut: 'CT',
+    delaware: 'DE',
+    florida: 'FL',
+    georgia: 'GA',
+    hawaii: 'HI',
+    idaho: 'ID',
+    illinois: 'IL',
+    indiana: 'IN',
+    iowa: 'IA',
+    kansas: 'KS',
+    kentucky: 'KY',
+    louisiana: 'LA',
+    maine: 'ME',
+    maryland: 'MD',
+    massachusetts: 'MA',
+    michigan: 'MI',
+    minnesota: 'MN',
+    mississippi: 'MS',
+    missouri: 'MO',
+    montana: 'MT',
+    nebraska: 'NE',
+    nevada: 'NV',
+    'new hampshire': 'NH',
+    'new jersey': 'NJ',
+    'new mexico': 'NM',
+    'new york': 'NY',
+    'north carolina': 'NC',
+    'north dakota': 'ND',
+    ohio: 'OH',
+    oklahoma: 'OK',
+    oregon: 'OR',
+    pennsylvania: 'PA',
+    'rhode island': 'RI',
+    'south carolina': 'SC',
+    'south dakota': 'SD',
+    tennessee: 'TN',
+    texas: 'TX',
+    utah: 'UT',
+    vermont: 'VT',
+    virginia: 'VA',
+    washington: 'WA',
+    'west virginia': 'WV',
+    wisconsin: 'WI',
+    wyoming: 'WY',
+};
+
 type LobVerificationResponse = {
     id?: string;
     primary_line?: string;
@@ -183,7 +236,7 @@ export function parseAddressString(address: string | null | undefined) {
     const match = normalized.match(/^(.*?)(?:,\s*([^,]+))?(?:,\s*([A-Z]{2}))?\s+(\d{5}(?:-\d{4})?)?$/i);
 
     if (!match) {
-        return { line1: normalized, city: '', state: '', zip: '' };
+        return parseOpenStreetMapAddress(normalized);
     }
 
     return {
@@ -192,6 +245,59 @@ export function parseAddressString(address: string | null | undefined) {
         state: ((match[3] || '').trim().toUpperCase()),
         zip: (match[4] || '').trim(),
     };
+}
+
+function parseOpenStreetMapAddress(normalized: string) {
+    const parts = normalized
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .filter((part) => part.toLowerCase() !== 'united states');
+
+    if (parts.length < 4) {
+        return { line1: normalized, city: '', state: '', zip: '' };
+    }
+
+    const zip = /^\d{5}(?:-\d{4})?$/.test(parts[parts.length - 1]) ? parts.pop() || '' : '';
+    const stateToken = parts.pop() || '';
+    const state = normalizeStateToken(stateToken);
+
+    // Drop county/admin-area token if present.
+    if (parts.length > 0 && /county|parish|borough|municipio|census area/i.test(parts[parts.length - 1])) {
+        parts.pop();
+    }
+
+    const city = parts.pop() || '';
+    const streetParts = parts.filter((part) => !looksLikeBusinessName(part));
+    let line1 = streetParts.join(' ');
+
+    if (streetParts.length >= 2 && /^\d+[A-Z\-]*$/i.test(streetParts[0])) {
+        line1 = `${streetParts[0]} ${streetParts.slice(1).join(' ')}`.trim();
+    }
+
+    if (!line1 && parts.length >= 2 && /^\d+[A-Z\-]*$/i.test(parts[0])) {
+        line1 = `${parts[0]} ${parts[1]}`.trim();
+    }
+
+    return {
+        line1,
+        city,
+        state,
+        zip,
+    };
+}
+
+function normalizeStateToken(token: string) {
+    const cleaned = token.trim();
+    if (/^[A-Z]{2}$/i.test(cleaned)) {
+        return cleaned.toUpperCase();
+    }
+
+    return STATE_ABBREVIATIONS[cleaned.toLowerCase()] || cleaned.toUpperCase();
+}
+
+function looksLikeBusinessName(token: string) {
+    return /llc|inc|landscaping|roofing|plumbing|hvac|services|service|company|contractor|care/i.test(token);
 }
 
 export function buildRecipientAddress(lead: MergeLead): RecipientAddress | null {
