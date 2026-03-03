@@ -429,6 +429,7 @@ export async function createLobPostcard(options: {
         back: options.backHtml,
         size: options.size.toLowerCase(),
         mail_type: options.mailType === 'FIRST_CLASS' ? 'usps_first_class' : 'usps_standard',
+        use_type: 'marketing',
     });
 
     return {
