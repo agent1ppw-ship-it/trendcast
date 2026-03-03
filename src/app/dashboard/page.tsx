@@ -1,5 +1,18 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ArrowUpRight, Users, DollarSign, Activity, Percent, Zap } from 'lucide-react';
+import {
+    Activity,
+    BarChart3,
+    Building2,
+    Clapperboard,
+    DollarSign,
+    FileText,
+    Layers,
+    Percent,
+    Search,
+    Target,
+    Users,
+    Zap,
+} from 'lucide-react';
 import Link from 'next/link';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
@@ -37,12 +50,53 @@ export default async function DashboardOverview({
     const activeUserName = org?.users[0]?.name || org?.users[0]?.email?.split('@')[0] || 'User';
     const totalLeads = org?._count?.leads || 0;
     const wonLeads = org?.leads?.length || 0;
+    const mobileQuickActions = [
+        { href: '/dashboard/leads', label: 'Lead Scraper', icon: Search },
+        { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
+        { href: '/dashboard/keywords', label: 'Keywords', icon: Target },
+        { href: '/dashboard/blog-posts', label: 'Blog Posts', icon: FileText },
+        { href: '/dashboard/crm', label: 'Pipeline CRM', icon: Layers },
+        { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+        { href: 'https://clipgenerator.ai', label: 'AI Video Suite', icon: Clapperboard, external: true },
+    ];
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
+        <div className="min-h-screen bg-[#0A0A0A] px-4 py-6 text-gray-100 md:p-8">
             <div className="mb-10">
                 <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Welcome back, {activeUserName}</h1>
                 <p className="text-gray-400 font-light">Here is an overview of your business performance today.</p>
+            </div>
+
+            <div className="mb-8 md:hidden">
+                <div className="rounded-[28px] border border-white/10 bg-[#111]/95 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.45)]">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-300">Quick Launch</p>
+                            <h2 className="mt-1 text-lg font-semibold text-white">Open a core workflow</h2>
+                        </div>
+                        <div className="rounded-full border border-white/10 bg-[#171717] px-3 py-1 text-[11px] font-medium text-gray-400">
+                            App Home
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        {mobileQuickActions.map(({ href, label, icon: Icon, external }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                target={external ? '_blank' : undefined}
+                                rel={external ? 'noreferrer noopener' : undefined}
+                                className="group rounded-2xl border border-white/8 bg-[#171717] p-4 transition-all hover:border-blue-400/30 hover:bg-[#1B1B1B]"
+                            >
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300 ring-1 ring-blue-500/20 transition-transform group-hover:scale-105">
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <div className="mt-4 text-sm font-semibold leading-5 text-white">{label}</div>
+                                <div className="mt-1 text-xs text-gray-500">Open</div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Top Metrics Row */}
@@ -158,7 +212,7 @@ export default async function DashboardOverview({
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-semibold text-gray-200">AI closed lead via Web Chat</h4>
-                                        <p className="text-xs text-gray-400 mt-1">"John Smith" confirmed pricing for driveway wash. Total value: <span className="text-green-400 font-medium">$450</span>.</p>
+                                        <p className="text-xs text-gray-400 mt-1">&ldquo;John Smith&rdquo; confirmed pricing for driveway wash. Total value: <span className="text-green-400 font-medium">$450</span>.</p>
                                         <span className="text-[10px] text-gray-500 mt-2 block">12 mins ago</span>
                                     </div>
                                 </div>
@@ -182,7 +236,7 @@ export default async function DashboardOverview({
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-semibold text-gray-200">Visual Estimate Uploaded</h4>
-                                        <p className="text-xs text-gray-400 mt-1">New SMS containing roof damage photo. Vision API classified as "SEVERE". Quoted bracket $1,500 - $3,000.</p>
+                                        <p className="text-xs text-gray-400 mt-1">New SMS containing roof damage photo. Vision API classified as &ldquo;SEVERE&rdquo;. Quoted bracket $1,500 - $3,000.</p>
                                         <span className="text-[10px] text-gray-500 mt-2 block">5 hours ago</span>
                                     </div>
                                 </div>
@@ -193,7 +247,7 @@ export default async function DashboardOverview({
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-semibold text-gray-200">New SEO Blog Published</h4>
-                                        <p className="text-xs text-gray-400 mt-1">"Why You Need Soft Washing in [City]" published and indexed.</p>
+                                        <p className="text-xs text-gray-400 mt-1">&ldquo;Why You Need Soft Washing in [City]&rdquo; published and indexed.</p>
                                         <span className="text-[10px] text-gray-500 mt-2 block">Yesterday</span>
                                     </div>
                                 </div>
