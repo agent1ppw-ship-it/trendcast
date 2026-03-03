@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useSyncExternalStore } from 'react';
-import { BarChart, Building2, FileText, Home, Layers, Settings, Target, Users } from 'lucide-react';
+import { BarChart, Building2, Clapperboard, FileText, Home, Layers, Mailbox, Settings, Target, Users } from 'lucide-react';
 import { hasUnreadBlogDraft, markBlogDraftAsViewed, subscribeToBlogDraftInbox } from '@/lib/blogDraftInbox';
 
 const navItems = [
@@ -11,8 +11,10 @@ const navItems = [
     { href: '/dashboard/crm', label: 'Pipeline CRM', icon: Layers },
     { href: '/dashboard/leads', label: 'Lead Scraper', icon: Users },
     { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
+    { href: '/dashboard/mail', label: 'Direct Mail', icon: Mailbox },
     { href: '/dashboard/keywords', label: 'Keyword Opportunities', icon: Target },
     { href: '/dashboard/blog-posts', label: 'Blog Posts', icon: FileText },
+    { href: 'https://clipgenerator.ai', label: 'AI Video Suite', icon: Clapperboard, external: true },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
@@ -33,7 +35,7 @@ export function DashboardSidebarNav() {
 
     return (
         <nav className="flex-1 px-4 py-6 space-y-1">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {navItems.map(({ href, label, icon: Icon, external }) => {
                 const isActive = pathname === href;
                 const showUnreadDot = href === '/dashboard/blog-posts' && hasUnreadDraft && !isActive;
 
@@ -41,6 +43,8 @@ export function DashboardSidebarNav() {
                     <Link
                         key={href}
                         href={href}
+                        target={external ? '_blank' : undefined}
+                        rel={external ? 'noreferrer noopener' : undefined}
                         className={isActive
                             ? 'flex items-center gap-3 px-3 py-2 bg-blue-500/10 text-blue-400 rounded-md font-medium border border-blue-500/20 shadow-inner'
                             : 'flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-[#1A1A1A] hover:text-white rounded-md font-medium transition-all group'}

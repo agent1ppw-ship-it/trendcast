@@ -7,6 +7,7 @@ import {
     DollarSign,
     FileText,
     Layers,
+    Mailbox,
     Percent,
     Search,
     Target,
@@ -53,6 +54,7 @@ export default async function DashboardOverview({
     const mobileQuickActions = [
         { href: '/dashboard/leads', label: 'Lead Scraper', icon: Search },
         { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
+        { href: '/dashboard/mail', label: 'Direct Mail', icon: Mailbox },
         { href: '/dashboard/keywords', label: 'Keywords', icon: Target },
         { href: '/dashboard/blog-posts', label: 'Blog Posts', icon: FileText },
         { href: '/dashboard/crm', label: 'Pipeline CRM', icon: Layers },

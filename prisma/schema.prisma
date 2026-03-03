@@ -22,6 +22,9 @@ model Organization {
   leads            Lead[]
   jobs             Job[]
   aiSettings       AiConfig?
+  mailTemplates    MailTemplate[]
+  mailCampaigns    MailCampaign[]
+  mailOrders       MailOrder[]
 }
 
 model User {
@@ -88,6 +91,8 @@ model Lead {
   status         String   @default("NEW") // NEW, CONTACTED, QUOTED, WON, LOST
   isRevealed     Boolean  @default(false)
   createdAt      DateTime @default(now())
+  mailOrders     MailOrder[]
+  addressVerifications AddressVerification[]
 }
 
 model AiConfig {
@@ -108,4 +113,93 @@ model Job {
   status         String   @default("PENDING") // PENDING, SCHEDULED, COMPLETED, INVOICED
   scheduledFor   DateTime?
   createdAt      DateTime @default(now())
+}
+
+model MailTemplate {
+  id             String        @id @default(uuid())
+  orgId          String
+  organization   Organization  @relation(fields: [orgId], references: [id])
+  name           String
+  type           String        @default("POSTCARD") // POSTCARD, LETTER
+  size           String        @default("4X6") // 4X6, 6X9, 8_5X11
+  frontHeadline  String
+  frontBody      String        @db.Text
+  backHeadline   String?
+  backBody       String        @db.Text
+  ctaText        String?
+  accentColor    String        @default("#2563EB")
+  imageUrl       String?
+  isDefault      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  campaigns      MailCampaign[]
+}
+
+model MailCampaign {
+  id                  String        @id @default(uuid())
+  orgId               String
+  organization        Organization  @relation(fields: [orgId], references: [id])
+  templateId          String
+  template            MailTemplate  @relation(fields: [templateId], references: [id])
+  name                String
+  targetType          String        @default("CUSTOM") // ALL_LEADS, CUSTOM, SEGMENT
+  targetLeadIds       Json
+  status              String        @default("DRAFT") // DRAFT, SCHEDULED, READY_TO_SEND, SENDING, COMPLETED, CANCELLED, FAILED
+  mailType            String        @default("POSTCARD")
+  mailSize            String        @default("4X6")
+  postageClass        String        @default("MARKETING")
+  scheduledAt         DateTime?
+  sentCount           Int           @default(0)
+  failedCount         Int           @default(0)
+  costCents           Int           @default(0)
+  stripeCheckoutId    String?
+  stripePaymentStatus String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  orders              MailOrder[]
+}
+
+model MailOrder {
+  id                String              @id @default(uuid())
+  orgId             String
+  organization      Organization        @relation(fields: [orgId], references: [id])
+  campaignId        String
+  campaign          MailCampaign        @relation(fields: [campaignId], references: [id])
+  leadId            String
+  lead              Lead                @relation(fields: [leadId], references: [id])
+  lobObjectId       String?
+  lobTrackingId     String?
+  recipientName     String
+  recipientAddress  String
+  recipientCity     String?
+  recipientState    String?
+  recipientZip      String?
+  status            String              @default("PENDING") // PENDING, VERIFIED, QUEUED, PRINTING, MAILED, DELIVERED, FAILED, SKIPPED
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  costCents         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  trackingEvents    MailTrackingEvent[]
+}
+
+model MailTrackingEvent {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       MailOrder @relation(fields: [orderId], references: [id])
+  eventType   String
+  eventData   Json?
+  receivedAt  DateTime  @default(now())
+}
+
+model AddressVerification {
+  id                  String   @id @default(uuid())
+  leadId              String
+  lead                Lead     @relation(fields: [leadId], references: [id])
+  originalAddress     String
+  standardizedAddress String?
+  deliverable         Boolean  @default(false)
+  lobId               String?
+  metadata            Json?
+  createdAt           DateTime @default(now())
 }

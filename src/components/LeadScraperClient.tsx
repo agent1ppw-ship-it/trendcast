@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, Play, Pause, Database, Download, CheckCircle2, Clock, RefreshCw, Send, Activity, Eye, EyeOff, Lock, Zap } from 'lucide-react';
+import { Search, Play, Database, CheckCircle2, Clock, RefreshCw, Send, Activity, Lock, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startScraperJob, syncAllExtractedToCrm, syncLeadToCrm, getScraperStatus, cancelScraperJob } from '@/app/actions/scraper';
@@ -117,6 +117,12 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
                     <p className="text-gray-400 font-light text-sm">Automate stealth extraction of newly sold or listed properties via Zillow, and automatically enrich with Skip Tracing.</p>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={() => router.push('/dashboard/mail')}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] text-gray-300 rounded-lg hover:bg-[#222] border border-white/5 transition-all text-sm font-medium"
+                    >
+                        <Send className="w-4 h-4" /> Direct Mail
+                    </button>
                     <button
                         onClick={() => router.refresh()}
                         className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] text-gray-300 rounded-lg hover:bg-[#222] border border-white/5 transition-all text-sm font-medium"
