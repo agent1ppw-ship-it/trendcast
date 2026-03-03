@@ -26,6 +26,33 @@ interface PreviousDraftContext {
     contentMarkdown: string;
 }
 
+type BlogAiProvider = 'anthropic' | 'openai' | 'fallback';
+
+interface ArticleSectionPlan {
+    heading: string;
+    purpose: string;
+    mustInclude: string[];
+}
+
+interface ArticlePlan {
+    angleTitle: string;
+    targetReader: string;
+    coreProblem: string;
+    serviceExplanation: string;
+    localFactors: string[];
+    sections: ArticleSectionPlan[];
+    questionsToAnswer: string[];
+    phrasesToAvoid: string[];
+    ctaStrategy: string;
+}
+
+interface JsonGenerationOptions {
+    system: string;
+    prompt: string;
+    temperature?: number;
+    maxTokens?: number;
+}
+
 const FALLBACK_INTRO_VARIANTS = [
     'A strong contractor should explain the work in plain language before talking about upgrades or add-ons.',
     'The most useful draft starts by clarifying the job itself, not by jumping straight into promotional language.',
@@ -197,6 +224,150 @@ function slugify(value: string) {
 
 function normalizeKeyword(value: string) {
     return value.replace(/\s+/g, ' ').trim();
+}
+
+function getBlogAiProvider(): BlogAiProvider {
+    const preference = (process.env.BLOG_AI_PROVIDER || 'auto').toLowerCase();
+
+    if (preference === 'anthropic') {
+        return process.env.ANTHROPIC_API_KEY ? 'anthropic' : process.env.OPENAI_API_KEY ? 'openai' : 'fallback';
+    }
+
+    if (preference === 'openai') {
+        return process.env.OPENAI_API_KEY ? 'openai' : process.env.ANTHROPIC_API_KEY ? 'anthropic' : 'fallback';
+    }
+
+    if (process.env.ANTHROPIC_API_KEY) {
+        return 'anthropic';
+    }
+
+    if (process.env.OPENAI_API_KEY) {
+        return 'openai';
+    }
+
+    return 'fallback';
+}
+
+function getOpenAiBlogModel() {
+    return process.env.OPENAI_BLOG_MODEL || 'gpt-5.2';
+}
+
+function getAnthropicBlogModel() {
+    return process.env.ANTHROPIC_BLOG_MODEL || 'claude-sonnet-4-20250514';
+}
+
+function extractJsonObject(raw: string) {
+    const trimmed = raw.trim();
+    const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fencedMatch?.[1]?.trim() || trimmed;
+    const objectStart = candidate.indexOf('{');
+    const objectEnd = candidate.lastIndexOf('}');
+
+    if (objectStart === -1 || objectEnd === -1 || objectEnd <= objectStart) {
+        throw new Error('Model response did not contain a valid JSON object.');
+    }
+
+    return candidate.slice(objectStart, objectEnd + 1);
+}
+
+async function generateJsonWithAnthropic<T>({
+    system,
+    prompt,
+    temperature = 0.7,
+    maxTokens = 5000,
+}: JsonGenerationOptions): Promise<T> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY is not configured.');
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: getAnthropicBlogModel(),
+            max_tokens: maxTokens,
+            temperature,
+            system,
+            messages: [
+                {
+                    role: 'user',
+                    content: `${prompt}\n\nReturn valid JSON only. Do not wrap the JSON in markdown fences.`,
+                },
+            ],
+        }),
+        cache: 'no-store',
+    });
+
+    const raw = await response.text();
+
+    if (!response.ok) {
+        throw new Error(`Anthropic request failed (${response.status}): ${raw}`);
+    }
+
+    const parsed = JSON.parse(raw) as {
+        content?: Array<{ type?: string; text?: string }>;
+    };
+
+    const text = parsed.content
+        ?.filter((entry) => entry.type === 'text' && entry.text)
+        .map((entry) => entry.text)
+        .join('\n')
+        .trim();
+
+    if (!text) {
+        throw new Error('Anthropic returned an empty response.');
+    }
+
+    return JSON.parse(extractJsonObject(text)) as T;
+}
+
+async function generateJsonWithOpenAi<T>({
+    system,
+    prompt,
+    temperature = 0.7,
+}: JsonGenerationOptions): Promise<T> {
+    if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY is not configured.');
+    }
+
+    const completion = await openai.chat.completions.create({
+        model: getOpenAiBlogModel(),
+        messages: [
+            { role: 'system', content: system },
+            {
+                role: 'user',
+                content: `${prompt}\n\nReturn valid JSON only. Do not wrap the JSON in markdown fences.`,
+            },
+        ],
+        response_format: { type: 'json_object' },
+        temperature,
+    });
+
+    const responseContent = completion.choices[0]?.message?.content;
+    if (!responseContent) {
+        throw new Error('OpenAI returned an empty response.');
+    }
+
+    return JSON.parse(extractJsonObject(responseContent)) as T;
+}
+
+async function generateJson<T>(options: JsonGenerationOptions): Promise<T> {
+    const provider = getBlogAiProvider();
+
+    if (provider === 'anthropic') {
+        return generateJsonWithAnthropic<T>(options);
+    }
+
+    if (provider === 'openai') {
+        return generateJsonWithOpenAi<T>(options);
+    }
+
+    throw new Error('No AI provider is configured for blog generation.');
 }
 
 function toTitleCase(value: string) {
@@ -531,6 +702,174 @@ function sanitizeArticleData(
     };
 }
 
+async function planKeywordTargetedArticle(
+    context: KeywordContext,
+    location: string,
+    industry: string,
+    angle: FocusAngle,
+    archetype: OutlineArchetype,
+    regenerationSeed?: string,
+    previousDraft?: PreviousDraftContext,
+) {
+    return generateJson<ArticlePlan>({
+        system: 'You are an editorial strategist for local service companies. Build article plans that feel like strong human editorial outlines, not SEO templates.',
+        prompt: `
+Plan a local service article before it is written.
+
+Inputs:
+- Industry: ${industry}
+- Location: ${location}
+- Primary topic: ${context.normalizedPrimaryKeyword}
+- Related topics:
+${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
+- Core service focus: ${context.serviceFocus}
+- Customer need: ${context.readerIntent}
+- Local angle: ${context.localAngle}
+- Regeneration angle: ${angle.description}
+- Outline family: ${archetype.name}
+- Draft variation seed: ${regenerationSeed || 'initial-draft'}
+${previousDraft ? `- Previous draft title to avoid echoing: ${previousDraft.title}\n- Previous draft excerpt to avoid echoing: ${previousDraft.excerpt}` : ''}
+
+Requirements:
+1. Build an outline around the real customer problem, not the keyword phrasing.
+2. Make the article feel specific, grounded, and useful for someone hiring or evaluating this service in ${location}.
+3. Pick a fresh angle that differs from the prior draft if one exists.
+4. Avoid formulaic SEO framing and avoid headings that sound like keyword-analysis language.
+5. Return 4 to 6 sections with distinct purposes.
+6. Include practical local considerations such as climate, property type, permitting, material performance, scheduling, access, or maintenance where relevant.
+7. The title angle should feel natural and editorial, not like a templated landing page.
+
+Return JSON with this shape:
+{
+  "angleTitle": "string",
+  "targetReader": "string",
+  "coreProblem": "string",
+  "serviceExplanation": "string",
+  "localFactors": ["string"],
+  "sections": [
+    {
+      "heading": "string",
+      "purpose": "string",
+      "mustInclude": ["string"]
+    }
+  ],
+  "questionsToAnswer": ["string"],
+  "phrasesToAvoid": ["string"],
+  "ctaStrategy": "string"
+}
+`.trim(),
+        temperature: 0.9,
+        maxTokens: 2200,
+    });
+}
+
+async function writeKeywordTargetedArticle(
+    plan: ArticlePlan,
+    context: KeywordContext,
+    location: string,
+    businessName: string,
+    industry: string,
+    previousDraft?: PreviousDraftContext,
+) {
+    return generateJson<ArticleData>({
+        system: 'You write local service articles that read like strong human editorial work. The article must help the customer understand the job, the decisions, and the tradeoffs in plain language.',
+        prompt: `
+Write a blog article using this article plan.
+
+Business:
+- Company name: ${businessName}
+- Industry: ${industry}
+- Location: ${location}
+
+Topic context:
+- Primary topic: ${context.normalizedPrimaryKeyword}
+- Related topics:
+${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
+- Service focus: ${context.serviceFocus}
+
+Approved plan:
+${JSON.stringify(plan, null, 2)}
+
+${previousDraft ? `Previous draft to avoid mirroring too closely:\n${JSON.stringify(previousDraft, null, 2)}` : ''}
+
+Requirements:
+1. Write a complete article that follows the plan but sounds natural, not procedural.
+2. The article should be useful even if the reader never notices the keyword targeting.
+3. Mention the primary topic early, then write naturally. Do not force every keyword phrase into every section.
+4. Do not discuss SEO, search intent, keywords, or what people mean when they search.
+5. Do not use stock headings like "What People Usually Mean..." or "Reader Intent".
+6. Use markdown with H2 and H3 subheadings, short 2 to 4 sentence paragraphs, and bullets only where they improve readability.
+7. Do not include images or image placeholders.
+8. The H1 is rendered outside the markdown body, so do not include an H1 in contentMarkdown.
+9. Keep the CTA near the end and make it practical, local, and calm.
+10. Target at least 900 words.
+
+Return JSON only:
+{
+  "title": "string",
+  "slug": "string",
+  "excerpt": "string",
+  "contentMarkdown": "string",
+  "seoKeywords": ["string"]
+}
+`.trim(),
+        temperature: 0.82,
+        maxTokens: 5200,
+    });
+}
+
+async function editKeywordTargetedArticle(
+    draft: ArticleData,
+    plan: ArticlePlan,
+    context: KeywordContext,
+    location: string,
+    businessName: string,
+    industry: string,
+) {
+    return generateJson<ArticleData>({
+        system: 'You are a senior editor rewriting AI-assisted drafts to sound natural, specific, and reader-first. Remove robotic phrasing, repetitive structure, and any meta language.',
+        prompt: `
+Edit this local service article so it reads like polished human-written editorial content.
+
+Business:
+- Company name: ${businessName}
+- Industry: ${industry}
+- Location: ${location}
+
+Topic context:
+- Primary topic: ${context.normalizedPrimaryKeyword}
+- Related topics:
+${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
+
+Editorial plan:
+${JSON.stringify(plan, null, 2)}
+
+Draft to edit:
+${JSON.stringify(draft, null, 2)}
+
+Edit rules:
+1. Improve natural phrasing and sentence flow.
+2. Remove anything that sounds like internal prompting, SEO analysis, or template boilerplate.
+3. Vary the paragraph rhythm and transitions so the article does not feel machine-generated.
+4. Keep the article logically complete and practically useful.
+5. Preserve markdown structure and keep paragraphs short.
+6. Keep the piece specific to ${location} where that adds value, but do not force the location into every paragraph.
+7. Keep the CTA local and reader-appropriate.
+
+Return JSON only:
+{
+  "title": "string",
+  "slug": "string",
+  "excerpt": "string",
+  "contentMarkdown": "string",
+  "seoKeywords": ["string"]
+}
+`.trim(),
+        temperature: 0.7,
+        maxTokens: 5200,
+    });
+}
+
 function buildFallbackBlogDraft(
     primaryKeyword: string,
     supportingKeywords: string[],
@@ -570,7 +909,7 @@ A contractor is most useful when they can help define scope before money is wast
 
 ## ${archetype.sectionHeadings[1]}
 
-    A useful proposal should explain more than the visual design. It should show how the work will function once it is built and what conditions on the property could change the plan. In this case, the most useful focus is ${angle.description}. ${archetype.sectionInstructions[1]}
+A useful proposal should explain more than the visual design. It should show how the work will function once it is built and which conditions on the property could change the plan. For most customers, the useful conversation is about ${angle.description}. ${archetype.sectionInstructions[1]}
 
 - The intended use of the space and how much traffic it will handle
 - Material options and what they mean for maintenance, lifespan, and appearance
@@ -694,7 +1033,7 @@ export async function generateKeywordTargetedBlogArticle(
     const { angle } = selectFocusAngle(context, regenerationSeed);
     const { archetype } = selectOutlineArchetype(context, regenerationSeed);
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (getBlogAiProvider() === 'fallback') {
         return buildFallbackBlogDraft(
             context.normalizedPrimaryKeyword,
             context.normalizedSupportingKeywords,
@@ -706,121 +1045,47 @@ export async function generateKeywordTargetedBlogArticle(
         );
     }
 
-    const prompt = `
-You are an expert local SEO copywriter for home service companies.
-
-Write a long-form blog draft for this primary topic:
-- Primary topic: ${context.normalizedPrimaryKeyword}
-
-Related topics that may be used only if they genuinely improve the article:
-${context.normalizedSupportingKeywords.map((keyword) => `- ${keyword}`).join('\n') || '- none'}
-
-Business:
-- Company name: ${businessName}
-- Industry: ${industry}
-- Service area: ${location}
-
-Context for the article:
-- Core service focus: ${context.serviceFocus}
-- Likely customer need: ${context.readerIntent}
-- Local angle: ${context.localAngle}
-- Fresh angle for this version: ${angle.description}
-- Outline archetype for this version: ${archetype.name}
-- Questions that should be answered:
-${context.readerQuestions.map((question) => `  - ${question}`).join('\n')}
-- Regeneration hint: ${regenerationSeed || 'initial-draft'}
-${previousDraft ? `- Previous draft title to avoid repeating: ${previousDraft.title}\n- Previous draft excerpt to avoid repeating: ${previousDraft.excerpt}` : ''}
-
-Requirements:
-1. The article must be genuinely useful to a property owner or property decision-maker.
-2. Prioritize practical explanation, clear service guidance, and complete thoughts over keyword coverage.
-3. Do not talk about "the search," "the query," "reader intent," SEO, or keywords inside the article body.
-4. Do not write headings like "What People Usually Mean When They Search..." or "The Reader Intent Behind This Search."
-5. Open by explaining the service itself, what it includes, and why it matters in practical terms.
-6. Explain service scope, planning factors, pricing drivers, common mistakes, and how to evaluate a contractor where relevant.
-7. Use related topics only when they improve the explanation. If they do not fit naturally, leave them out.
-8. Avoid filler, vague statements, and generic marketing language.
-9. Write at least 900 words.
-10. Use markdown with proper blog formatting:
-   - H2 and H3 subheadings
-   - short paragraphs of 2 to 4 sentences
-   - bullet points where useful
-   - no dense text walls
-11. Make the primary topic clear in the title, excerpt, and early body copy, but keep the prose natural.
-12. Keep the tone educational first and sales-oriented second.
-13. Do not include images, markdown image tags, or placeholder image URLs anywhere in the content.
-14. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
-15. End with a local CTA that naturally positions ${businessName} as a provider in ${location}.
-16. If this is a regeneration request, produce a meaningfully fresh draft with different section phrasing, examples, and transitions while keeping the same topic and usefulness level.
-17. ${angle.promptInstruction}
-18. Do not simply paraphrase the prior article. Make the fresh angle drive the structure and examples.
-19. Keep the keyword set relevant, but let the new angle determine the article's central topic.
-20. Use this structure family for the article:
-   - Opening heading: ${archetype.openingHeading}
-   - Opening goal: ${archetype.openingInstruction}
-   - Mid-section headings should follow this family:
-     - ${archetype.sectionHeadings[0]}: ${archetype.sectionInstructions[0]}
-     - ${archetype.sectionHeadings[1]}: ${archetype.sectionInstructions[1]}
-     - ${archetype.sectionHeadings[2]}: ${archetype.sectionInstructions[2]}
-   - CTA goal: ${archetype.ctaInstruction}
-21. Do not reuse the same canned headings across drafts unless they are the best fit. Let the archetype drive the structure for this version.
-22. Never use stock lead-ins such as:
-   - "What People Usually Mean When They Search..."
-   - "The Reader Intent Behind This Search"
-   - "When people search for..."
-   - "In this case, the real topic is..."
-   - "This search usually signals..."
-
-Quality bar:
-- The article should still be useful if all related topics were removed.
-- Every section should answer a real customer question or explain a real project consideration.
-- The piece should read like a service guide, not an SEO exercise.
-- The new version should feel like a different article, not a rewrite of the same outline.
-- The outline should feel intentional and specific to this version, not like a default template reused every time.
-
-Return valid JSON only:
-{
-  "title": "string",
-  "slug": "string",
-  "excerpt": "string",
-  "contentMarkdown": "string",
-  "seoKeywords": ["string"]
-}
-`;
-
     const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
     const fallbackSlug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
     const fallbackExcerpt = `${businessName} explains what local customers should know about ${buildReadableServiceLabel(context, industry)} in ${location}, with a focus on ${angle.description}.`;
 
     try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You write practical, high-conviction local service articles that help real customers make better decisions. You never force keywords or meta SEO phrasing at the expense of clarity.',
-                },
-                { role: 'user', content: prompt },
-            ],
-            response_format: { type: 'json_object' },
-            temperature: 0.55,
-        });
+        const plan = await planKeywordTargetedArticle(
+            context,
+            location,
+            industry,
+            angle,
+            archetype,
+            regenerationSeed,
+            previousDraft,
+        );
 
-        const responseContent = completion.choices[0].message.content;
-        if (!responseContent) {
-            return buildFallbackBlogDraft(
-                context.normalizedPrimaryKeyword,
-                context.normalizedSupportingKeywords,
+        const rawDraft = await writeKeywordTargetedArticle(
+            plan,
+            context,
+            location,
+            businessName,
+            industry,
+            previousDraft,
+        );
+
+        let editedDraft = rawDraft;
+
+        try {
+            editedDraft = await editKeywordTargetedArticle(
+                rawDraft,
+                plan,
+                context,
                 location,
                 businessName,
                 industry,
-                regenerationSeed,
-                previousDraft,
             );
+        } catch (editorError) {
+            console.error('Blog draft editor pass failed, using writer output.', editorError);
         }
 
         const parsedData = sanitizeArticleData(
-            JSON.parse(responseContent) as ArticleData,
+            editedDraft,
             fallbackTitle,
             fallbackSlug,
             fallbackExcerpt,
