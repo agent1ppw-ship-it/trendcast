@@ -92,6 +92,16 @@ interface OutlineArchetype {
     ctaInstruction: string;
 }
 
+interface StyleBlueprint {
+    name: string;
+    titlePattern: string;
+    introApproach: string;
+    sectionRhythm: string;
+    voiceNotes: string[];
+    optionalDevices: string[];
+    ctaStyle: string;
+}
+
 const REGENERATION_ANGLES: FocusAngle[] = [
     {
         titleSuffix: 'Planning Considerations',
@@ -210,6 +220,74 @@ const ARTICLE_ARCHETYPES: OutlineArchetype[] = [
             'Explain how a customer can tell the project is properly defined before approving it.',
         ],
         ctaInstruction: 'End with a CTA that emphasizes clarity, scope review, and practical next steps.',
+    },
+];
+
+const STYLE_BLUEPRINTS: StyleBlueprint[] = [
+    {
+        name: 'Operator Memo',
+        titlePattern: 'direct and practical, with a clear promised takeaway rather than a generic SEO phrase',
+        introApproach: 'Open like an operator explaining a real business or property problem to a customer in plain language.',
+        sectionRhythm: 'Use compact explanatory sections, occasional bullets, and one decisive section that tells the reader what separates a solid contractor from a weak one.',
+        voiceNotes: [
+            'sound experienced, grounded, and unsentimental',
+            'prefer concrete project language over abstract marketing claims',
+            'avoid hype and write like someone who has seen the job go wrong before',
+        ],
+        optionalDevices: ['decision checklist', 'mistakes to avoid', 'scope comparison'],
+        ctaStyle: 'close with a calm recommendation focused on next steps, site review, and project fit',
+    },
+    {
+        name: 'Educational Guide',
+        titlePattern: 'search-friendly but still human, with a teaching angle',
+        introApproach: 'Start by teaching the reader what the service actually covers and why that distinction matters.',
+        sectionRhythm: 'Use explanatory sections with one or two short lists and at least one clarifying subsection.',
+        voiceNotes: [
+            'be approachable and informative',
+            'define terms when needed',
+            'make each section feel like it teaches one clear thing',
+        ],
+        optionalDevices: ['quick definitions', 'comparison table', 'what this service includes'],
+        ctaStyle: 'end by inviting the reader to use the article as a starting point for a local conversation',
+    },
+    {
+        name: 'Contrarian Hook',
+        titlePattern: 'strong and slightly provocative, built around a mistaken assumption or overlooked factor',
+        introApproach: 'Open by challenging a common bad assumption and then reframe the issue correctly.',
+        sectionRhythm: 'Use sharper transitions, a debunking section, and then settle into practical explanation.',
+        voiceNotes: [
+            'be confident without sounding theatrical',
+            'use contrast to create momentum',
+            'keep the article useful, not clickbaity',
+        ],
+        optionalDevices: ['myth vs reality', 'common bad assumptions', 'what actually drives the result'],
+        ctaStyle: 'close by positioning the business as a provider that explains tradeoffs honestly before quoting',
+    },
+    {
+        name: 'Buyer Checklist',
+        titlePattern: 'clear and utilitarian, like a guide someone would save before talking to contractors',
+        introApproach: 'Start by explaining what a customer should review before committing to the work.',
+        sectionRhythm: 'Use checklists, question-driven subsections, and clear criteria for evaluating proposals.',
+        voiceNotes: [
+            'sound methodical and reader-protective',
+            'help the reader compare options intelligently',
+            'favor checklists and criteria over broad narrative',
+        ],
+        optionalDevices: ['proposal checklist', 'questions to ask', 'red flags'],
+        ctaStyle: 'end with a practical suggestion to use the checklist during a site visit or estimate call',
+    },
+    {
+        name: 'Proof And Process',
+        titlePattern: 'specific and credible, focused on how a good process creates a better result',
+        introApproach: 'Open with the process behind a good outcome rather than the finished result alone.',
+        sectionRhythm: 'Move from problem to process to outcomes, and include one section that shows why shortcuts fail.',
+        voiceNotes: [
+            'stress process discipline and long-term performance',
+            'write with quiet authority',
+            'make the reader feel they understand how a serious contractor thinks',
+        ],
+        optionalDevices: ['before vs after logic', 'process breakdown', 'why shortcuts fail'],
+        ctaStyle: 'end by inviting the reader to talk through scope, sequencing, and fit before making a decision',
     },
 ];
 
@@ -681,6 +759,20 @@ function selectOutlineArchetype(context: KeywordContext, regenerationSeed?: stri
     };
 }
 
+function selectStyleBlueprint(context: KeywordContext, regenerationSeed?: string) {
+    const seed = createStableSeed([
+        'style',
+        context.normalizedPrimaryKeyword,
+        context.normalizedSupportingKeywords.join('|'),
+        regenerationSeed || 'initial-draft',
+    ].join('|'));
+
+    return {
+        seed,
+        style: pickVariant(STYLE_BLUEPRINTS, seed),
+    };
+}
+
 function sanitizeArticleData(
     parsedData: ArticleData,
     fallbackTitle: string,
@@ -708,6 +800,7 @@ async function planKeywordTargetedArticle(
     industry: string,
     angle: FocusAngle,
     archetype: OutlineArchetype,
+    style: StyleBlueprint,
     regenerationSeed?: string,
     previousDraft?: PreviousDraftContext,
 ) {
@@ -727,6 +820,15 @@ ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('
 - Local angle: ${context.localAngle}
 - Regeneration angle: ${angle.description}
 - Outline family: ${archetype.name}
+- Style blueprint: ${style.name}
+- Title pattern: ${style.titlePattern}
+- Intro approach: ${style.introApproach}
+- Section rhythm: ${style.sectionRhythm}
+- Voice notes:
+${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
+- Optional section devices:
+${style.optionalDevices.map((device) => `  - ${device}`).join('\n')}
+- CTA style: ${style.ctaStyle}
 - Draft variation seed: ${regenerationSeed || 'initial-draft'}
 ${previousDraft ? `- Previous draft title to avoid echoing: ${previousDraft.title}\n- Previous draft excerpt to avoid echoing: ${previousDraft.excerpt}` : ''}
 
@@ -738,6 +840,7 @@ Requirements:
 5. Return 4 to 6 sections with distinct purposes.
 6. Include practical local considerations such as climate, property type, permitting, material performance, scheduling, access, or maintenance where relevant.
 7. The title angle should feel natural and editorial, not like a templated landing page.
+8. Make the structure meaningfully different depending on the style blueprint. Do not default back to the same checklist/article pattern every time.
 
 Return JSON with this shape:
 {
@@ -769,6 +872,7 @@ async function writeKeywordTargetedArticle(
     location: string,
     businessName: string,
     industry: string,
+    style: StyleBlueprint,
     previousDraft?: PreviousDraftContext,
 ) {
     return generateJson<ArticleData>({
@@ -786,6 +890,15 @@ Topic context:
 - Related topics:
 ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
 - Service focus: ${context.serviceFocus}
+- Style blueprint: ${style.name}
+- Title pattern: ${style.titlePattern}
+- Intro approach: ${style.introApproach}
+- Section rhythm: ${style.sectionRhythm}
+- Voice notes:
+${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
+- Optional devices you may use if they fit:
+${style.optionalDevices.map((device) => `  - ${device}`).join('\n')}
+- CTA style: ${style.ctaStyle}
 
 Approved plan:
 ${JSON.stringify(plan, null, 2)}
@@ -803,6 +916,7 @@ Requirements:
 8. The H1 is rendered outside the markdown body, so do not include an H1 in contentMarkdown.
 9. Keep the CTA near the end and make it practical, local, and calm.
 10. Target at least 900 words.
+11. Make the article feel structurally distinct from a generic service-guide template. Let the style blueprint actually change the rhythm, framing, and transitions.
 
 Return JSON only:
 {
@@ -825,6 +939,7 @@ async function editKeywordTargetedArticle(
     location: string,
     businessName: string,
     industry: string,
+    style: StyleBlueprint,
 ) {
     return generateJson<ArticleData>({
         system: 'You are a senior editor rewriting AI-assisted drafts to sound natural, specific, and reader-first. Remove robotic phrasing, repetitive structure, and any meta language.',
@@ -840,6 +955,10 @@ Topic context:
 - Primary topic: ${context.normalizedPrimaryKeyword}
 - Related topics:
 ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
+- Style blueprint: ${style.name}
+- Voice notes:
+${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
+- Section rhythm: ${style.sectionRhythm}
 
 Editorial plan:
 ${JSON.stringify(plan, null, 2)}
@@ -855,6 +974,7 @@ Edit rules:
 5. Preserve markdown structure and keep paragraphs short.
 6. Keep the piece specific to ${location} where that adds value, but do not force the location into every paragraph.
 7. Keep the CTA local and reader-appropriate.
+8. Remove any repeated article-template feel. If multiple headings or transitions feel generic, rewrite them so the piece feels like its own article.
 
 Return JSON only:
 {
@@ -882,6 +1002,7 @@ function buildFallbackBlogDraft(
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const { seed: fallbackSeed, angle } = selectFocusAngle(context, regenerationSeed);
     const { archetype } = selectOutlineArchetype(context, regenerationSeed);
+    const { style } = selectStyleBlueprint(context, regenerationSeed);
     const readableServiceLabel = buildReadableServiceLabel(context, industry);
     const readableProjectLabel = buildReadableProjectLabel(context, industry);
     const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
@@ -893,13 +1014,15 @@ function buildFallbackBlogDraft(
     const freshnessLine = previousDraft
         ? `For customers in ${location}, this article focuses on ${angle.description}.`
         : pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed);
+    const optionalDevice = pickVariant(style.optionalDevices, fallbackSeed + 2);
+    const styleLead = pickVariant(style.voiceNotes, fallbackSeed + 3);
 
     const contentMarkdown = `
 ## ${archetype.openingHeading}
 
 A ${readableProjectLabel} project usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
 
-For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine}
+For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine} A practical guide should ${styleLead}.
 
 ## ${archetype.sectionHeadings[0]}
 
@@ -916,6 +1039,10 @@ A useful proposal should explain more than the visual design. It should show how
 - Drainage, grading, and any site-prep work needed before installation
 - Timeline, crew access, and how the work may affect the rest of the property
 - What is included in the quoted scope and what would count as a change order
+
+## ${toTitleCase(optionalDevice)}
+
+The article should not repeat the same generic talking points. One useful way to explain ${readableServiceLabel} is through a ${optionalDevice} section that makes the decision easier for the reader. This gives the customer something practical to compare, ask about, or review before approving the work.
 
 ## ${archetype.sectionHeadings[2]}
 
@@ -1032,6 +1159,7 @@ export async function generateKeywordTargetedBlogArticle(
     const fallbackKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
     const { angle } = selectFocusAngle(context, regenerationSeed);
     const { archetype } = selectOutlineArchetype(context, regenerationSeed);
+    const { style } = selectStyleBlueprint(context, regenerationSeed);
 
     if (getBlogAiProvider() === 'fallback') {
         return buildFallbackBlogDraft(
@@ -1056,6 +1184,7 @@ export async function generateKeywordTargetedBlogArticle(
             industry,
             angle,
             archetype,
+            style,
             regenerationSeed,
             previousDraft,
         );
@@ -1066,6 +1195,7 @@ export async function generateKeywordTargetedBlogArticle(
             location,
             businessName,
             industry,
+            style,
             previousDraft,
         );
 
@@ -1079,6 +1209,7 @@ export async function generateKeywordTargetedBlogArticle(
                 location,
                 businessName,
                 industry,
+                style,
             );
         } catch (editorError) {
             console.error('Blog draft editor pass failed, using writer output.', editorError);
