@@ -18,7 +18,10 @@ export interface KeywordTargetedBlogDraft extends ArticleData {
     location: string;
     industry: string;
     dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
+    generatorVersion: string;
 }
+
+export const BLOG_GENERATOR_VERSION = 'v4-style-blueprints';
 
 interface PreviousDraftContext {
     title: string;
@@ -1076,6 +1079,7 @@ If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${
         location,
         industry,
         dataSource: 'TEMPLATE_FALLBACK',
+        generatorVersion: BLOG_GENERATOR_VERSION,
     };
 }
 
@@ -1235,6 +1239,7 @@ export async function generateKeywordTargetedBlogArticle(
             location,
             industry,
             dataSource: 'AI_ESTIMATE',
+            generatorVersion: BLOG_GENERATOR_VERSION,
         };
     } catch (error) {
         console.error('Failed to generate keyword-targeted blog article:', error);

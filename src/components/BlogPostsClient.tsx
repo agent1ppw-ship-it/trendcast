@@ -129,6 +129,9 @@ export function BlogPostsClient() {
                                     <FileText className="h-3.5 w-3.5" />
                                     {draft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
                                 </div>
+                                <div className="mt-2 text-xs text-gray-500">
+                                    Generator Version: {draft.generatorVersion}
+                                </div>
                             </div>
 
                             <div className="space-y-3 pt-2">

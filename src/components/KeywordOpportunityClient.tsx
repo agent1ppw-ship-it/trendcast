@@ -548,6 +548,9 @@ export function KeywordOpportunityClient({
                                         <p className="mt-4 text-xs text-gray-500">
                                             Source: {blogDraft.dataSource === 'AI_ESTIMATE' ? 'AI draft generation' : 'Template fallback draft'}
                                         </p>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Generator Version: {blogDraft.generatorVersion}
+                                        </p>
                                     </div>
 
                                     <div className="min-w-0 overflow-hidden rounded-2xl border border-white/5 bg-[#161616] p-6 md:p-8">

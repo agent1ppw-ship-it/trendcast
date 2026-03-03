@@ -45,6 +45,7 @@ function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
         location?: unknown;
         industry?: unknown;
         dataSource?: unknown;
+        generatorVersion?: unknown;
     };
 
     if (
@@ -77,6 +78,7 @@ function normalizeStoredDraft(value: unknown): KeywordTargetedBlogDraft | null {
         location: typeof candidate.location === 'string' ? candidate.location : '',
         industry: typeof candidate.industry === 'string' ? candidate.industry : '',
         dataSource: candidate.dataSource === 'TEMPLATE_FALLBACK' ? 'TEMPLATE_FALLBACK' : 'AI_ESTIMATE',
+        generatorVersion: typeof candidate.generatorVersion === 'string' ? candidate.generatorVersion : 'legacy',
     };
 }
 
