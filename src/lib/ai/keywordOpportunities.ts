@@ -4,6 +4,8 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || 'mock-key-for-build',
 });
 
+const KEYWORD_PROVIDER_TIMEOUT_MS = 15000;
+
 export type KeywordBuyerIntent = 'HIGH' | 'MEDIUM';
 export type KeywordCompetitionOutlook = 'LOW' | 'MEDIUM' | 'HIGH';
 export type KeywordAssetType = 'Location Page' | 'Service Page' | 'Blog Article' | 'FAQ Cluster';
@@ -310,6 +312,25 @@ function hasDataForSeoCredentials() {
     return Boolean(process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD);
 }
 
+async function withTimeout<T>(label: string, operation: () => Promise<T>, timeoutMs = KEYWORD_PROVIDER_TIMEOUT_MS): Promise<T> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    try {
+        return await Promise.race([
+            operation(),
+            new Promise<T>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
+                }, timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+}
+
 function buildFallbackReport(industry: string, location: string): KeywordOpportunityReport {
     const normalizedIndustry = normalizeIndustry(industry);
     const keywordBases = industryKeywordMap[normalizedIndustry] || [
@@ -437,15 +458,29 @@ async function fetchDataForSeoKeywordReport(industry: string, location: string):
         ...(locationName ? { location_name: locationName } : {}),
     }];
 
-    const response = await fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live', {
-        method: 'POST',
-        headers: {
-            Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        cache: 'no-store',
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), KEYWORD_PROVIDER_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+        response = await fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live', {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+            cache: 'no-store',
+            signal: controller.signal,
+        });
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(`DataForSEO request timed out after ${Math.round(KEYWORD_PROVIDER_TIMEOUT_MS / 1000)} seconds.`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 
     const raw = await response.text();
 
@@ -575,12 +610,12 @@ Output valid JSON only with this schema:
 `;
 
     try {
-        const completion = await openai.chat.completions.create({
+        const completion = await withTimeout('OpenAI keyword generation', () => openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [{ role: 'system', content: prompt }],
             response_format: { type: 'json_object' },
             temperature: 0.6,
-        });
+        }));
 
         const content = completion.choices[0].message.content;
         if (!content) {
