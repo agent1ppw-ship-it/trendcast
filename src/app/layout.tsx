@@ -15,11 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth dark">
-      <body className="font-sans bg-[#0A0A0A] text-gray-100 antialiased selection:bg-blue-500/30 selection:text-blue-200">
+    <html lang="en" className="scroll-smooth dark overflow-x-hidden">
+      <body className="overflow-x-hidden font-sans bg-[#0A0A0A] text-gray-100 antialiased selection:bg-blue-500/30 selection:text-blue-200">
         <NextAuthProvider>
           <Navbar />
-          <main className="pt-20">
+          <main className="overflow-x-hidden pt-20">
             {children}
           </main>
           <Analytics />

@@ -65,7 +65,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto w-full bg-[#0A0A0A] relative">
+            <main className="relative w-full flex-1 overflow-x-hidden overflow-y-auto bg-[#0A0A0A]">
                 {/* Subtle background glow */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-900/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
