@@ -285,14 +285,17 @@ export function KeywordOpportunityClient({
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">ZIP Or City</label>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">City And State</label>
                             <input
                                 type="text"
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
-                                placeholder="Chicago, IL or 60614"
+                                placeholder="Chicago, IL"
                                 className="w-full rounded-lg border border-white/10 bg-[#1A1A1A] px-4 py-2.5 text-white transition-all focus:border-blue-500/50 focus:outline-none"
                             />
+                            <p className="mt-2 text-xs text-gray-500">
+                                Use a city/state format like `Chicago, IL` or `Fort Wayne, Indiana`.
+                            </p>
                         </div>
 
                         <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-4">

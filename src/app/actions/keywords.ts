@@ -5,6 +5,11 @@ import { generateKeywordOpportunityReport } from '@/lib/ai/keywordOpportunities'
 import { generateKeywordTargetedBlogArticle } from '@/lib/ai/articleGenerator';
 import { prisma } from '@/lib/prisma';
 
+function isCityStateLocation(value: string) {
+    const normalized = value.trim();
+    return /^[A-Za-z .'-]+,\s*[A-Za-z]{2,}(?:\s[A-Za-z]+)*$/.test(normalized);
+}
+
 export async function generateKeywordIdeas(industry: string, location: string) {
     const normalizedIndustry = industry.trim();
     const normalizedLocation = location.trim();
@@ -14,7 +19,11 @@ export async function generateKeywordIdeas(industry: string, location: string) {
     }
 
     if (!normalizedLocation) {
-        return { success: false, error: 'Enter a ZIP code or city to search.' };
+        return { success: false, error: 'Enter a city and state to search.' };
+    }
+
+    if (!isCityStateLocation(normalizedLocation)) {
+        return { success: false, error: 'Use a city and state format like "Chicago, IL" or "Fort Wayne, Indiana".' };
     }
 
     const orgId = await ensureOrganization();
@@ -60,7 +69,11 @@ export async function generateKeywordBlogDraft(
     }
 
     if (!normalizedLocation) {
-        return { success: false, error: 'Enter a ZIP code or city to search.' };
+        return { success: false, error: 'Enter a city and state to search.' };
+    }
+
+    if (!isCityStateLocation(normalizedLocation)) {
+        return { success: false, error: 'Use a city and state format like "Chicago, IL" or "Fort Wayne, Indiana".' };
     }
 
     if (sanitizedKeywords.length === 0) {
