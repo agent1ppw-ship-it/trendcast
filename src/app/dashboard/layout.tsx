@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { DashboardSidebarNav } from '@/components/DashboardSidebarNav';
+import { SignOutButton } from '@/components/SignOutButton';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const orgId = await ensureOrganization();
@@ -61,6 +62,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                             <p className="text-[10px] text-gray-500 font-medium tracking-wide truncate">{org?.industry || 'Setup Required'}</p>
                         </div>
                     </div>
+                    <SignOutButton className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 py-2.5 text-sm font-medium text-gray-300 transition-all hover:bg-[#1A1A1A] hover:text-white" />
                 </div>
             </aside>
 
@@ -70,8 +72,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-900/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
                 {/* Mobile Header (Dark) */}
-                <div className="md:hidden h-16 bg-[#0F0F0F] border-b border-white/5 flex items-center px-4 shrink-0 shadow-md">
+                <div className="md:hidden h-16 bg-[#0F0F0F] border-b border-white/5 flex items-center justify-between px-4 shrink-0 shadow-md">
                     <span className="font-extrabold text-xl tracking-tight text-white">trendcast.io</span>
+                    <SignOutButton
+                        compact
+                        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#171717] px-3 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-[#1D1D1D] hover:text-white"
+                    />
                 </div>
 
                 {/* Children Rendered Here */}
