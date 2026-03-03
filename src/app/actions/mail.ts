@@ -253,12 +253,34 @@ export async function sendMailCampaign(campaignId: string) {
         const lobErrors: string[] = [];
         const skippedAddressErrors: string[] = [];
 
-        await prisma.mailOrder.deleteMany({
+        const existingOrders = await prisma.mailOrder.findMany({
             where: {
                 campaignId: campaign.id,
                 orgId,
             },
+            select: {
+                id: true,
+            },
         });
+
+        if (existingOrders.length > 0) {
+            await prisma.$transaction([
+                prisma.mailTrackingEvent.deleteMany({
+                    where: {
+                        orderId: {
+                            in: existingOrders.map((order) => order.id),
+                        },
+                    },
+                }),
+                prisma.mailOrder.deleteMany({
+                    where: {
+                        id: {
+                            in: existingOrders.map((order) => order.id),
+                        },
+                    },
+                }),
+            ]);
+        }
 
         for (const lead of leads) {
             if (!lead.address) {
