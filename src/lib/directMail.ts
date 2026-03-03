@@ -200,12 +200,15 @@ export function renderMailPreview(template: {
     backBody: string;
     ctaText?: string | null;
     accentColor?: string | null;
+    imageUrl?: string | null;
 }, lead: MergeLead) {
     const accentColor = template.accentColor || '#2563EB';
+    const backgroundStyle = buildBackgroundStyle(template.imageUrl, accentColor);
+    const backBackgroundStyle = buildBackgroundStyle(template.imageUrl, '#0F172A');
 
     return {
         frontHtml: `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:40px;background:${accentColor};color:white;font-family:Helvetica,Arial,sans-serif;">
+            <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:40px;${backgroundStyle}color:white;font-family:Helvetica,Arial,sans-serif;">
                 <div>
                     <div style="font-size:14px;letter-spacing:0.2em;text-transform:uppercase;opacity:0.85;">Trendcast Direct Mail</div>
                     <h1 style="font-size:40px;line-height:1.1;margin:18px 0 12px;">${escapeHtml(replaceMailMergeTags(template.frontHeadline, lead))}</h1>
@@ -215,7 +218,7 @@ export function renderMailPreview(template: {
             </div>
         `.trim(),
         backHtml: `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:40px;background:#0F172A;color:white;font-family:Helvetica,Arial,sans-serif;">
+            <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:40px;${backBackgroundStyle}color:white;font-family:Helvetica,Arial,sans-serif;">
                 <div>
                     <div style="font-size:14px;letter-spacing:0.2em;text-transform:uppercase;color:${accentColor};">Message</div>
                     ${template.backHeadline ? `<h2 style="font-size:30px;line-height:1.2;margin:16px 0 10px;">${escapeHtml(replaceMailMergeTags(template.backHeadline, lead))}</h2>` : ''}
@@ -225,6 +228,21 @@ export function renderMailPreview(template: {
             </div>
         `.trim(),
     };
+}
+
+function buildBackgroundStyle(imageUrl: string | null | undefined, fallbackColor: string) {
+    if (!imageUrl) {
+        return `background:${fallbackColor};`;
+    }
+
+    const safeUrl = escapeHtml(imageUrl);
+    return [
+        `background-color:${fallbackColor};`,
+        `background-image:linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url('${safeUrl}');`,
+        'background-size:cover;',
+        'background-position:center;',
+        'background-repeat:no-repeat;',
+    ].join('');
 }
 
 export function parseAddressString(address: string | null | undefined) {

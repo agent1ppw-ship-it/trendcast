@@ -32,6 +32,7 @@ type TemplateRecord = {
     backBody: string;
     ctaText: string | null;
     accentColor: string;
+    imageUrl: string | null;
     isDefault: boolean;
 };
 
@@ -119,6 +120,7 @@ export function DirectMailDashboardClient({
     const [newTemplateBackBody, setNewTemplateBackBody] = useState('');
     const [newTemplateCta, setNewTemplateCta] = useState('');
     const [newTemplateAccent, setNewTemplateAccent] = useState('#2563EB');
+    const [newTemplateImageUrl, setNewTemplateImageUrl] = useState('');
     const [mailFromName, setMailFromName] = useState(senderProfile.mailFromName);
     const [mailFromCompany, setMailFromCompany] = useState(senderProfile.mailFromCompany);
     const [mailAddressLine1, setMailAddressLine1] = useState(senderProfile.mailAddressLine1);
@@ -225,6 +227,7 @@ export function DirectMailDashboardClient({
                 backBody: newTemplateBackBody,
                 ctaText: newTemplateCta,
                 accentColor: newTemplateAccent,
+                imageUrl: newTemplateImageUrl,
             });
 
             if (!result.success) {
@@ -239,6 +242,7 @@ export function DirectMailDashboardClient({
             setNewTemplateBackHeadline('');
             setNewTemplateBackBody('');
             setNewTemplateCta('');
+            setNewTemplateImageUrl('');
             router.refresh();
         });
     };
@@ -287,6 +291,23 @@ export function DirectMailDashboardClient({
             setFeedback(result.message || 'Campaign processed.');
             router.refresh();
         });
+    };
+
+    const buildCardBackgroundStyle = (template: TemplateRecord | null) => {
+        if (!template) {
+            return { backgroundColor: '#2563EB' };
+        }
+
+        if (!template.imageUrl) {
+            return { backgroundColor: template.accentColor };
+        }
+
+        return {
+            backgroundColor: template.accentColor,
+            backgroundImage: `linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url(${template.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+        } as const;
     };
 
     const handleCancelCampaign = (campaignId: string) => {
@@ -426,12 +447,15 @@ export function DirectMailDashboardClient({
                                             </div>
                                             <div
                                                 className="rounded-xl p-4 text-white"
-                                                style={{ backgroundColor: template.accentColor }}
+                                                style={buildCardBackgroundStyle(template)}
                                             >
                                                 <div className="text-xs uppercase tracking-[0.18em] opacity-80">Front</div>
                                                 <div className="mt-2 text-lg font-bold leading-tight">{template.frontHeadline}</div>
                                                 <div className="mt-2 text-sm opacity-90">{template.frontBody}</div>
                                             </div>
+                                            {template.imageUrl && (
+                                                <div className="mt-2 text-[11px] text-gray-500">Background image enabled</div>
+                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -538,6 +562,7 @@ export function DirectMailDashboardClient({
                                 <input value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} placeholder="Template name" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                                 <input value={newTemplateAccent} onChange={(event) => setNewTemplateAccent(event.target.value)} placeholder="#2563EB" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             </div>
+                            <input value={newTemplateImageUrl} onChange={(event) => setNewTemplateImageUrl(event.target.value)} placeholder="Background image URL (optional)" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             <input value={newTemplateFrontHeadline} onChange={(event) => setNewTemplateFrontHeadline(event.target.value)} placeholder="Front headline" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             <textarea value={newTemplateFrontBody} onChange={(event) => setNewTemplateFrontBody(event.target.value)} placeholder="Front body copy" rows={3} className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             <input value={newTemplateBackHeadline} onChange={(event) => setNewTemplateBackHeadline(event.target.value)} placeholder="Back headline" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
@@ -570,7 +595,7 @@ export function DirectMailDashboardClient({
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="rounded-2xl p-5 text-white" style={{ backgroundColor: selectedTemplate?.accentColor || '#2563EB' }}>
+                                    <div className="rounded-2xl p-5 text-white" style={buildCardBackgroundStyle(selectedTemplate)}>
                                         <div className="text-[10px] uppercase tracking-[0.24em] opacity-80">Front</div>
                                         <div className="mt-3 text-2xl font-bold leading-tight">
                                             {applyMergeTags(selectedTemplate?.frontHeadline, previewLead)}
@@ -580,7 +605,12 @@ export function DirectMailDashboardClient({
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/5 bg-[#0F172A] p-5 text-white">
+                                    <div className="rounded-2xl border border-white/5 p-5 text-white" style={selectedTemplate?.imageUrl ? {
+                                        backgroundColor: '#0F172A',
+                                        backgroundImage: `linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url(${selectedTemplate.imageUrl})`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                    } : { backgroundColor: '#0F172A' }}>
                                         <div className="text-[10px] uppercase tracking-[0.24em] text-blue-300">Back</div>
                                         {selectedTemplate?.backHeadline && (
                                             <div className="mt-3 text-xl font-semibold leading-tight">

@@ -105,6 +105,7 @@ export default async function DirectMailPage() {
                 backBody: template.backBody,
                 ctaText: template.ctaText,
                 accentColor: template.accentColor,
+                imageUrl: template.imageUrl,
                 isDefault: template.isDefault,
             }))}
             campaigns={campaigns.map((campaign) => ({

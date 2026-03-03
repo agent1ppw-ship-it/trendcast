@@ -154,10 +154,16 @@ export async function createMailTemplate(data: {
     backBody: string;
     ctaText?: string;
     accentColor?: string;
+    imageUrl?: string;
     size?: '4X6' | '6X9';
 }) {
     const orgId = await ensureOrganization();
     if (!orgId) return { success: false, error: 'Unauthorized.' };
+
+    const imageUrl = data.imageUrl?.trim() || null;
+    if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) {
+        return { success: false, error: 'Background image must be a valid http or https URL.' };
+    }
 
     const template = await prisma.mailTemplate.create({
         data: {
@@ -171,6 +177,7 @@ export async function createMailTemplate(data: {
             backBody: data.backBody.trim(),
             ctaText: data.ctaText?.trim() || null,
             accentColor: data.accentColor?.trim() || '#2563EB',
+            imageUrl,
         },
     });
 
