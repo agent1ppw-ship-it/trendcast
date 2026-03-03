@@ -253,8 +253,22 @@ async function lobRequest<T>(path: string, body: Record<string, unknown>) {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Lob request failed (${response.status}): ${errorText}`);
+        const responseText = await response.text();
+        let detail = responseText;
+
+        try {
+            const parsed = JSON.parse(responseText) as {
+                error?: {
+                    message?: string;
+                    name?: string;
+                };
+            };
+            detail = parsed.error?.message || parsed.error?.name || responseText;
+        } catch {
+            // Keep raw text when Lob does not return JSON.
+        }
+
+        throw new Error(`Lob request failed (${response.status}): ${detail}`);
     }
 
     return response.json() as Promise<T>;

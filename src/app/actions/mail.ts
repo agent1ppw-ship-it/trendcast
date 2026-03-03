@@ -249,6 +249,7 @@ export async function sendMailCampaign(campaignId: string) {
     let sentCount = 0;
     let failedCount = 0;
     let lobCreatedCount = 0;
+    const lobErrors: string[] = [];
 
     await prisma.mailOrder.deleteMany({
         where: {
@@ -302,6 +303,9 @@ export async function sendMailCampaign(campaignId: string) {
                 lobVerificationId = verification.lobId;
             } catch (error) {
                 console.error('Lob verification failed, falling back to best-effort parsing.', error);
+                if (error instanceof Error) {
+                    lobErrors.push(error.message);
+                }
             }
         }
 
@@ -363,6 +367,9 @@ export async function sendMailCampaign(campaignId: string) {
                 }
             } catch (error) {
                 console.error('Lob postcard creation failed.', error);
+                if (error instanceof Error) {
+                    lobErrors.push(error.message);
+                }
                 orderStatus = 'FAILED';
             }
         }
@@ -401,6 +408,7 @@ export async function sendMailCampaign(campaignId: string) {
                     mode,
                     lobEnvironment,
                     lobObjectId,
+                    lobError: orderStatus === 'FAILED' ? lobErrors[lobErrors.length - 1] || null : null,
                 } as Prisma.InputJsonValue,
             },
         });
@@ -430,7 +438,9 @@ export async function sendMailCampaign(campaignId: string) {
             failedCount,
             mode,
             lobEnvironment,
-            error: 'Lob did not accept any mail pieces for this campaign. Check the sender profile, recipient addresses, and Lob account environment.',
+            error: lobErrors[0]
+                ? `Lob rejected this campaign: ${lobErrors[0]}`
+                : 'Lob did not accept any mail pieces for this campaign. Check the sender profile, recipient addresses, and Lob account environment.',
         };
     }
 
