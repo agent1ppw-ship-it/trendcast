@@ -17,6 +17,16 @@ type RecipientAddress = {
     address_country: 'US';
 };
 
+export type SenderProfile = {
+    name?: string | null;
+    company?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+};
+
 type LobVerificationResponse = {
     id?: string;
     primary_line?: string;
@@ -195,21 +205,26 @@ export function buildRecipientAddress(lead: MergeLead): RecipientAddress | null 
     };
 }
 
-export function getSenderAddress() {
-    const line1 = process.env.LOB_FROM_ADDRESS_LINE1;
-    const city = process.env.LOB_FROM_CITY;
-    const state = process.env.LOB_FROM_STATE;
-    const zip = process.env.LOB_FROM_ZIP;
+export function hasCompleteSenderProfile(profile: SenderProfile | null | undefined) {
+    return Boolean(
+        profile?.addressLine1 &&
+        profile?.city &&
+        profile?.state &&
+        profile?.zip &&
+        (profile?.name || profile?.company)
+    );
+}
 
-    if (!line1 || !city || !state || !zip) return null;
+export function getSenderAddress(profile: SenderProfile | null | undefined) {
+    if (!hasCompleteSenderProfile(profile)) return null;
 
     return {
-        name: process.env.LOB_FROM_NAME || process.env.LOB_FROM_COMPANY || 'Trendcast',
-        address_line1: line1,
-        address_line2: process.env.LOB_FROM_ADDRESS_LINE2 || undefined,
-        address_city: city,
-        address_state: state,
-        address_zip: zip,
+        name: profile?.name || profile?.company || 'Trendcast',
+        address_line1: profile?.addressLine1 as string,
+        address_line2: profile?.addressLine2 || undefined,
+        address_city: profile?.city as string,
+        address_state: profile?.state as string,
+        address_zip: profile?.zip as string,
         address_country: 'US' as const,
     };
 }
@@ -266,6 +281,7 @@ export async function verifyAddressWithLob(recipient: RecipientAddress) {
 }
 
 export async function createLobPostcard(options: {
+    sender: SenderProfile;
     recipient: RecipientAddress;
     frontHtml: string;
     backHtml: string;
@@ -273,9 +289,9 @@ export async function createLobPostcard(options: {
     mailType: 'MARKETING' | 'FIRST_CLASS';
     description: string;
 }) {
-    const sender = getSenderAddress();
+    const sender = getSenderAddress(options.sender);
     if (!sender) {
-        throw new Error('LOB sender address environment variables are incomplete.');
+        throw new Error('Organization sender profile is incomplete.');
     }
 
     const response = await lobRequest<LobMailPieceResponse>('/postcards', {

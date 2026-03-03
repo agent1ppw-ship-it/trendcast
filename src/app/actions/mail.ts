@@ -11,6 +11,7 @@ import {
     calculateMailCost,
     createLobPostcard,
     getDirectMailMode,
+    hasCompleteSenderProfile,
     parseAddressString,
     renderMailPreview,
     replaceMailMergeTags,
@@ -43,6 +44,46 @@ export async function ensureDefaultMailTemplates() {
 
     revalidatePath('/dashboard/mail');
     return { success: true, created: DEFAULT_MAIL_TEMPLATES.length };
+}
+
+export async function saveMailSenderProfile(data: {
+    mailFromName?: string;
+    mailFromCompany?: string;
+    mailAddressLine1: string;
+    mailAddressLine2?: string;
+    mailCity: string;
+    mailState: string;
+    mailZip: string;
+}) {
+    const orgId = await ensureOrganization();
+    if (!orgId) return { success: false, error: 'Unauthorized.' };
+
+    const normalizedState = data.mailState.trim().toUpperCase();
+    const normalizedZip = data.mailZip.trim();
+
+    if (!data.mailAddressLine1.trim() || !data.mailCity.trim() || !normalizedState || !normalizedZip) {
+        return { success: false, error: 'Address line 1, city, state, and ZIP are required.' };
+    }
+
+    if (!data.mailFromName?.trim() && !data.mailFromCompany?.trim()) {
+        return { success: false, error: 'Add at least a sender name or company name.' };
+    }
+
+    await prisma.organization.update({
+        where: { id: orgId },
+        data: {
+            mailFromName: data.mailFromName?.trim() || null,
+            mailFromCompany: data.mailFromCompany?.trim() || null,
+            mailAddressLine1: data.mailAddressLine1.trim(),
+            mailAddressLine2: data.mailAddressLine2?.trim() || null,
+            mailCity: data.mailCity.trim(),
+            mailState: normalizedState,
+            mailZip: normalizedZip,
+        },
+    });
+
+    revalidatePath('/dashboard/mail');
+    return { success: true };
 }
 
 export async function createMailCampaign(input: CampaignInput) {
@@ -155,12 +196,37 @@ export async function sendMailCampaign(campaignId: string) {
         where: { id: campaignId, orgId },
         include: {
             template: true,
+            organization: {
+                select: {
+                    mailFromName: true,
+                    mailFromCompany: true,
+                    mailAddressLine1: true,
+                    mailAddressLine2: true,
+                    mailCity: true,
+                    mailState: true,
+                    mailZip: true,
+                },
+            },
         },
     });
 
     if (!campaign) return { success: false, error: 'Campaign not found.' };
     if (campaign.template.type !== 'POSTCARD') {
         return { success: false, error: 'This MVP currently supports postcards only.' };
+    }
+
+    const senderProfile = {
+        name: campaign.organization.mailFromName,
+        company: campaign.organization.mailFromCompany,
+        addressLine1: campaign.organization.mailAddressLine1,
+        addressLine2: campaign.organization.mailAddressLine2,
+        city: campaign.organization.mailCity,
+        state: campaign.organization.mailState,
+        zip: campaign.organization.mailZip,
+    };
+
+    if (!hasCompleteSenderProfile(senderProfile)) {
+        return { success: false, error: 'Complete your organization sender profile before sending mail.' };
     }
 
     const leadIds = Array.isArray(campaign.targetLeadIds) ? campaign.targetLeadIds.filter((value): value is string => typeof value === 'string') : [];
@@ -276,6 +342,7 @@ export async function sendMailCampaign(campaignId: string) {
         if (mode === 'live' && recipient) {
             try {
                 const lobMailPiece = await createLobPostcard({
+                    sender: senderProfile,
                     recipient,
                     frontHtml: mergedPreview.frontHtml,
                     backHtml: mergedPreview.backHtml,

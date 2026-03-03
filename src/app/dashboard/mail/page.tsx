@@ -23,7 +23,19 @@ export default async function DirectMailPage() {
         });
     }
 
-    const [templates, campaigns, leads] = await Promise.all([
+    const [organization, templates, campaigns, leads] = await Promise.all([
+        prisma.organization.findUnique({
+            where: { id: orgId },
+            select: {
+                mailFromName: true,
+                mailFromCompany: true,
+                mailAddressLine1: true,
+                mailAddressLine2: true,
+                mailCity: true,
+                mailState: true,
+                mailZip: true,
+            },
+        }),
         prisma.mailTemplate.findMany({
             where: { orgId },
             orderBy: [
@@ -64,6 +76,15 @@ export default async function DirectMailPage() {
     return (
         <DirectMailDashboardClient
             mailMode={getDirectMailMode()}
+            senderProfile={{
+                mailFromName: organization?.mailFromName || '',
+                mailFromCompany: organization?.mailFromCompany || '',
+                mailAddressLine1: organization?.mailAddressLine1 || '',
+                mailAddressLine2: organization?.mailAddressLine2 || '',
+                mailCity: organization?.mailCity || '',
+                mailState: organization?.mailState || '',
+                mailZip: organization?.mailZip || '',
+            }}
             leads={leads.map((lead) => ({
                 id: lead.id,
                 name: lead.name,

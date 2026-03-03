@@ -8,6 +8,7 @@ import {
     cancelMailCampaign,
     createMailCampaign,
     createMailTemplate,
+    saveMailSenderProfile,
     sendMailCampaign,
 } from '@/app/actions/mail';
 
@@ -51,6 +52,16 @@ type CampaignRecord = {
     orderCount: number;
 };
 
+type SenderProfileRecord = {
+    mailFromName: string;
+    mailFromCompany: string;
+    mailAddressLine1: string;
+    mailAddressLine2: string;
+    mailCity: string;
+    mailState: string;
+    mailZip: string;
+};
+
 function formatUsd(cents: number) {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -80,11 +91,13 @@ export function DirectMailDashboardClient({
     templates,
     campaigns,
     mailMode,
+    senderProfile,
 }: {
     leads: LeadRecord[];
     templates: TemplateRecord[];
     campaigns: CampaignRecord[];
     mailMode: 'live' | 'demo';
+    senderProfile: SenderProfileRecord;
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -104,6 +117,13 @@ export function DirectMailDashboardClient({
     const [newTemplateBackBody, setNewTemplateBackBody] = useState('');
     const [newTemplateCta, setNewTemplateCta] = useState('');
     const [newTemplateAccent, setNewTemplateAccent] = useState('#2563EB');
+    const [mailFromName, setMailFromName] = useState(senderProfile.mailFromName);
+    const [mailFromCompany, setMailFromCompany] = useState(senderProfile.mailFromCompany);
+    const [mailAddressLine1, setMailAddressLine1] = useState(senderProfile.mailAddressLine1);
+    const [mailAddressLine2, setMailAddressLine2] = useState(senderProfile.mailAddressLine2);
+    const [mailCity, setMailCity] = useState(senderProfile.mailCity);
+    const [mailState, setMailState] = useState(senderProfile.mailState);
+    const [mailZip, setMailZip] = useState(senderProfile.mailZip);
 
     const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0] || null;
 
@@ -129,6 +149,13 @@ export function DirectMailDashboardClient({
     }, [selectedLeads.length, selectedTemplate?.size]);
 
     const previewLead = selectedLeads[0] || filteredLeads[0] || null;
+    const senderProfileComplete = Boolean(
+        mailAddressLine1.trim() &&
+        mailCity.trim() &&
+        mailState.trim() &&
+        mailZip.trim() &&
+        (mailFromName.trim() || mailFromCompany.trim())
+    );
 
     const toggleLead = (leadId: string) => {
         setSelectedLeadIds((current) => (
@@ -147,6 +174,11 @@ export function DirectMailDashboardClient({
     const handleCreateCampaign = (sendImmediately: boolean) => {
         setError('');
         setFeedback('');
+
+        if (sendImmediately && !senderProfileComplete) {
+            setError('Complete your sender profile before sending mail.');
+            return;
+        }
 
         startTransition(async () => {
             const createResult = await createMailCampaign({
@@ -208,9 +240,39 @@ export function DirectMailDashboardClient({
         });
     };
 
+    const handleSaveSenderProfile = () => {
+        setError('');
+        setFeedback('');
+
+        startTransition(async () => {
+            const result = await saveMailSenderProfile({
+                mailFromName,
+                mailFromCompany,
+                mailAddressLine1,
+                mailAddressLine2,
+                mailCity,
+                mailState,
+                mailZip,
+            });
+
+            if (!result.success) {
+                setError(result.error || 'Failed to save sender profile.');
+                return;
+            }
+
+            setFeedback('Sender profile saved.');
+            router.refresh();
+        });
+    };
+
     const handleSendExistingCampaign = (campaignId: string) => {
         setError('');
         setFeedback('');
+
+        if (!senderProfileComplete) {
+            setError('Complete your sender profile before sending mail.');
+            return;
+        }
 
         startTransition(async () => {
             const result = await sendMailCampaign(campaignId);
@@ -249,9 +311,15 @@ export function DirectMailDashboardClient({
                         Turn scraped leads into physical postcards with saved templates, address checks, and campaign tracking.
                     </p>
                 </div>
-                <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${mailMode === 'live' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-200'}`}>
-                    <Sparkles className="h-4 w-4" />
-                    {mailMode === 'live' ? 'Lob live mode enabled' : 'Demo mode: live Lob keys not configured'}
+                <div className="flex flex-col items-start gap-2 lg:items-end">
+                    <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${mailMode === 'live' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-200'}`}>
+                        <Sparkles className="h-4 w-4" />
+                        {mailMode === 'live' ? 'Lob live mode enabled' : 'Demo mode: Lob API key not configured'}
+                    </div>
+                    <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${senderProfileComplete ? 'border-blue-500/20 bg-blue-500/10 text-blue-200' : 'border-red-500/20 bg-red-500/10 text-red-200'}`}>
+                        {senderProfileComplete ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                        {senderProfileComplete ? 'Sender profile configured' : 'Sender profile required before sending'}
+                    </div>
                 </div>
             </div>
 
@@ -266,6 +334,38 @@ export function DirectMailDashboardClient({
 
             <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)]">
                 <div className="space-y-8">
+                    <Card className="border-white/5 bg-[#111] shadow-md">
+                        <CardHeader className="border-b border-white/5 pb-4">
+                            <CardTitle className="text-lg font-semibold text-white">Sender Profile</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-6">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <input value={mailFromName} onChange={(event) => setMailFromName(event.target.value)} placeholder="Sender name" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                                <input value={mailFromCompany} onChange={(event) => setMailFromCompany(event.target.value)} placeholder="Company name" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                            </div>
+                            <input value={mailAddressLine1} onChange={(event) => setMailAddressLine1(event.target.value)} placeholder="Address line 1" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                            <input value={mailAddressLine2} onChange={(event) => setMailAddressLine2(event.target.value)} placeholder="Address line 2 (optional)" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <input value={mailCity} onChange={(event) => setMailCity(event.target.value)} placeholder="City" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                                <input value={mailState} onChange={(event) => setMailState(event.target.value.toUpperCase())} placeholder="State" maxLength={2} className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                                <input value={mailZip} onChange={(event) => setMailZip(event.target.value)} placeholder="ZIP" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                            </div>
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <p className="text-xs text-gray-500">
+                                    This address is used as the sender and return address for this organization’s mail campaigns.
+                                </p>
+                                <button
+                                    onClick={handleSaveSenderProfile}
+                                    disabled={isPending}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#171717] px-4 py-3 font-semibold text-gray-100 transition-all hover:bg-[#1C1C1C] disabled:opacity-50"
+                                >
+                                    <Sparkles className="h-4 w-4" />
+                                    Save Sender Profile
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className="border-white/5 bg-[#111] shadow-md">
                         <CardHeader className="border-b border-white/5 pb-4">
                             <CardTitle className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -554,7 +654,7 @@ export function DirectMailDashboardClient({
                                         {campaign.status !== 'COMPLETED' && campaign.status !== 'CANCELLED' && (
                                             <button
                                                 onClick={() => handleSendExistingCampaign(campaign.id)}
-                                                disabled={isPending}
+                                                disabled={isPending || !senderProfileComplete}
                                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-500 disabled:opacity-50"
                                             >
                                                 <Send className="h-4 w-4" />

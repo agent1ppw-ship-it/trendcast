@@ -12,6 +12,13 @@ model Organization {
   name             String
   tier             String   @default("INTRO") // INTRO, PRO, ULTIMATE, ENTERPRISE
   industry         String
+  mailFromName     String?
+  mailFromCompany  String?
+  mailAddressLine1 String?
+  mailAddressLine2 String?
+  mailCity         String?
+  mailState        String?
+  mailZip          String?
   stripeCustomerId     String?
   stripeSubscriptionId String?
   credits          Int      @default(50)
