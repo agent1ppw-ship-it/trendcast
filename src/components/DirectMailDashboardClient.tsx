@@ -151,6 +151,7 @@ export function DirectMailDashboardClient({
     }, [selectedLeads.length, selectedTemplate?.size]);
 
     const previewLead = selectedLeads[0] || filteredLeads[0] || null;
+    const effectivePostageClass = selectedTemplate?.size === '4X6' ? 'FIRST_CLASS' : postageClass;
     const senderProfileComplete = Boolean(
         mailAddressLine1.trim() &&
         mailCity.trim() &&
@@ -392,13 +393,19 @@ export function DirectMailDashboardClient({
                                 <div>
                                     <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Postage Class</label>
                                     <select
-                                        value={postageClass}
+                                        value={effectivePostageClass}
                                         onChange={(event) => setPostageClass(event.target.value as 'MARKETING' | 'FIRST_CLASS')}
+                                        disabled={selectedTemplate?.size === '4X6'}
                                         className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none transition-all focus:border-blue-500/50"
                                     >
                                         <option value="MARKETING">Marketing Mail</option>
                                         <option value="FIRST_CLASS">First Class</option>
                                     </select>
+                                    {selectedTemplate?.size === '4X6' && (
+                                        <p className="mt-2 text-xs text-gray-500">
+                                            Lob requires 4x6 postcards to use First Class mail.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 

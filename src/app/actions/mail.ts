@@ -93,8 +93,6 @@ export async function createMailCampaign(input: CampaignInput) {
 
     const name = input.name.trim();
     const leadIds = Array.from(new Set(input.leadIds)).filter(Boolean);
-    const postageClass = input.postageClass || 'MARKETING';
-
     if (!name) return { success: false, error: 'Campaign name is required.' };
     if (leadIds.length === 0) return { success: false, error: 'Select at least one lead.' };
 
@@ -105,6 +103,10 @@ export async function createMailCampaign(input: CampaignInput) {
     if (!template) {
         return { success: false, error: 'Template not found.' };
     }
+
+    const postageClass = template.size === '4X6'
+        ? 'FIRST_CLASS'
+        : (input.postageClass || 'MARKETING');
 
     const leads = await prisma.lead.findMany({
         where: {
@@ -351,7 +353,7 @@ export async function sendMailCampaign(campaignId: string) {
                     frontHtml: mergedPreview.frontHtml,
                     backHtml: mergedPreview.backHtml,
                     size: campaign.mailSize === '6X9' ? '6X9' : '4X6',
-                    mailType: campaign.postageClass === 'FIRST_CLASS' ? 'FIRST_CLASS' : 'MARKETING',
+                    mailType: campaign.mailSize === '4X6' || campaign.postageClass === 'FIRST_CLASS' ? 'FIRST_CLASS' : 'MARKETING',
                     description: `${campaign.name} / ${lead.name}`,
                 });
                 lobObjectId = lobMailPiece.id;
