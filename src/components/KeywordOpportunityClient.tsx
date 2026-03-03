@@ -24,6 +24,21 @@ function sanitizeIndustry(industry: string) {
     return industry.trim() || 'Roofing';
 }
 
+function formatMetricNumber(value: number | null) {
+    if (value === null) return 'N/A';
+    return new Intl.NumberFormat('en-US').format(value);
+}
+
+function formatUsd(value: number | null) {
+    if (value === null) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: value >= 10 ? 0 : 2,
+        maximumFractionDigits: 2,
+    }).format(value);
+}
+
 export function KeywordOpportunityClient({
     defaultIndustry,
 }: {
@@ -34,6 +49,7 @@ export function KeywordOpportunityClient({
     const [report, setReport] = useState<KeywordOpportunityReport | null>(null);
     const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
     const [blogDraft, setBlogDraft] = useState<KeywordTargetedBlogDraft | null>(null);
+    const [sortBy, setSortBy] = useState<'opportunity' | 'searchVolume' | 'cpc' | 'competition'>('opportunity');
     const [error, setError] = useState('');
     const [blogError, setBlogError] = useState('');
     const [isPending, startTransition] = useTransition();
@@ -51,6 +67,37 @@ export function KeywordOpportunityClient({
     const averageOpportunityScore = report?.keywords.length
         ? Math.round(report.keywords.reduce((sum, keyword) => sum + keyword.opportunityScore, 0) / report.keywords.length)
         : 0;
+    const averageSearchVolume = report?.keywords.length
+        ? Math.round(report.keywords.reduce((sum, keyword) => sum + (keyword.monthlySearchVolume || 0), 0) / report.keywords.length)
+        : 0;
+    const averageCpc = report?.keywords.length
+        ? report.keywords.reduce((sum, keyword) => sum + (keyword.costPerClickUsd || 0), 0) / report.keywords.length
+        : 0;
+    const sortedKeywords = useMemo(() => {
+        if (!report) return [];
+
+        const keywords = [...report.keywords];
+        keywords.sort((left, right) => {
+            if (sortBy === 'searchVolume') {
+                return (right.monthlySearchVolume || -1) - (left.monthlySearchVolume || -1);
+            }
+
+            if (sortBy === 'cpc') {
+                return (right.costPerClickUsd || -1) - (left.costPerClickUsd || -1);
+            }
+
+            if (sortBy === 'competition') {
+                const leftScore = left.competitionScore ?? Number.POSITIVE_INFINITY;
+                const rightScore = right.competitionScore ?? Number.POSITIVE_INFINITY;
+                if (leftScore !== rightScore) return leftScore - rightScore;
+                return right.opportunityScore - left.opportunityScore;
+            }
+
+            return right.opportunityScore - left.opportunityScore;
+        });
+
+        return keywords;
+    }, [report, sortBy]);
 
     const handleGenerate = () => {
         setError('');
@@ -68,6 +115,7 @@ export function KeywordOpportunityClient({
             setSelectedKeywords([]);
             setBlogDraft(null);
             setBlogError('');
+            setSortBy(result.report.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? 'searchVolume' : 'opportunity');
         });
     };
 
@@ -175,7 +223,7 @@ export function KeywordOpportunityClient({
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-extrabold text-white">{lowCompetitionCount}</div>
-                        <p className="mt-1 text-xs text-gray-500">Directional low-competition opportunities</p>
+                        <p className="mt-1 text-xs text-gray-500">Low competition opportunities</p>
                     </CardContent>
                 </Card>
 
@@ -195,13 +243,19 @@ export function KeywordOpportunityClient({
                 <Card className="border-white/5 bg-[#111] shadow-md">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center justify-between text-sm font-medium text-gray-400">
-                            Avg Opportunity
+                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? 'Avg Search Volume' : 'Avg Opportunity'}
                             <BarChart3 className="h-4 w-4 text-gray-500" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-extrabold text-white">{averageOpportunityScore}</div>
-                        <p className="mt-1 text-xs text-gray-500">Directional score across the generated set</p>
+                        <div className="text-3xl font-extrabold text-white">
+                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? formatMetricNumber(averageSearchVolume) : averageOpportunityScore}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
+                                ? `Average monthly searches across the set. Avg CPC ${formatUsd(averageCpc)}.`
+                                : 'Directional score across the generated set'}
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -244,8 +298,9 @@ export function KeywordOpportunityClient({
                         <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-4">
                             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Data Status</p>
                             <p className="text-sm leading-6 text-gray-300">
-                                This tool currently generates localized opportunities with AI-assisted scoring. It does not yet
-                                pull live keyword volume, CPC, or verified competition from a paid SEO provider.
+                                {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
+                                    ? 'Live keyword volume, CPC, and competition are being pulled from Google Ads data via DataForSEO for this report.'
+                                    : 'This tool falls back to AI-assisted scoring when no paid keyword-data provider is configured or available.'}
                             </p>
                         </div>
 
@@ -279,6 +334,16 @@ export function KeywordOpportunityClient({
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <CardTitle className="text-lg font-semibold text-white">Long-Tail Opportunities</CardTitle>
                                 <div className="flex flex-wrap items-center gap-3">
+                                    <select
+                                        value={sortBy}
+                                        onChange={(event) => setSortBy(event.target.value as 'opportunity' | 'searchVolume' | 'cpc' | 'competition')}
+                                        className="rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-xs font-medium text-gray-300 outline-none focus:border-blue-500/50"
+                                    >
+                                        <option value="opportunity">Sort: Opportunity</option>
+                                        <option value="searchVolume">Sort: Search Volume</option>
+                                        <option value="cpc">Sort: CPC</option>
+                                        <option value="competition">Sort: Lowest Competition</option>
+                                    </select>
                                     <span className="rounded-full border border-white/10 bg-[#161616] px-3 py-1 text-xs font-medium text-gray-400">
                                         {selectedKeywords.length}/5 selected
                                     </span>
@@ -299,6 +364,8 @@ export function KeywordOpportunityClient({
                                     <tr>
                                         <th className="px-6 py-4 font-medium tracking-wider">Select</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Keyword</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Search Volume</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">CPC</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Intent</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Competition</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Opportunity</th>
@@ -308,7 +375,7 @@ export function KeywordOpportunityClient({
                                 <tbody className="divide-y divide-white/5">
                                     {!report && (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-16 text-center">
+                                            <td colSpan={8} className="px-6 py-16 text-center">
                                                 <div className="mx-auto max-w-md">
                                                     <p className="mb-2 text-base text-gray-300">No keyword set generated yet.</p>
                                                     <p className="text-sm text-gray-500">
@@ -319,7 +386,7 @@ export function KeywordOpportunityClient({
                                         </tr>
                                     )}
 
-                                    {report?.keywords.map((keyword) => {
+                                    {sortedKeywords.map((keyword) => {
                                         const isSelected = selectedKeywords.includes(keyword.keyword);
                                         const isSelectionLocked = !isSelected && selectedKeywords.length >= 5;
 
@@ -352,9 +419,15 @@ export function KeywordOpportunityClient({
                                                     <div className="font-semibold text-gray-100">{keyword.keyword}</div>
                                                     <div className="mt-2 flex items-start gap-2 text-xs text-gray-500">
                                                         <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                                        <span>{report.location}</span>
+                                                        <span>{location}</span>
                                                     </div>
                                                     <p className="mt-3 max-w-xl leading-6 text-gray-400">{keyword.rationale}</p>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="font-mono text-gray-200">{formatMetricNumber(keyword.monthlySearchVolume)}</div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="font-mono text-gray-200">{formatUsd(keyword.costPerClickUsd)}</div>
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <span className={keyword.buyerIntent === 'HIGH'
@@ -369,7 +442,7 @@ export function KeywordOpportunityClient({
                                                         : keyword.competitionOutlook === 'MEDIUM'
                                                             ? 'inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-300'
                                                             : 'inline-flex rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300'}>
-                                                        {keyword.competitionOutlook}
+                                                        {keyword.competitionOutlook}{keyword.competitionScore !== null ? ` ${keyword.competitionScore}/100` : ''}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-5">

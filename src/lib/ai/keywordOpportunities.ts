@@ -15,6 +15,9 @@ export interface KeywordOpportunity {
     opportunityScore: number;
     suggestedAsset: KeywordAssetType;
     rationale: string;
+    monthlySearchVolume: number | null;
+    competitionScore: number | null;
+    costPerClickUsd: number | null;
 }
 
 export interface KeywordOpportunityReport {
@@ -22,13 +25,31 @@ export interface KeywordOpportunityReport {
     location: string;
     industry: string;
     keywords: KeywordOpportunity[];
-    dataSource: 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
+    dataSource: 'DATAFORSEO_GOOGLE_ADS' | 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
     disclaimer: string;
 }
 
 type KeywordModelResponse = {
     summary: string;
     keywords: KeywordOpportunity[];
+};
+
+type DataForSeoResponse = {
+    tasks?: Array<{
+        status_code?: number;
+        status_message?: string;
+        result?: Array<{
+            items?: Array<{
+                keyword?: string;
+                search_volume?: number;
+                competition?: number;
+                competition_index?: number;
+                cpc?: number;
+                low_top_of_page_bid?: number;
+                high_top_of_page_bid?: number;
+            }>;
+        }>;
+    }>;
 };
 
 const industryKeywordMap: Record<string, string[]> = {
@@ -104,6 +125,41 @@ const industryKeywordMap: Record<string, string[]> = {
         'outdoor lighting electrician',
         'wiring repair service',
     ],
+    concrete: [
+        'commercial concrete contractor',
+        'driveway concrete replacement',
+        'foundation repair contractor',
+        'decorative concrete installer',
+        'warehouse concrete polishing',
+        'concrete patio contractor',
+        'parking lot concrete repair',
+        'sidewalk replacement contractor',
+        'retaining wall concrete contractor',
+        'concrete sealing service',
+    ],
+    'pest control': [
+        'commercial pest control service',
+        'termite inspection service',
+        'rodent control contractor',
+        'bed bug treatment service',
+        'ant control service',
+        'restaurant pest control',
+        'mosquito treatment service',
+        'roach exterminator service',
+        'warehouse pest management',
+        'preventive pest control plan',
+    ],
+};
+
+const stateNameMap: Record<string, string> = {
+    AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut',
+    DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+    KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan',
+    MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+    NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',
+    OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota',
+    TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia',
+    WI: 'Wisconsin', WY: 'Wyoming', DC: 'District of Columbia',
 };
 
 function normalizeIndustry(industry: string) {
@@ -123,7 +179,7 @@ function sanitizeKeyword(keyword: string) {
 }
 
 function inferBuyerIntent(keyword: string): KeywordBuyerIntent {
-    return /(contractor|service|repair|replacement|installer|inspection|maintenance|emergency)/i.test(keyword)
+    return /(contractor|service|repair|replacement|installer|inspection|maintenance|emergency|company|exterminator)/i.test(keyword)
         ? 'HIGH'
         : 'MEDIUM';
 }
@@ -157,6 +213,28 @@ function inferAsset(keyword: string): KeywordAssetType {
     return 'FAQ Cluster';
 }
 
+function normalizeCompetitionScore(rawCompetition: number | null | undefined, rawCompetitionIndex: number | null | undefined) {
+    if (typeof rawCompetitionIndex === 'number' && Number.isFinite(rawCompetitionIndex)) {
+        return Math.min(Math.max(Math.round(rawCompetitionIndex), 0), 100);
+    }
+
+    if (typeof rawCompetition === 'number' && Number.isFinite(rawCompetition)) {
+        return Math.min(Math.max(Math.round(rawCompetition * 100), 0), 100);
+    }
+
+    return null;
+}
+
+function deriveCompetitionOutlook(competitionScore: number | null, keyword: string) {
+    if (competitionScore === null) {
+        return inferCompetition(keyword);
+    }
+
+    if (competitionScore <= 33) return 'LOW';
+    if (competitionScore <= 66) return 'MEDIUM';
+    return 'HIGH';
+}
+
 function computeOpportunityScore(keyword: string, competitionOutlook: KeywordCompetitionOutlook, buyerIntent: KeywordBuyerIntent) {
     let score = 55;
 
@@ -169,9 +247,67 @@ function computeOpportunityScore(keyword: string, competitionOutlook: KeywordCom
     return Math.min(score, 98);
 }
 
+function computeRealOpportunityScore(params: {
+    keyword: string;
+    buyerIntent: KeywordBuyerIntent;
+    competitionScore: number | null;
+    monthlySearchVolume: number | null;
+    costPerClickUsd: number | null;
+}) {
+    const { keyword, buyerIntent, competitionScore, monthlySearchVolume, costPerClickUsd } = params;
+    const competitionOutlook = deriveCompetitionOutlook(competitionScore, keyword);
+    let score = computeOpportunityScore(keyword, competitionOutlook, buyerIntent);
+
+    if (typeof monthlySearchVolume === 'number') {
+        if (monthlySearchVolume >= 1000) score += 12;
+        else if (monthlySearchVolume >= 300) score += 8;
+        else if (monthlySearchVolume >= 50) score += 4;
+        else score -= 4;
+    }
+
+    if (typeof competitionScore === 'number') {
+        if (competitionScore <= 25) score += 10;
+        else if (competitionScore <= 45) score += 4;
+        else if (competitionScore >= 75) score -= 8;
+    }
+
+    if (typeof costPerClickUsd === 'number') {
+        if (costPerClickUsd >= 12) score += 10;
+        else if (costPerClickUsd >= 6) score += 6;
+        else if (costPerClickUsd >= 2) score += 2;
+    }
+
+    if (/\b\d{5}\b/.test(keyword)) {
+        score -= 3;
+    }
+
+    return Math.min(Math.max(Math.round(score), 1), 100);
+}
+
 function buildRationale(keyword: string, competition: KeywordCompetitionOutlook, intent: KeywordBuyerIntent) {
     const specificity = keyword.split(/\s+/).length >= 6 ? 'highly specific' : 'locally specific';
     return `${specificity} phrase with ${intent.toLowerCase()} buyer intent and ${competition.toLowerCase()} competition outlook for service-area SEO.`;
+}
+
+function buildRealMetricRationale(params: {
+    keyword: string;
+    monthlySearchVolume: number | null;
+    costPerClickUsd: number | null;
+    competitionScore: number | null;
+    competitionOutlook: KeywordCompetitionOutlook;
+    buyerIntent: KeywordBuyerIntent;
+}) {
+    const searchVolume = params.monthlySearchVolume !== null ? `${params.monthlySearchVolume.toLocaleString()} avg monthly searches` : 'unknown monthly search volume';
+    const cpc = params.costPerClickUsd !== null ? `$${params.costPerClickUsd.toFixed(2)} CPC` : 'no CPC available';
+    const competition = params.competitionScore !== null
+        ? `${params.competitionScore}/100 paid competition (${params.competitionOutlook.toLowerCase()})`
+        : `${params.competitionOutlook.toLowerCase()} directional competition`;
+
+    return `${searchVolume}, ${cpc}, and ${competition} with ${params.buyerIntent.toLowerCase()} buyer intent.`;
+}
+
+function hasDataForSeoCredentials() {
+    return Boolean(process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD);
 }
 
 function buildFallbackReport(industry: string, location: string): KeywordOpportunityReport {
@@ -200,7 +336,10 @@ function buildFallbackReport(industry: string, location: string): KeywordOpportu
             opportunityScore: computeOpportunityScore(localizedKeyword, competitionOutlook, buyerIntent),
             suggestedAsset: inferAsset(localizedKeyword),
             rationale: buildRationale(localizedKeyword, competitionOutlook, buyerIntent),
-        };
+            monthlySearchVolume: null,
+            competitionScore: null,
+            costPerClickUsd: null,
+        } satisfies KeywordOpportunity;
     });
 
     return {
@@ -209,11 +348,192 @@ function buildFallbackReport(industry: string, location: string): KeywordOpportu
         industry: toTitleCase(industry),
         keywords,
         dataSource: 'TEMPLATE_FALLBACK',
-        disclaimer: 'These are AI-assisted opportunity estimates, not live search-volume or CPC metrics. Connect a keyword-data provider later for verified traffic and competition data.',
+        disclaimer: 'These are fallback keyword estimates, not live keyword metrics. Add DataForSEO credentials to pull real search volume, CPC, and competition data.',
     };
 }
 
-export async function generateKeywordOpportunityReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
+function buildSeedKeywords(industry: string, location: string) {
+    const normalizedIndustry = normalizeIndustry(industry);
+    const keywordBases = industryKeywordMap[normalizedIndustry] || [
+        `${normalizedIndustry} contractor`,
+        `${normalizedIndustry} service`,
+        `${normalizedIndustry} repair`,
+        `${normalizedIndustry} installation`,
+        `${normalizedIndustry} maintenance`,
+    ];
+
+    return keywordBases
+        .flatMap((base) => [
+            sanitizeKeyword(`${base} ${location}`),
+            sanitizeKeyword(`${base} in ${location}`),
+        ])
+        .filter((keyword, index, values) => values.indexOf(keyword) === index)
+        .slice(0, 20);
+}
+
+function buildLocationName(location: string) {
+    if (/^\d{5}(?:-\d{4})?$/.test(location.trim())) {
+        return null;
+    }
+
+    const parts = location.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length === 0) {
+        return null;
+    }
+
+    if (parts.length === 1) {
+        return `${toTitleCase(parts[0])},United States`;
+    }
+
+    const [city, stateOrRegion] = parts;
+    const stateKey = stateOrRegion.toUpperCase();
+    const fullState = stateNameMap[stateKey] || toTitleCase(stateOrRegion);
+    return `${toTitleCase(city)},${fullState},United States`;
+}
+
+function buildLocationTokens(location: string) {
+    return location
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((token) => token.length >= 2 && !/^\d+$/.test(token));
+}
+
+function scoreKeywordRelevance(keyword: string, industry: string, location: string) {
+    const lowerKeyword = keyword.toLowerCase();
+    const locationTokens = buildLocationTokens(location);
+    const industryTokens = normalizeIndustry(industry).split(/\s+/).filter(Boolean);
+
+    let score = 0;
+
+    locationTokens.forEach((token) => {
+        if (lowerKeyword.includes(token)) score += 6;
+    });
+
+    industryTokens.forEach((token) => {
+        if (lowerKeyword.includes(token)) score += 5;
+    });
+
+    if (/(contractor|service|repair|replacement|installer|maintenance|commercial|emergency)/i.test(keyword)) score += 6;
+    if (keyword.split(/\s+/).length >= 4) score += 4;
+
+    return score;
+}
+
+async function fetchDataForSeoKeywordReport(industry: string, location: string): Promise<KeywordOpportunityReport | null> {
+    const login = process.env.DATAFORSEO_LOGIN;
+    const password = process.env.DATAFORSEO_PASSWORD;
+
+    if (!login || !password) {
+        return null;
+    }
+
+    const seedKeywords = buildSeedKeywords(industry, location);
+    const locationName = buildLocationName(location);
+    const body = [{
+        keywords: seedKeywords,
+        language_name: 'English',
+        include_seed_keyword: true,
+        limit: 100,
+        ...(locationName ? { location_name: locationName } : {}),
+    }];
+
+    const response = await fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live', {
+        method: 'POST',
+        headers: {
+            Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        cache: 'no-store',
+    });
+
+    const raw = await response.text();
+
+    if (!response.ok) {
+        throw new Error(`DataForSEO request failed (${response.status}): ${raw}`);
+    }
+
+    const parsed = JSON.parse(raw) as DataForSeoResponse;
+    const items = parsed.tasks?.[0]?.result?.[0]?.items || [];
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    const keywords = items
+        .map((item) => {
+            const keyword = sanitizeKeyword(item.keyword || '');
+            if (!keyword) return null;
+
+            const buyerIntent = inferBuyerIntent(keyword);
+            const competitionScore = normalizeCompetitionScore(item.competition ?? null, item.competition_index ?? null);
+            const competitionOutlook = deriveCompetitionOutlook(competitionScore, keyword);
+            const cpc = typeof item.cpc === 'number'
+                ? item.cpc
+                : typeof item.high_top_of_page_bid === 'number'
+                    ? item.high_top_of_page_bid
+                    : typeof item.low_top_of_page_bid === 'number'
+                        ? item.low_top_of_page_bid
+                        : null;
+            const monthlySearchVolume = typeof item.search_volume === 'number' ? item.search_volume : null;
+
+            return {
+                keyword,
+                buyerIntent,
+                competitionOutlook,
+                opportunityScore: computeRealOpportunityScore({
+                    keyword,
+                    buyerIntent,
+                    competitionScore,
+                    monthlySearchVolume,
+                    costPerClickUsd: cpc,
+                }),
+                suggestedAsset: inferAsset(keyword),
+                rationale: buildRealMetricRationale({
+                    keyword,
+                    monthlySearchVolume,
+                    costPerClickUsd: cpc,
+                    competitionScore,
+                    competitionOutlook,
+                    buyerIntent,
+                }),
+                monthlySearchVolume,
+                competitionScore,
+                costPerClickUsd: cpc,
+                relevanceScore: scoreKeywordRelevance(keyword, industry, location),
+            };
+        })
+        .filter((item): item is KeywordOpportunity & { relevanceScore: number } => Boolean(item))
+        .sort((left, right) => {
+            if (right.relevanceScore !== left.relevanceScore) return right.relevanceScore - left.relevanceScore;
+            if ((right.monthlySearchVolume || 0) !== (left.monthlySearchVolume || 0)) {
+                return (right.monthlySearchVolume || 0) - (left.monthlySearchVolume || 0);
+            }
+            return right.opportunityScore - left.opportunityScore;
+        })
+        .filter((item, index, values) => values.findIndex((entry) => entry.keyword.toLowerCase() === item.keyword.toLowerCase()) === index)
+        .slice(0, 20)
+        .map((item) => {
+            const { relevanceScore, ...rest } = item;
+            void relevanceScore;
+            return rest;
+        });
+
+    if (keywords.length === 0) {
+        return null;
+    }
+
+    return {
+        summary: `Pulled ${keywords.length} live keyword opportunities for ${toTitleCase(industry)} in ${location} using Google Ads data via DataForSEO. Sort by search volume, CPC, competition, or opportunity score.`,
+        location,
+        industry: toTitleCase(industry),
+        keywords,
+        dataSource: 'DATAFORSEO_GOOGLE_ADS',
+        disclaimer: 'Live keyword metrics are sourced from Google Ads data via DataForSEO. Values reflect provider-reported average monthly search volume, paid competition, and CPC, not internal estimates.',
+    };
+}
+
+async function buildAiEstimateReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
     const normalizedIndustry = toTitleCase(industry.trim());
     const normalizedLocation = location.trim();
 
@@ -287,7 +607,10 @@ Output valid JSON only with this schema:
                     opportunityScore: Math.min(Math.max(Math.round(item.opportunityScore || computeOpportunityScore(keyword, competitionOutlook, buyerIntent)), 1), 100),
                     suggestedAsset,
                     rationale: item.rationale?.trim() || buildRationale(keyword, competitionOutlook, buyerIntent),
-                };
+                    monthlySearchVolume: null,
+                    competitionScore: null,
+                    costPerClickUsd: null,
+                } satisfies KeywordOpportunity;
             })
             .filter((item) => item.keyword);
 
@@ -301,10 +624,25 @@ Output valid JSON only with this schema:
             industry: normalizedIndustry,
             keywords,
             dataSource: 'AI_ESTIMATE',
-            disclaimer: 'These are AI-assisted opportunity estimates, not live search-volume or CPC metrics. Connect a keyword-data provider later for verified traffic and competition data.',
+            disclaimer: 'These are AI-assisted keyword estimates, not live search-volume or CPC metrics. Add DataForSEO credentials to pull real search volume, CPC, and competition data.',
         };
     } catch (error) {
         console.error('Failed to generate keyword opportunity report:', error);
         return buildFallbackReport(industry, location);
     }
+}
+
+export async function generateKeywordOpportunityReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
+    if (hasDataForSeoCredentials()) {
+        try {
+            const report = await fetchDataForSeoKeywordReport(industry, location);
+            if (report) {
+                return report;
+            }
+        } catch (error) {
+            console.error('DataForSEO keyword report failed, falling back to AI estimation.', error);
+        }
+    }
+
+    return buildAiEstimateReport(industry, location);
 }
