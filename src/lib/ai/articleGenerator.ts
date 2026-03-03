@@ -21,7 +21,7 @@ export interface KeywordTargetedBlogDraft extends ArticleData {
     generatorVersion: string;
 }
 
-export const BLOG_GENERATOR_VERSION = 'v5-llm-only-beta';
+export const BLOG_GENERATOR_VERSION = 'v6-llm-driven-beta';
 
 interface PreviousDraftContext {
     title: string;
@@ -42,6 +42,8 @@ interface ArticlePlan {
     targetReader: string;
     coreProblem: string;
     serviceExplanation: string;
+    openingApproach: string;
+    structureNote: string;
     localFactors: string[];
     sections: ArticleSectionPlan[];
     questionsToAnswer: string[];
@@ -56,18 +58,6 @@ interface JsonGenerationOptions {
     maxTokens?: number;
 }
 
-const FALLBACK_INTRO_VARIANTS = [
-    'A strong contractor should explain the work in plain language before talking about upgrades or add-ons.',
-    'The most useful draft starts by clarifying the job itself, not by jumping straight into promotional language.',
-    'Good service content should help a customer understand the project before they ever compare bids.',
-];
-
-const FALLBACK_CTA_VARIANTS = [
-    'The next step should be a site review and a practical conversation about what fits the property.',
-    'A contractor should be able to walk through the property, explain realistic options, and narrow the scope before quoting.',
-    'The right provider should help turn the idea into a workable plan, not just hand over a generic estimate.',
-];
-
 interface KeywordContext {
     normalizedPrimaryKeyword: string;
     normalizedSupportingKeywords: string[];
@@ -77,222 +67,6 @@ interface KeywordContext {
     readerQuestions: string[];
     localAngle: string;
 }
-
-interface FocusAngle {
-    titleSuffix: string;
-    sectionHeading: string;
-    description: string;
-    promptInstruction: string;
-    fallbackQuestions: string[];
-}
-
-interface OutlineArchetype {
-    name: string;
-    openingHeading: string;
-    openingInstruction: string;
-    sectionHeadings: [string, string, string];
-    sectionInstructions: [string, string, string];
-    ctaInstruction: string;
-}
-
-interface StyleBlueprint {
-    name: string;
-    titlePattern: string;
-    introApproach: string;
-    sectionRhythm: string;
-    voiceNotes: string[];
-    optionalDevices: string[];
-    ctaStyle: string;
-}
-
-const REGENERATION_ANGLES: FocusAngle[] = [
-    {
-        titleSuffix: 'Planning Considerations',
-        sectionHeading: 'How To Plan The Project Correctly',
-        description: 'planning decisions, site evaluation, layout, scope definition, and prep work before the project begins',
-        promptInstruction: 'Make planning and early project decisions the main angle for this version.',
-        fallbackQuestions: [
-            'What should be evaluated on the property before the plan is finalized?',
-            'Which planning decisions are hardest to change later?',
-            'What should be clarified before the scope is approved?',
-        ],
-    },
-    {
-        titleSuffix: 'Cost And Scope Factors',
-        sectionHeading: 'What Actually Affects Cost And Scope',
-        description: 'pricing drivers, scope risk, labor complexity, and how customers should compare proposals',
-        promptInstruction: 'Make cost, scope, and proposal comparison the main angle for this version.',
-        fallbackQuestions: [
-            'Which site conditions usually change the price the most?',
-            'What details should be included in a serious quote?',
-            'How can a customer tell the difference between a complete scope and an incomplete one?',
-        ],
-    },
-    {
-        titleSuffix: 'Common Mistakes To Avoid',
-        sectionHeading: 'Mistakes That Cause Problems Later',
-        description: 'avoidable mistakes, shortcuts, poor planning, and contractor-selection errors that create rework',
-        promptInstruction: 'Make avoidable mistakes and how to prevent them the main angle for this version.',
-        fallbackQuestions: [
-            'What decisions commonly create avoidable rework later?',
-            'Which shortcuts usually cause the biggest quality problems?',
-            'What should a customer verify before work starts?',
-        ],
-    },
-    {
-        titleSuffix: 'Material And Durability Decisions',
-        sectionHeading: 'Material Choices And Long-Term Performance',
-        description: 'material tradeoffs, long-term durability, upkeep, and choosing options that fit the property',
-        promptInstruction: 'Make materials, durability, and long-term performance the main angle for this version.',
-        fallbackQuestions: [
-            'Which material decisions affect longevity the most?',
-            'How do maintenance expectations change between options?',
-            'What should a customer ask about long-term performance?',
-        ],
-    },
-    {
-        titleSuffix: 'Questions To Ask Before Hiring',
-        sectionHeading: 'What To Ask Before Choosing A Contractor',
-        description: 'contractor selection, proposal review, communication, and how to judge qualifications before hiring',
-        promptInstruction: 'Make hiring decisions and contractor evaluation the main angle for this version.',
-        fallbackQuestions: [
-            'What should a customer ask to confirm the contractor understands the work?',
-            'How should a customer compare two different proposals?',
-            'What communication or process details matter before work begins?',
-        ],
-    },
-];
-
-const ARTICLE_ARCHETYPES: OutlineArchetype[] = [
-    {
-        name: 'Decision Guide',
-        openingHeading: 'What This Service Actually Solves',
-        openingInstruction: 'Open by explaining the real property or operational problem the service is meant to solve.',
-        sectionHeadings: ['How The Work Is Usually Scoped', 'What Changes The Outcome', 'How To Compare Providers'],
-        sectionInstructions: [
-            'Explain how professionals scope the work and what should be clarified early.',
-            'Explain which project conditions, materials, or site constraints affect the result most.',
-            'Explain how a customer should compare proposals or providers without relying on generic advice.',
-        ],
-        ctaInstruction: 'End with a calm, practical CTA based on next steps and project fit.',
-    },
-    {
-        name: 'Mistake Prevention',
-        openingHeading: 'Where Projects Usually Go Wrong',
-        openingInstruction: 'Open with the mistakes, blind spots, or bad assumptions that commonly create problems later.',
-        sectionHeadings: ['What Should Be Decided Early', 'What Customers Often Overlook', 'How To Avoid Rework'],
-        sectionInstructions: [
-            'Explain the early choices that are hardest to reverse later.',
-            'Explain the site conditions, scope details, or communication issues customers often miss.',
-            'Explain how the customer can reduce risk before work starts.',
-        ],
-        ctaInstruction: 'End by recommending a site review or planning conversation before committing to the work.',
-    },
-    {
-        name: 'Owner Checklist',
-        openingHeading: 'What To Review Before Moving Forward',
-        openingInstruction: 'Open with a checklist-style framing that helps the customer understand what should be reviewed before committing.',
-        sectionHeadings: ['What Should Be In The Proposal', 'Questions Worth Asking', 'What A Solid Plan Looks Like'],
-        sectionInstructions: [
-            'Break down what a credible proposal or scope should include.',
-            'Give practical questions that expose weak planning or vague estimates.',
-            'Describe what a well-scoped, well-communicated plan looks like in practice.',
-        ],
-        ctaInstruction: 'End by inviting the reader to use the checklist in a conversation with a local contractor.',
-    },
-    {
-        name: 'Scope Breakdown',
-        openingHeading: 'What Is Usually Included In The Work',
-        openingInstruction: 'Open by breaking the service into its major parts instead of starting with generic context.',
-        sectionHeadings: ['What A Contractor Should Evaluate', 'What Affects Timeline And Budget', 'What Matters After The Work Is Done'],
-        sectionInstructions: [
-            'Explain what should be inspected or evaluated before recommendations are made.',
-            'Explain what drives timeline changes, pricing, and project complexity.',
-            'Explain what affects long-term performance, maintenance, or follow-up decisions.',
-        ],
-        ctaInstruction: 'End by positioning the business as a provider that can explain the scope clearly before quoting.',
-    },
-    {
-        name: 'Planning Primer',
-        openingHeading: 'How To Plan The Job The Right Way',
-        openingInstruction: 'Open with the planning lens and explain why early decisions shape the final result.',
-        sectionHeadings: ['What Needs To Be Clarified First', 'Which Choices Matter Most', 'How To Know The Plan Is Ready'],
-        sectionInstructions: [
-            'Explain the first questions that should be answered before design or pricing goes too far.',
-            'Explain which choices have the biggest effect on quality, maintenance, or total scope.',
-            'Explain how a customer can tell the project is properly defined before approving it.',
-        ],
-        ctaInstruction: 'End with a CTA that emphasizes clarity, scope review, and practical next steps.',
-    },
-];
-
-const STYLE_BLUEPRINTS: StyleBlueprint[] = [
-    {
-        name: 'Operator Memo',
-        titlePattern: 'direct and practical, with a clear promised takeaway rather than a generic SEO phrase',
-        introApproach: 'Open like an operator explaining a real business or property problem to a customer in plain language.',
-        sectionRhythm: 'Use compact explanatory sections, occasional bullets, and one decisive section that tells the reader what separates a solid contractor from a weak one.',
-        voiceNotes: [
-            'sound experienced, grounded, and unsentimental',
-            'prefer concrete project language over abstract marketing claims',
-            'avoid hype and write like someone who has seen the job go wrong before',
-        ],
-        optionalDevices: ['decision checklist', 'mistakes to avoid', 'scope comparison'],
-        ctaStyle: 'close with a calm recommendation focused on next steps, site review, and project fit',
-    },
-    {
-        name: 'Educational Guide',
-        titlePattern: 'search-friendly but still human, with a teaching angle',
-        introApproach: 'Start by teaching the reader what the service actually covers and why that distinction matters.',
-        sectionRhythm: 'Use explanatory sections with one or two short lists and at least one clarifying subsection.',
-        voiceNotes: [
-            'be approachable and informative',
-            'define terms when needed',
-            'make each section feel like it teaches one clear thing',
-        ],
-        optionalDevices: ['quick definitions', 'comparison table', 'what this service includes'],
-        ctaStyle: 'end by inviting the reader to use the article as a starting point for a local conversation',
-    },
-    {
-        name: 'Contrarian Hook',
-        titlePattern: 'strong and slightly provocative, built around a mistaken assumption or overlooked factor',
-        introApproach: 'Open by challenging a common bad assumption and then reframe the issue correctly.',
-        sectionRhythm: 'Use sharper transitions, a debunking section, and then settle into practical explanation.',
-        voiceNotes: [
-            'be confident without sounding theatrical',
-            'use contrast to create momentum',
-            'keep the article useful, not clickbaity',
-        ],
-        optionalDevices: ['myth vs reality', 'common bad assumptions', 'what actually drives the result'],
-        ctaStyle: 'close by positioning the business as a provider that explains tradeoffs honestly before quoting',
-    },
-    {
-        name: 'Buyer Checklist',
-        titlePattern: 'clear and utilitarian, like a guide someone would save before talking to contractors',
-        introApproach: 'Start by explaining what a customer should review before committing to the work.',
-        sectionRhythm: 'Use checklists, question-driven subsections, and clear criteria for evaluating proposals.',
-        voiceNotes: [
-            'sound methodical and reader-protective',
-            'help the reader compare options intelligently',
-            'favor checklists and criteria over broad narrative',
-        ],
-        optionalDevices: ['proposal checklist', 'questions to ask', 'red flags'],
-        ctaStyle: 'end with a practical suggestion to use the checklist during a site visit or estimate call',
-    },
-    {
-        name: 'Proof And Process',
-        titlePattern: 'specific and credible, focused on how a good process creates a better result',
-        introApproach: 'Open with the process behind a good outcome rather than the finished result alone.',
-        sectionRhythm: 'Move from problem to process to outcomes, and include one section that shows why shortcuts fail.',
-        voiceNotes: [
-            'stress process discipline and long-term performance',
-            'write with quiet authority',
-            'make the reader feel they understand how a serious contractor thinks',
-        ],
-        optionalDevices: ['before vs after logic', 'process breakdown', 'why shortcuts fail'],
-        ctaStyle: 'end by inviting the reader to talk through scope, sequencing, and fit before making a decision',
-    },
-];
 
 function slugify(value: string) {
     return value
@@ -455,16 +229,6 @@ function toTitleCase(value: string) {
     return value.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function createStableSeed(value: string) {
-    let hash = 0;
-
-    for (let index = 0; index < value.length; index += 1) {
-        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-    }
-
-    return hash;
-}
-
 function dedupeKeywords(primaryKeyword: string, supportingKeywords: string[]) {
     const normalizedPrimaryKeyword = normalizeKeyword(primaryKeyword);
     const normalizedSupportingKeywords = supportingKeywords
@@ -538,31 +302,6 @@ function buildReadableServiceLabel(context: KeywordContext, industry: string) {
     }
 
     return label.replace(/\s+/g, ' ').trim();
-}
-
-function buildReadableProjectLabel(context: KeywordContext, industry: string) {
-    const industryTokens = normalizeKeyword(industry).toLowerCase().split(/\s+/).filter(Boolean);
-    const serviceLabel = buildReadableServiceLabel(context, industry)
-        .replace(/\b(contractor|contractors|company|companies|expert|experts)\b/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const serviceTokens = serviceLabel.split(/\s+/).filter(Boolean);
-    const nonIndustryTokens = serviceTokens.filter((token) => !industryTokens.includes(token));
-
-    const compactLabel = nonIndustryTokens.length >= 2
-        ? nonIndustryTokens.join(' ')
-        : serviceLabel;
-
-    if (serviceLabel.endsWith('work') || serviceLabel.endsWith('service') || serviceLabel.endsWith('project')) {
-        return compactLabel;
-    }
-
-    if (compactLabel.includes('design') || compactLabel.includes('installation') || compactLabel.includes('repair')) {
-        return `${compactLabel} project`.trim();
-    }
-
-    return `${compactLabel} work`.trim();
 }
 
 function buildKeywordContext(
@@ -727,55 +466,6 @@ function sanitizeGeneratedMarkdown(markdown: string, context: KeywordContext) {
         .trim();
 }
 
-function pickVariant<T>(variants: T[], seed: number) {
-    if (variants.length === 0) {
-        throw new Error('pickVariant requires at least one variant.');
-    }
-
-    return variants[seed % variants.length];
-}
-
-function selectFocusAngle(context: KeywordContext, regenerationSeed?: string) {
-    const seed = createStableSeed([
-        context.normalizedPrimaryKeyword,
-        context.normalizedSupportingKeywords.join('|'),
-        regenerationSeed || 'initial-draft',
-    ].join('|'));
-
-    return {
-        seed,
-        angle: pickVariant(REGENERATION_ANGLES, seed),
-    };
-}
-
-function selectOutlineArchetype(context: KeywordContext, regenerationSeed?: string) {
-    const seed = createStableSeed([
-        'outline',
-        context.normalizedPrimaryKeyword,
-        context.normalizedSupportingKeywords.join('|'),
-        regenerationSeed || 'initial-draft',
-    ].join('|'));
-
-    return {
-        seed,
-        archetype: pickVariant(ARTICLE_ARCHETYPES, seed),
-    };
-}
-
-function selectStyleBlueprint(context: KeywordContext, regenerationSeed?: string) {
-    const seed = createStableSeed([
-        'style',
-        context.normalizedPrimaryKeyword,
-        context.normalizedSupportingKeywords.join('|'),
-        regenerationSeed || 'initial-draft',
-    ].join('|'));
-
-    return {
-        seed,
-        style: pickVariant(STYLE_BLUEPRINTS, seed),
-    };
-}
-
 function sanitizeArticleData(
     parsedData: ArticleData,
     fallbackTitle: string,
@@ -801,14 +491,11 @@ async function planKeywordTargetedArticle(
     context: KeywordContext,
     location: string,
     industry: string,
-    angle: FocusAngle,
-    archetype: OutlineArchetype,
-    style: StyleBlueprint,
     regenerationSeed?: string,
     previousDraft?: PreviousDraftContext,
 ) {
     return generateJson<ArticlePlan>({
-        system: 'You are an editorial strategist for local service companies. Build article plans that feel like strong human editorial outlines, not SEO templates.',
+        system: 'You are a senior editorial strategist for local service companies. Plan articles that feel like strong human editorial work, not SEO templates or repeatable content blocks.',
         prompt: `
 Plan a local service article before it is written.
 
@@ -821,29 +508,18 @@ ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('
 - Core service focus: ${context.serviceFocus}
 - Customer need: ${context.readerIntent}
 - Local angle: ${context.localAngle}
-- Regeneration angle: ${angle.description}
-- Outline family: ${archetype.name}
-- Style blueprint: ${style.name}
-- Title pattern: ${style.titlePattern}
-- Intro approach: ${style.introApproach}
-- Section rhythm: ${style.sectionRhythm}
-- Voice notes:
-${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
-- Optional section devices:
-${style.optionalDevices.map((device) => `  - ${device}`).join('\n')}
-- CTA style: ${style.ctaStyle}
 - Draft variation seed: ${regenerationSeed || 'initial-draft'}
 ${previousDraft ? `- Previous draft title to avoid echoing: ${previousDraft.title}\n- Previous draft excerpt to avoid echoing: ${previousDraft.excerpt}` : ''}
 
 Requirements:
-1. Build an outline around the real customer problem, not the keyword phrasing.
-2. Make the article feel specific, grounded, and useful for someone hiring or evaluating this service in ${location}.
-3. Pick a fresh angle that differs from the prior draft if one exists.
+1. Build the outline around the real customer problem, not the keyword phrasing.
+2. Pick a natural editorial angle that fits this subject. Do not force the article into a predetermined template.
+3. Make this version structurally distinct from prior drafts if one exists. Change the opening logic, section order, and narrative rhythm when appropriate.
 4. Avoid formulaic SEO framing and avoid headings that sound like keyword-analysis language.
 5. Return 4 to 6 sections with distinct purposes.
 6. Include practical local considerations such as climate, property type, permitting, material performance, scheduling, access, or maintenance where relevant.
 7. The title angle should feel natural and editorial, not like a templated landing page.
-8. Make the structure meaningfully different depending on the style blueprint. Do not default back to the same checklist/article pattern every time.
+8. Choose a structure that genuinely suits the topic. It can be explanatory, diagnostic, comparative, process-driven, checklist-based, or cautionary, but only if it fits the subject.
 
 Return JSON with this shape:
 {
@@ -851,6 +527,8 @@ Return JSON with this shape:
   "targetReader": "string",
   "coreProblem": "string",
   "serviceExplanation": "string",
+  "openingApproach": "string",
+  "structureNote": "string",
   "localFactors": ["string"],
   "sections": [
     {
@@ -875,7 +553,6 @@ async function writeKeywordTargetedArticle(
     location: string,
     businessName: string,
     industry: string,
-    style: StyleBlueprint,
     previousDraft?: PreviousDraftContext,
 ) {
     return generateJson<ArticleData>({
@@ -893,15 +570,6 @@ Topic context:
 - Related topics:
 ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
 - Service focus: ${context.serviceFocus}
-- Style blueprint: ${style.name}
-- Title pattern: ${style.titlePattern}
-- Intro approach: ${style.introApproach}
-- Section rhythm: ${style.sectionRhythm}
-- Voice notes:
-${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
-- Optional devices you may use if they fit:
-${style.optionalDevices.map((device) => `  - ${device}`).join('\n')}
-- CTA style: ${style.ctaStyle}
 
 Approved plan:
 ${JSON.stringify(plan, null, 2)}
@@ -919,7 +587,8 @@ Requirements:
 8. The H1 is rendered outside the markdown body, so do not include an H1 in contentMarkdown.
 9. Keep the CTA near the end and make it practical, local, and calm.
 10. Target at least 900 words.
-11. Make the article feel structurally distinct from a generic service-guide template. Let the style blueprint actually change the rhythm, framing, and transitions.
+11. Let the article find its own rhythm. If the topic needs a sharper opening, a process walkthrough, a comparison section, or a cautionary section, do that naturally instead of forcing a fixed pattern.
+12. Prefer concrete, useful phrasing over generic copy. If a sentence sounds templated, rewrite it.
 
 Return JSON only:
 {
@@ -942,7 +611,6 @@ async function editKeywordTargetedArticle(
     location: string,
     businessName: string,
     industry: string,
-    style: StyleBlueprint,
 ) {
     return generateJson<ArticleData>({
         system: 'You are a senior editor rewriting AI-assisted drafts to sound natural, specific, and reader-first. Remove robotic phrasing, repetitive structure, and any meta language.',
@@ -958,10 +626,6 @@ Topic context:
 - Primary topic: ${context.normalizedPrimaryKeyword}
 - Related topics:
 ${context.normalizedSupportingKeywords.map((keyword) => `  - ${keyword}`).join('\n') || '  - none'}
-- Style blueprint: ${style.name}
-- Voice notes:
-${style.voiceNotes.map((note) => `  - ${note}`).join('\n')}
-- Section rhythm: ${style.sectionRhythm}
 
 Editorial plan:
 ${JSON.stringify(plan, null, 2)}
@@ -978,6 +642,7 @@ Edit rules:
 6. Keep the piece specific to ${location} where that adds value, but do not force the location into every paragraph.
 7. Keep the CTA local and reader-appropriate.
 8. Remove any repeated article-template feel. If multiple headings or transitions feel generic, rewrite them so the piece feels like its own article.
+9. If the draft reads like a generic service page, rewrite it into something more observational, explanatory, and specific.
 
 Return JSON only:
 {
@@ -991,96 +656,6 @@ Return JSON only:
         temperature: 0.7,
         maxTokens: 5200,
     });
-}
-
-function buildFallbackBlogDraft(
-    primaryKeyword: string,
-    supportingKeywords: string[],
-    location: string,
-    businessName: string,
-    industry: string,
-    regenerationSeed?: string,
-    previousDraft?: PreviousDraftContext,
-): KeywordTargetedBlogDraft {
-    const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
-    const { seed: fallbackSeed, angle } = selectFocusAngle(context, regenerationSeed);
-    const { archetype } = selectOutlineArchetype(context, regenerationSeed);
-    const { style } = selectStyleBlueprint(context, regenerationSeed);
-    const readableServiceLabel = buildReadableServiceLabel(context, industry);
-    const readableProjectLabel = buildReadableProjectLabel(context, industry);
-    const title = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
-    const excerpt = `${businessName} created this guide to help property owners understand ${readableServiceLabel} in ${location}, with a focus on ${angle.description}.`;
-    const allKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
-    const slug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
-    const primaryRelatedTopic = context.normalizedSupportingKeywords[0] || `${industry.toLowerCase()} material selection`;
-    const secondaryRelatedTopic = context.normalizedSupportingKeywords[1] || `${industry.toLowerCase()} project planning`;
-    const freshnessLine = previousDraft
-        ? `For customers in ${location}, this article focuses on ${angle.description}.`
-        : pickVariant(FALLBACK_INTRO_VARIANTS, fallbackSeed);
-    const optionalDevice = pickVariant(style.optionalDevices, fallbackSeed + 2);
-    const styleLead = pickVariant(style.voiceNotes, fallbackSeed + 3);
-
-    const contentMarkdown = `
-## ${archetype.openingHeading}
-
-A ${readableProjectLabel} project usually starts with a site review, a discussion of how the space will be used, and a plan for how the finished work should function day to day. A good contractor should be able to explain layout, materials, drainage, access, and how the work fits the property instead of jumping straight to a price.
-
-For customers in ${location}, the early planning stage matters because small decisions at the beginning often determine how well the project holds up later. The right plan should balance appearance, durability, maintenance needs, and how the finished work connects to the rest of the property. ${freshnessLine} A practical guide should ${styleLead}.
-
-## ${archetype.sectionHeadings[0]}
-
-Most customers should bring in a contractor once they know the problem they are trying to solve with the space. That might mean creating a better area for entertaining, improving traffic flow, replacing a worn-out feature, or making part of the property easier to maintain.
-
-A contractor is most useful when they can help define scope before money is wasted on the wrong design or material choice. This is especially true when grading, drainage, access, structural support, or long-term maintenance will affect the outcome. ${archetype.sectionInstructions[0]}
-
-## ${archetype.sectionHeadings[1]}
-
-A useful proposal should explain more than the visual design. It should show how the work will function once it is built and which conditions on the property could change the plan. For most customers, the useful conversation is about ${angle.description}. ${archetype.sectionInstructions[1]}
-
-- The intended use of the space and how much traffic it will handle
-- Material options and what they mean for maintenance, lifespan, and appearance
-- Drainage, grading, and any site-prep work needed before installation
-- Timeline, crew access, and how the work may affect the rest of the property
-- What is included in the quoted scope and what would count as a change order
-
-## ${toTitleCase(optionalDevice)}
-
-The article should not repeat the same generic talking points. One useful way to explain ${readableServiceLabel} is through a ${optionalDevice} section that makes the decision easier for the reader. This gives the customer something practical to compare, ask about, or review before approving the work.
-
-## ${archetype.sectionHeadings[2]}
-
-Customers usually get better results when they ask direct questions before the project starts. A contractor should be able to explain the reasoning behind the plan, not just hand over a sketch and a price. ${archetype.sectionInstructions[2]}
-
-1. ${angle.fallbackQuestions[0]}
-2. ${angle.fallbackQuestions[1]}
-3. ${angle.fallbackQuestions[2]}
-4. How does this project connect to related needs such as ${primaryRelatedTopic} or ${secondaryRelatedTopic}?
-5. What is included in the quoted scope, and what is not?
-
-## What Property Owners In ${location} Should Know
-
-Local conditions affect how well a project performs over time. A design that looks good on paper may still fail if it does not account for water movement, freeze-thaw stress, heavy use, or the way the space connects to existing features on the property.
-
-That is why the most useful contractor conversations are practical, not promotional. Customers should come away understanding what the work involves, what tradeoffs exist, and what decisions matter most before construction begins.
-
-## Call To Action
-
-If you are comparing options for **${context.normalizedPrimaryKeyword}** in **${location}**, the next step is to talk with a contractor who can explain the project clearly and tailor the plan to the property. **${businessName}** should be positioned as a provider that can review the site, explain realistic options, and help you move forward with a plan that makes sense. ${archetype.ctaInstruction} ${pickVariant(FALLBACK_CTA_VARIANTS, fallbackSeed + 1)}
-`.trim();
-
-    return {
-        title,
-        slug,
-        excerpt,
-        contentMarkdown,
-        seoKeywords: allKeywords,
-        primaryKeyword: context.normalizedPrimaryKeyword,
-        supportingKeywords: context.normalizedSupportingKeywords,
-        location,
-        industry,
-        dataSource: 'LLM_BETA',
-        generatorVersion: BLOG_GENERATOR_VERSION,
-    };
 }
 
 export async function generateLocalSEOArticle(
@@ -1161,26 +736,20 @@ export async function generateKeywordTargetedBlogArticle(
 ): Promise<KeywordTargetedBlogDraft> {
     const context = buildKeywordContext(primaryKeyword, supportingKeywords, industry, location);
     const fallbackKeywords = [context.normalizedPrimaryKeyword, ...context.normalizedSupportingKeywords].slice(0, 5);
-    const { angle } = selectFocusAngle(context, regenerationSeed);
-    const { archetype } = selectOutlineArchetype(context, regenerationSeed);
-    const { style } = selectStyleBlueprint(context, regenerationSeed);
 
     if (getBlogAiProvider() === 'fallback') {
         throw new Error('Blog generator beta requires a configured language model. Add OPENAI_API_KEY or ANTHROPIC_API_KEY.');
     }
 
-    const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)}: ${angle.titleSuffix} For ${location}`;
+    const fallbackTitle = `${toTitleCase(context.normalizedPrimaryKeyword)} in ${location}`;
     const fallbackSlug = slugify(`${context.normalizedPrimaryKeyword} ${location}`);
-    const fallbackExcerpt = `${businessName} explains what local customers should know about ${buildReadableServiceLabel(context, industry)} in ${location}, with a focus on ${angle.description}.`;
+    const fallbackExcerpt = `${businessName} explains what local customers should know about ${buildReadableServiceLabel(context, industry)} in ${location}.`;
 
     try {
         const plan = await planKeywordTargetedArticle(
             context,
             location,
             industry,
-            angle,
-            archetype,
-            style,
             regenerationSeed,
             previousDraft,
         );
@@ -1191,7 +760,6 @@ export async function generateKeywordTargetedBlogArticle(
             location,
             businessName,
             industry,
-            style,
             previousDraft,
         );
 
@@ -1205,7 +773,6 @@ export async function generateKeywordTargetedBlogArticle(
                 location,
                 businessName,
                 industry,
-                style,
             );
         } catch (editorError) {
             console.error('Blog draft editor pass failed, using writer output.', editorError);
