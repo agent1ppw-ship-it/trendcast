@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { ensureOrganization } from '@/app/actions/auth';
 import { prisma } from '@/lib/prisma';
-import { DEFAULT_MAIL_TEMPLATES, getDirectMailMode } from '@/lib/directMail';
+import { DEFAULT_MAIL_TEMPLATES, getDirectMailMode, getLobEnvironment } from '@/lib/directMail';
 import { DirectMailDashboardClient } from '@/components/DirectMailDashboardClient';
 
 export default async function DirectMailPage() {
@@ -76,6 +76,7 @@ export default async function DirectMailPage() {
     return (
         <DirectMailDashboardClient
             mailMode={getDirectMailMode()}
+            lobEnvironment={getLobEnvironment()}
             senderProfile={{
                 mailFromName: organization?.mailFromName || '',
                 mailFromCompany: organization?.mailFromCompany || '',

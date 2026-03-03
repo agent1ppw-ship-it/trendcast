@@ -91,12 +91,14 @@ export function DirectMailDashboardClient({
     templates,
     campaigns,
     mailMode,
+    lobEnvironment,
     senderProfile,
 }: {
     leads: LeadRecord[];
     templates: TemplateRecord[];
     campaigns: CampaignRecord[];
     mailMode: 'live' | 'demo';
+    lobEnvironment: 'demo' | 'test' | 'live';
     senderProfile: SenderProfileRecord;
 }) {
     const router = useRouter();
@@ -314,7 +316,11 @@ export function DirectMailDashboardClient({
                 <div className="flex flex-col items-start gap-2 lg:items-end">
                     <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${mailMode === 'live' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-200'}`}>
                         <Sparkles className="h-4 w-4" />
-                        {mailMode === 'live' ? 'Lob live mode enabled' : 'Demo mode: Lob API key not configured'}
+                        {mailMode === 'live'
+                            ? lobEnvironment === 'test'
+                                ? 'Lob test mode enabled'
+                                : 'Lob live mode enabled'
+                            : 'Demo mode: Lob API key not configured'}
                     </div>
                     <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${senderProfileComplete ? 'border-blue-500/20 bg-blue-500/10 text-blue-200' : 'border-red-500/20 bg-red-500/10 text-red-200'}`}>
                         {senderProfileComplete ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}

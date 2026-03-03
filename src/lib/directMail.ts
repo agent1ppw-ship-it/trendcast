@@ -98,8 +98,15 @@ export const DEFAULT_MAIL_TEMPLATES = [
     },
 ];
 
+export function getLobEnvironment() {
+    const apiKey = process.env.LOB_API_KEY;
+    if (!apiKey) return 'demo' as const;
+    if (apiKey.startsWith('test_')) return 'test' as const;
+    return 'live' as const;
+}
+
 export function getDirectMailMode() {
-    return process.env.LOB_API_KEY ? 'live' : 'demo';
+    return getLobEnvironment() === 'demo' ? 'demo' : 'live';
 }
 
 export function calculateMailCost(size: keyof typeof MAIL_PRICING, quantity: number) {

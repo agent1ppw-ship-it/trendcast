@@ -11,6 +11,7 @@ import {
     calculateMailCost,
     createLobPostcard,
     getDirectMailMode,
+    getLobEnvironment,
     hasCompleteSenderProfile,
     parseAddressString,
     renderMailPreview,
@@ -242,8 +243,10 @@ export async function sendMailCampaign(campaignId: string) {
     });
 
     const mode = getDirectMailMode();
+    const lobEnvironment = getLobEnvironment();
     let sentCount = 0;
     let failedCount = 0;
+    let lobCreatedCount = 0;
 
     await prisma.mailOrder.deleteMany({
         where: {
@@ -352,6 +355,9 @@ export async function sendMailCampaign(campaignId: string) {
                 });
                 lobObjectId = lobMailPiece.id;
                 lobTrackingId = lobMailPiece.trackingId;
+                if (lobObjectId) {
+                    lobCreatedCount += 1;
+                }
             } catch (error) {
                 console.error('Lob postcard creation failed.', error);
                 orderStatus = 'FAILED';
@@ -385,11 +391,13 @@ export async function sendMailCampaign(campaignId: string) {
         await prisma.mailTrackingEvent.create({
             data: {
                 orderId: order.id,
-                eventType: mode === 'live' ? 'created' : 'demo.created',
+                eventType: mode === 'live' ? `lob.${lobEnvironment}.created` : 'demo.created',
                 eventData: {
                     previewFront: replaceMailMergeTags(campaign.template.frontHeadline, mergeLead),
                     previewBack: replaceMailMergeTags(campaign.template.backBody, mergeLead),
                     mode,
+                    lobEnvironment,
+                    lobObjectId,
                 } as Prisma.InputJsonValue,
             },
         });
@@ -412,13 +420,27 @@ export async function sendMailCampaign(campaignId: string) {
 
     revalidatePath('/dashboard/mail');
 
+    if (mode === 'live' && lobCreatedCount === 0) {
+        return {
+            success: false,
+            sentCount,
+            failedCount,
+            mode,
+            lobEnvironment,
+            error: 'Lob did not accept any mail pieces for this campaign. Check the sender profile, recipient addresses, and Lob account environment.',
+        };
+    }
+
     return {
         success: true,
         sentCount,
         failedCount,
         mode,
+        lobEnvironment,
         message: mode === 'live'
-            ? 'Campaign submitted to Lob.'
-            : 'Campaign processed in demo mode. Add LOB_API_KEY and sender address env vars to mail live postcards.',
+            ? lobEnvironment === 'test'
+                ? `Campaign submitted to Lob test mode. ${lobCreatedCount} mail piece(s) created.`
+                : `Campaign submitted to Lob live mode. ${lobCreatedCount} mail piece(s) created.`
+            : 'Campaign processed in demo mode. Add a Lob API key to create real mail pieces.',
     };
 }
