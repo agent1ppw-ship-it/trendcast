@@ -1,13 +1,36 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, Bot, PhoneCall, LineChart, CalendarCheck, ShieldCheck, Zap, Activity } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  Building2,
+  CalendarCheck,
+  Clapperboard,
+  LayoutDashboard,
+  LineChart,
+  PenSquare,
+  PhoneCall,
+  Search,
+  ShieldCheck,
+  Zap
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createCheckoutSession } from '@/app/actions/billing';
 
 export default function Home() {
+  const mobileQuickActions = [
+    { href: '/dashboard/leads', label: 'Lead Extractor', icon: Search },
+    { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
+    { href: '/dashboard/keywords', label: 'Keywords', icon: LineChart },
+    { href: '/dashboard/blog-posts', label: 'Blog Posts', icon: PenSquare },
+    { href: '/dashboard/crm', label: 'Pipeline CRM', icon: LayoutDashboard },
+    { href: 'https://clipgenerator.ai', label: 'AI Video Suite', icon: Clapperboard, external: true },
+  ];
+
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
     whileInView: { opacity: 1, y: 0 },
@@ -93,6 +116,47 @@ export default function Home() {
                 <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase group-hover:text-gray-400 transition-colors">10 Extracts Included</span>
               </Link>
             </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="mt-8 md:hidden"
+            >
+              <div className="rounded-[28px] border border-white/10 bg-[#111111]/90 p-4 text-left shadow-[0_18px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-300">Quick Launch</p>
+                    <h2 className="mt-1 text-lg font-semibold text-white">Open your core tools</h2>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-[#171717] px-3 py-1 text-[11px] font-medium text-gray-400">
+                    Mobile Home
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {mobileQuickActions.map(({ href, label, icon: Icon, external }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      target={external ? '_blank' : undefined}
+                      rel={external ? 'noreferrer noopener' : undefined}
+                      className="group rounded-2xl border border-white/8 bg-[#171717] p-4 transition-all hover:border-blue-400/30 hover:bg-[#1B1B1B]"
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300 ring-1 ring-blue-500/20 transition-transform group-hover:scale-105">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="mt-4 text-sm font-semibold leading-5 text-white">
+                        {label}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Open
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
 
           {/* MacOS Dark Mode Dashboard Preview Mockup */}
@@ -250,7 +314,9 @@ export default function Home() {
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 150 Address Extracts /mo</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 1,000 Contact Reveal Credits</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Pipeline Management CRM</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Lead Scoring Dashboard</li>
               </ul>
               <button
@@ -272,6 +338,9 @@ export default function Home() {
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
                 <li className="flex items-start gap-3 font-semibold text-gray-100">Everything in Intro, plus:</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 1,000 Address Extracts /mo</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 5,000 Contact Reveal Credits</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Playwright Stealth Proxy Pool</li>
@@ -299,6 +368,9 @@ export default function Home() {
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-blue-50">
                 <li className="flex items-start gap-3 font-semibold text-white">Everything in Pro, plus:</li>
+                <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Keyword Opportunities + Blog Post Generator</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Unlimited Address Extracts</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> 25,000 Contact Reveal Credits</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Unlimited API Syncing</li>
@@ -323,6 +395,9 @@ export default function Home() {
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
                 <li className="flex items-start gap-3 font-semibold text-gray-100">Everything in Ultimate, plus:</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Automated Sales Funnel Sync</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> SEO Powerhouse Website</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Long Tail Keyword Articles</li>
