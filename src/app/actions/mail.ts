@@ -203,6 +203,41 @@ export async function createMailTemplate(data: {
     return { success: true, templateId: template.id };
 }
 
+export async function deleteMailTemplate(templateId: string) {
+    const orgId = await ensureOrganization();
+    if (!orgId) return { success: false, error: 'Unauthorized.' };
+
+    const template = await prisma.mailTemplate.findFirst({
+        where: { id: templateId, orgId },
+        select: { id: true },
+    });
+
+    if (!template) {
+        return { success: false, error: 'Template not found.' };
+    }
+
+    const linkedCampaignCount = await prisma.mailCampaign.count({
+        where: {
+            orgId,
+            templateId: template.id,
+        },
+    });
+
+    if (linkedCampaignCount > 0) {
+        return {
+            success: false,
+            error: 'This template is already used by at least one campaign and cannot be deleted.',
+        };
+    }
+
+    await prisma.mailTemplate.delete({
+        where: { id: template.id },
+    });
+
+    revalidatePath('/dashboard/mail');
+    return { success: true };
+}
+
 export async function cancelMailCampaign(campaignId: string) {
     const orgId = await ensureOrganization();
     if (!orgId) return { success: false, error: 'Unauthorized.' };

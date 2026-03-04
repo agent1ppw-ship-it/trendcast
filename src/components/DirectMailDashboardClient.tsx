@@ -9,6 +9,7 @@ import {
     createMailCampaign,
     createDirectMailCheckoutSession,
     createMailTemplate,
+    deleteMailTemplate,
     saveMailSenderProfile,
     sendMailCampaign,
 } from '@/app/actions/mail';
@@ -417,6 +418,30 @@ export function DirectMailDashboardClient({
         });
     };
 
+    const handleDeleteTemplate = (templateId: string) => {
+        setError('');
+        setFeedback('');
+
+        if (!window.confirm('Delete this template? This cannot be undone.')) {
+            return;
+        }
+
+        startTransition(async () => {
+            const result = await deleteMailTemplate(templateId);
+            if (!result.success) {
+                setError(result.error || 'Failed to delete template.');
+                return;
+            }
+
+            setFeedback('Template deleted.');
+            if (selectedTemplateId === templateId) {
+                const nextTemplate = templates.find((template) => template.id !== templateId);
+                setSelectedTemplateId(nextTemplate?.id || '');
+            }
+            router.refresh();
+        });
+    };
+
     return (
         <div className="min-h-screen bg-[#0A0A0A] px-4 py-6 text-gray-100 md:p-8">
             <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -525,15 +550,36 @@ export function DirectMailDashboardClient({
                                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Choose Template</label>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     {templates.map((template) => (
-                                        <button
+                                        <div
                                             key={template.id}
                                             onClick={() => setSelectedTemplateId(template.id)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                    event.preventDefault();
+                                                    setSelectedTemplateId(template.id);
+                                                }
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
                                             className={`rounded-2xl border p-4 text-left transition-all ${selectedTemplateId === template.id ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/10 bg-[#171717] hover:border-white/20'}`}
                                         >
                                             <div className="mb-3 flex items-center justify-between">
                                                 <div className="text-sm font-semibold text-white">{template.name}</div>
-                                                <div className="rounded-full border border-white/10 bg-[#111] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                                                    {template.size}
+                                                <div className="flex items-center gap-2">
+                                                    <div className="rounded-full border border-white/10 bg-[#111] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                                                        {template.size}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            handleDeleteTemplate(template.id);
+                                                        }}
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-red-300 hover:bg-red-500/20"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        Delete
+                                                    </button>
                                                 </div>
                                             </div>
                                             <div
@@ -547,7 +593,7 @@ export function DirectMailDashboardClient({
                                             {template.imageUrl && (
                                                 <div className="mt-2 text-[11px] text-gray-500">Background image enabled</div>
                                             )}
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
