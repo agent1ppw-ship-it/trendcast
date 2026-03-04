@@ -15,7 +15,9 @@ const redisConnection = new IORedis(redisUrl, {
 const scrapeQueue = new Queue('ScrapeQueue', { connection: redisConnection as never });
 import { prisma } from '@/lib/prisma';
 
-export async function startScraperJob(zipCode: string) {
+export type ScraperListingType = 'RECENTLY_SOLD' | 'RECENTLY_LISTED';
+
+export async function startScraperJob(zipCode: string, listingType: ScraperListingType = 'RECENTLY_SOLD') {
     let orgId: string | null = null;
     let extractsDeducted = false;
 
@@ -48,10 +50,15 @@ export async function startScraperJob(zipCode: string) {
 
         const job = await scrapeQueue.add('scrape-job', {
             zipCode,
-            orgId: org.id
+            orgId: org.id,
+            listingType,
         });
 
-        return { success: true, message: `Scraper queued for ${zipCode}. ${getScraperExtractCost()} extracts reserved.`, jobId: job.id };
+        return {
+            success: true,
+            message: `Scraper queued for ${zipCode} (${listingType === 'RECENTLY_LISTED' ? 'recently listed' : 'recently sold'}). ${getScraperExtractCost()} extracts reserved.`,
+            jobId: job.id,
+        };
     } catch (error) {
         console.error('Failed to queue scraper job:', error);
         if (extractsDeducted && orgId) {

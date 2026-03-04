@@ -31,6 +31,25 @@ const redisConnection = new IORedis(redisUrl, {
 interface ScrapePayload {
     zipCode: string;
     orgId: string;
+    listingType?: 'RECENTLY_SOLD' | 'RECENTLY_LISTED';
+}
+
+function getScrapeTarget(listingType: ScrapePayload['listingType'], zipCode: string, pageNumber: number) {
+    if (listingType === 'RECENTLY_LISTED') {
+        return {
+            label: 'listed',
+            url: pageNumber === 1
+                ? `https://www.redfin.com/zipcode/${zipCode}`
+                : `https://www.redfin.com/zipcode/${zipCode}/page-${pageNumber}`,
+        };
+    }
+
+    return {
+        label: 'sold',
+        url: pageNumber === 1
+            ? `https://www.redfin.com/zipcode/${zipCode}/filter/include=sold-6mo`
+            : `https://www.redfin.com/zipcode/${zipCode}/filter/include=sold-6mo/page-${pageNumber}`,
+    };
 }
 
 interface BusinessFinderPayload {
@@ -104,6 +123,7 @@ export const scraperWorker = new Worker(
     'ScrapeQueue',
     async (job: Job<ScrapePayload>) => {
         console.log(`[Worker] Started scraping job ${job.id} for ZIP: ${job.data.zipCode}`);
+        const listingType = job.data.listingType || 'RECENTLY_SOLD';
 
         const org = await prisma.organization.findUnique({ where: { id: job.data.orgId } });
         if (!org) {
@@ -156,13 +176,14 @@ export const scraperWorker = new Worker(
                     throw new Error('Job Cancelled');
                 }
 
-                // Navigate to Redfin's recently sold homes for the target ZIP code
-                const pageUrl = pageNum === 1
-                    ? `https://www.redfin.com/zipcode/${job.data.zipCode}/filter/include=sold-6mo`
-                    : `https://www.redfin.com/zipcode/${job.data.zipCode}/filter/include=sold-6mo/page-${pageNum}`;
+                const scrapeTarget = getScrapeTarget(listingType, job.data.zipCode, pageNum);
+                const pageUrl = scrapeTarget.url;
 
                 console.log(`[Worker] Scraping ${pageUrl}`);
-                await job.updateProgress({ phase: `Scanning Redfin Page ${pageNum}...`, percent: 40 + (pageNum * 5) });
+                await job.updateProgress({
+                    phase: `Scanning ${scrapeTarget.label} Redfin page ${pageNum}...`,
+                    percent: 40 + (pageNum * 5),
+                });
 
                 await page.goto(pageUrl, {
                     waitUntil: 'domcontentloaded',
@@ -256,7 +277,7 @@ export const scraperWorker = new Worker(
                         name: 'Unknown',
                         phone: '',
                         address: address,
-                        source: 'SCRAPER',
+                        source: listingType === 'RECENTLY_LISTED' ? 'SCRAPER_LISTED' : 'SCRAPER',
                         status: 'EXTRACTED',
                         leadScore: 85,
                         isRevealed: false

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, Play, Database, CheckCircle2, Clock, RefreshCw, Send, Activity, Lock, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { startScraperJob, syncAllExtractedToCrm, syncLeadToCrm, getScraperStatus, cancelScraperJob } from '@/app/actions/scraper';
+import { startScraperJob, syncAllExtractedToCrm, syncLeadToCrm, getScraperStatus, cancelScraperJob, type ScraperListingType } from '@/app/actions/scraper';
 import { revealLeadContact } from '@/app/actions/credits';
 import { createCheckoutSession } from '@/app/actions/billing';
 
@@ -22,6 +22,7 @@ interface Lead {
 export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
     const router = useRouter();
     const [zipCode, setZipCode] = useState('');
+    const [listingType, setListingType] = useState<ScraperListingType>('RECENTLY_SOLD');
     const [isScraping, setIsScraping] = useState(false);
     const [activeJobId, setActiveJobId] = useState<string | null>(null);
     const [jobProgress, setJobProgress] = useState<{ phase: string; percent: number } | null>(null);
@@ -49,7 +50,7 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
         setQueueWarning('');
         setErrorCode(null);
 
-        const result = await startScraperJob(zipCode);
+        const result = await startScraperJob(zipCode, listingType);
 
         if (!result.success || !result.jobId) {
             setIsScraping(false);
@@ -114,7 +115,7 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
             <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Lead Scraper Engine</h1>
-                    <p className="text-gray-400 font-light text-sm">Automate stealth extraction of newly sold or listed properties via Zillow, and automatically enrich with Skip Tracing.</p>
+                    <p className="text-gray-400 font-light text-sm">Automate extraction of recently sold or currently listed properties and enrich them with reveal-ready lead data.</p>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -165,10 +166,13 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
 
                             <div>
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Property Filter</label>
-                                <select className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer">
-                                    <option>Recently Sold</option>
-                                    <option>For Sale (By Owner)</option>
-                                    <option>For Rent</option>
+                                <select
+                                    value={listingType}
+                                    onChange={(e) => setListingType(e.target.value as ScraperListingType)}
+                                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="RECENTLY_SOLD">Recently Sold</option>
+                                    <option value="RECENTLY_LISTED">Recently Listed</option>
                                 </select>
                             </div>
 
