@@ -101,19 +101,12 @@ export default function Home() {
               Home sale extractor tool with contact information and direct input to a pipeline CRM. Try for free! Just search by zip code.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="#pricing"
-                className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] hover:-translate-y-1 flex items-center justify-center gap-2"
-              >
-                See Pricing <ArrowRight className="w-5 h-5" />
-              </Link>
+            <div className="flex items-center justify-center">
               <Link
                 href="/signup"
-                className="w-full sm:w-auto px-8 py-4 bg-[#111111] text-white border border-white/10 rounded-full font-bold text-lg hover:bg-[#1A1A1A] transition-all flex flex-col items-center justify-center gap-0.5 backdrop-blur-lg group"
+                className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] hover:-translate-y-1 flex items-center justify-center"
               >
-                <span>Try for Free</span>
-                <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase group-hover:text-gray-400 transition-colors">10 Extracts Included</span>
+                Try for Free
               </Link>
             </div>
 
