@@ -13,6 +13,18 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
+            profile(profile) {
+                return {
+                    id: profile.sub,
+                    name: profile.name,
+                    email: profile.email?.toLowerCase() || null,
+                    image: profile.picture,
+                    emailVerified: profile.email_verified ? new Date() : null,
+                    role: 'USER',
+                    orgId: null,
+                };
+            },
         })
     );
 }
