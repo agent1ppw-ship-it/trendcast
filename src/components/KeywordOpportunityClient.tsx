@@ -56,12 +56,6 @@ function formatProviderLabel(dataSource: KeywordOpportunityReport['dataSource'] 
     return 'Unknown';
 }
 
-function formatProviderName(provider: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | null | undefined) {
-    if (provider === 'GOOGLE_ADS_KEYWORD_PLANNER') return 'Google Keyword Planner';
-    if (provider === 'DATAFORSEO_GOOGLE_ADS') return 'DataForSEO';
-    return 'No live provider';
-}
-
 export function KeywordOpportunityClient({
     defaultIndustry,
 }: {
@@ -337,29 +331,15 @@ export function KeywordOpportunityClient({
                                         : 'This tool falls back to AI-assisted scoring when no paid keyword-data provider is configured or available.'}
                             </p>
                             {report && (
-                                <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-300">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className="font-semibold uppercase tracking-[0.18em] text-gray-500">Current Source</span>
-                                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white">
-                                            {formatProviderLabel(report.dataSource)}
+                                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                                    <span className="font-semibold uppercase tracking-[0.18em] text-gray-500">Current Source</span>
+                                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white">
+                                        {formatProviderLabel(report.dataSource)}
+                                    </span>
+                                    {!report.diagnostics?.liveDataActive && (
+                                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+                                            Using fallback keyword generation
                                         </span>
-                                    </div>
-                                    {report.diagnostics?.configuredProviders?.length ? (
-                                        <p>
-                                            Configured live providers: {report.diagnostics.configuredProviders.map((provider) => formatProviderName(provider)).join(', ')}
-                                        </p>
-                                    ) : (
-                                        <p>No live keyword providers are configured for this deployment.</p>
-                                    )}
-                                    {!report.diagnostics?.liveDataActive && report.diagnostics?.attemptedProvider && (
-                                        <p>
-                                            Attempted provider: {formatProviderName(report.diagnostics.attemptedProvider)}
-                                        </p>
-                                    )}
-                                    {!report.diagnostics?.liveDataActive && report.diagnostics?.fallbackReason && (
-                                        <p className="text-amber-300">
-                                            Fallback reason: {report.diagnostics.fallbackReason}
-                                        </p>
                                     )}
                                 </div>
                             )}

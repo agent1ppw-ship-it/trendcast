@@ -201,6 +201,84 @@ const industryKeywordMap: Record<string, string[]> = {
     ],
 };
 
+const industryProblemMap: Record<string, string[]> = {
+    hvac: [
+        'no cooling in office',
+        'uneven temperatures in commercial building',
+        'restaurant walk in cooler not holding temperature',
+        'rooftop unit leaking',
+        'high utility bills from hvac system',
+        'warehouse heating issue',
+    ],
+    landscaping: [
+        'backyard drainage problems',
+        'patio area needs redesign',
+        'commercial curb appeal upgrade',
+        'erosion on sloped yard',
+        'outdated front yard planting beds',
+        'low-maintenance landscape conversion',
+    ],
+    roofing: [
+        'commercial roof leak after storm',
+        'flat roof ponding water',
+        'roof coating for aging metal roof',
+        'emergency roof tarp after hail',
+        'warehouse roof replacement planning',
+        'roof inspection before insurance claim',
+    ],
+    'pressure washing': [
+        'storefront exterior staining',
+        'driveway oil stain removal',
+        'roof black streak cleaning',
+        'restaurant patio deep cleaning',
+        'mildew on siding',
+        'parking lot gum and grime removal',
+    ],
+    plumbing: [
+        'commercial drain backup',
+        'water heater not keeping up',
+        'recurring sewer smell in building',
+        'low water pressure in office',
+        'tenant buildout plumbing scope',
+        'emergency pipe leak cleanup',
+    ],
+    electrical: [
+        'panel capacity upgrade for business',
+        'lighting retrofit for warehouse',
+        'frequent breaker trips',
+        'ev charging install for commercial property',
+        'generator backup planning',
+        'outdated wiring safety upgrade',
+    ],
+    concrete: [
+        'cracked driveway replacement',
+        'warehouse floor resurfacing',
+        'uneven sidewalk trip hazard',
+        'new patio slab installation',
+        'parking lot concrete repair',
+        'decorative concrete upgrade',
+    ],
+    'pest control': [
+        'restaurant pest prevention plan',
+        'termite risk in older home',
+        'warehouse rodent activity',
+        'recurring ant infestation',
+        'bed bug treatment for rental property',
+        'mosquito control for outdoor area',
+    ],
+};
+
+const industryModifierMap: Record<string, string[]> = {
+    hvac: ['repair', 'replacement', 'maintenance', 'installation', 'inspection', 'service plan'],
+    landscaping: ['design', 'installation', 'maintenance', 'renovation', 'drainage', 'seasonal cleanup'],
+    roofing: ['repair', 'replacement', 'inspection', 'coating', 'maintenance', 'emergency service'],
+    'pressure washing': ['cleaning', 'soft wash', 'surface restoration', 'exterior washing', 'stain removal', 'seasonal service'],
+    plumbing: ['repair', 'replacement', 'inspection', 'installation', 'maintenance', 'emergency service'],
+    electrical: ['installation', 'repair', 'upgrade', 'inspection', 'retrofit', 'emergency service'],
+    concrete: ['installation', 'replacement', 'repair', 'resurfacing', 'sealing', 'restoration'],
+    'pest control': ['inspection', 'treatment', 'prevention', 'removal', 'monitoring', 'maintenance plan'],
+};
+
 const stateNameMap: Record<string, string> = {
     AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut',
     DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
@@ -714,6 +792,20 @@ function buildSeedKeywords(industry: string, location: string) {
         .slice(0, 20);
 }
 
+function buildIndustryPromptContext(industry: string, location: string) {
+    const normalizedIndustry = normalizeIndustry(industry);
+    const coreServices = industryKeywordMap[normalizedIndustry] || [];
+    const problemPhrases = industryProblemMap[normalizedIndustry] || [];
+    const modifiers = industryModifierMap[normalizedIndustry] || [];
+
+    return {
+        coreServices: coreServices.slice(0, 10),
+        problemPhrases: problemPhrases.slice(0, 6),
+        modifiers: modifiers.slice(0, 6),
+        seedExamples: buildSeedKeywords(industry, location).slice(0, 12),
+    };
+}
+
 function buildLocationName(location: string) {
     if (/^\d{5}(?:-\d{4})?$/.test(location.trim())) {
         return null;
@@ -905,6 +997,7 @@ async function fetchDataForSeoKeywordReport(industry: string, location: string):
 async function buildAiEstimateReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
     const normalizedIndustry = toTitleCase(industry.trim());
     const normalizedLocation = location.trim();
+    const promptContext = buildIndustryPromptContext(industry, location);
 
     if (!normalizedIndustry || !normalizedLocation || !process.env.OPENAI_API_KEY) {
         return buildFallbackReport(industry, location);
@@ -917,8 +1010,14 @@ Generate localized long-tail keyword opportunities for:
 - Industry: ${normalizedIndustry}
 - Location: ${normalizedLocation}
 
+Industry context to use:
+- Core service phrases: ${promptContext.coreServices.join('; ') || 'n/a'}
+- Common customer problem phrases: ${promptContext.problemPhrases.join('; ') || 'n/a'}
+- Relevant service modifiers: ${promptContext.modifiers.join('; ') || 'n/a'}
+- Example localized seed phrases: ${promptContext.seedExamples.join('; ') || 'n/a'}
+
 Requirements:
-1. Return exactly 12 long-tail keywords.
+1. Return exactly 18 long-tail keywords.
 2. Every keyword must clearly relate to the industry and location.
 3. Favor commercial-intent and service-intent phrases over generic informational phrases.
 4. Competition outlook must be directional only: LOW, MEDIUM, or HIGH.
@@ -926,6 +1025,13 @@ Requirements:
 6. Suggested asset must be one of: Location Page, Service Page, Blog Article, FAQ Cluster.
 7. Rationale must be one sentence and concise.
 8. Avoid obviously spammy phrases or keyword stuffing.
+9. Mix keyword types:
+   - direct service searches
+   - commercial or high-value project searches
+   - problem-aware searches
+   - niche local service variations
+10. Do not repeat the same pattern with only one word changed.
+11. Prioritize phrases a real buyer would search, not SEO jargon.
 
 Output valid JSON only with this schema:
 {
@@ -958,7 +1064,7 @@ Output valid JSON only with this schema:
 
         const parsed = JSON.parse(content) as KeywordModelResponse;
         const keywords = (parsed.keywords || [])
-            .slice(0, 12)
+            .slice(0, 18)
             .map((item) => {
                 const keyword = sanitizeKeyword(item.keyword || '');
                 const buyerIntent: KeywordBuyerIntent = item.buyerIntent === 'HIGH' ? 'HIGH' : 'MEDIUM';
@@ -982,7 +1088,8 @@ Output valid JSON only with this schema:
                     trendPercent: null,
                 } satisfies KeywordOpportunity;
             })
-            .filter((item) => item.keyword);
+            .filter((item) => item.keyword)
+            .filter((item, index, values) => values.findIndex((entry) => entry.keyword.toLowerCase() === item.keyword.toLowerCase()) === index);
 
         if (keywords.length === 0) {
             return buildFallbackReport(industry, location);
