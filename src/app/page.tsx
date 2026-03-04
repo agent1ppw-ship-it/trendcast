@@ -244,7 +244,7 @@ export default function Home() {
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-yellow-500/20">
                 <Zap className="w-6 h-6 text-yellow-500" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-100">Zillow Lead Scraper</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-100">Lead Scraper</h3>
               <p className="text-gray-400 leading-relaxed text-sm">Our invisible bots scrape newly sold homes in your zip codes and enrich them with homeowner cell phone numbers automatically.</p>
             </motion.div>
 
