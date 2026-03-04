@@ -204,7 +204,7 @@ export function renderMailPreview(template: {
 }, lead: MergeLead) {
     const accentColor = template.accentColor || '#2563EB';
     const backgroundStyle = buildBackgroundStyle(template.imageUrl, accentColor);
-    const backBackgroundStyle = buildBackgroundStyle(template.imageUrl, '#0F172A');
+    const backBackgroundStyle = 'background:#0F172A;';
 
     return {
         frontHtml: `

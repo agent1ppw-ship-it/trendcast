@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Mail, Send, Sparkles, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -124,6 +124,7 @@ export function DirectMailDashboardClient({
     const [newTemplateCta, setNewTemplateCta] = useState('');
     const [newTemplateAccent, setNewTemplateAccent] = useState('#2563EB');
     const [newTemplateImageUrl, setNewTemplateImageUrl] = useState('');
+    const [newTemplateImageLabel, setNewTemplateImageLabel] = useState('');
     const [mailFromName, setMailFromName] = useState(senderProfile.mailFromName);
     const [mailFromCompany, setMailFromCompany] = useState(senderProfile.mailFromCompany);
     const [mailAddressLine1, setMailAddressLine1] = useState(senderProfile.mailAddressLine1);
@@ -257,8 +258,43 @@ export function DirectMailDashboardClient({
             setNewTemplateBackBody('');
             setNewTemplateCta('');
             setNewTemplateImageUrl('');
+            setNewTemplateImageLabel('');
             router.refresh();
         });
+    };
+
+    const handleTemplateImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setError('Upload an image file (PNG, JPG, WEBP, or GIF).');
+            event.target.value = '';
+            return;
+        }
+
+        if (file.size > 3 * 1024 * 1024) {
+            setError('Image is too large. Keep uploads under 3MB.');
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            if (!result.startsWith('data:image/')) {
+                setError('Failed to read the selected image.');
+                return;
+            }
+
+            setNewTemplateImageUrl(result);
+            setNewTemplateImageLabel(file.name);
+            setError('');
+        };
+        reader.onerror = () => {
+            setError('Failed to read the selected image.');
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleSaveSenderProfile = () => {
@@ -586,7 +622,70 @@ export function DirectMailDashboardClient({
                                 <input value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} placeholder="Template name" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                                 <input value={newTemplateAccent} onChange={(event) => setNewTemplateAccent(event.target.value)} placeholder="#2563EB" className="rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             </div>
-                            <input value={newTemplateImageUrl} onChange={(event) => setNewTemplateImageUrl(event.target.value)} placeholder="Background image URL (optional)" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
+                            <div className="rounded-2xl border border-white/10 bg-[#171717] p-4">
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                                    Front Background Image
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/gif"
+                                    onChange={handleTemplateImageUpload}
+                                    className="w-full cursor-pointer rounded-xl border border-white/10 bg-[#111] px-3 py-2 text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-500"
+                                />
+                                <p className="mt-2 text-xs text-gray-500">
+                                    Upload a front-side postcard image (max 3MB).
+                                </p>
+                                {newTemplateImageLabel && (
+                                    <div className="mt-2 text-xs text-gray-400">
+                                        Selected file: <span className="text-gray-200">{newTemplateImageLabel}</span>
+                                    </div>
+                                )}
+                                <div className="mt-3">
+                                    <input
+                                        value={newTemplateImageUrl.startsWith('http') ? newTemplateImageUrl : ''}
+                                        onChange={(event) => {
+                                            setNewTemplateImageUrl(event.target.value.trim());
+                                            setNewTemplateImageLabel('');
+                                        }}
+                                        placeholder="Or paste background image URL (optional)"
+                                        className="w-full rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none focus:border-blue-500/50"
+                                    />
+                                </div>
+                            </div>
+                            {newTemplateImageUrl && (
+                                <div className="rounded-2xl border border-white/10 bg-[#171717] p-4">
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Front Preview</div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setNewTemplateImageUrl('');
+                                                setNewTemplateImageLabel('');
+                                            }}
+                                            className="rounded-lg border border-white/10 bg-[#111] px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-[#1B1B1B]"
+                                        >
+                                            Remove Image
+                                        </button>
+                                    </div>
+                                    <div
+                                        className="rounded-xl p-5 text-white"
+                                        style={{
+                                            backgroundColor: newTemplateAccent || '#2563EB',
+                                            backgroundImage: `linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url(${newTemplateImageUrl})`,
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center',
+                                        }}
+                                    >
+                                        <div className="text-[10px] uppercase tracking-[0.24em] opacity-80">Front</div>
+                                        <div className="mt-3 text-xl font-bold leading-tight">
+                                            {newTemplateFrontHeadline || 'Front headline preview'}
+                                        </div>
+                                        <p className="mt-3 text-sm leading-7 opacity-90">
+                                            {newTemplateFrontBody || 'Front body preview text appears here.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             <input value={newTemplateFrontHeadline} onChange={(event) => setNewTemplateFrontHeadline(event.target.value)} placeholder="Front headline" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             <textarea value={newTemplateFrontBody} onChange={(event) => setNewTemplateFrontBody(event.target.value)} placeholder="Front body copy" rows={3} className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
                             <input value={newTemplateBackHeadline} onChange={(event) => setNewTemplateBackHeadline(event.target.value)} placeholder="Back headline" className="w-full rounded-xl border border-white/10 bg-[#171717] px-4 py-3 text-white outline-none focus:border-blue-500/50" />
@@ -629,12 +728,7 @@ export function DirectMailDashboardClient({
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/5 p-5 text-white" style={selectedTemplate?.imageUrl ? {
-                                        backgroundColor: '#0F172A',
-                                        backgroundImage: `linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url(${selectedTemplate.imageUrl})`,
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
-                                    } : { backgroundColor: '#0F172A' }}>
+                                    <div className="rounded-2xl border border-white/5 p-5 text-white" style={{ backgroundColor: '#0F172A' }}>
                                         <div className="text-[10px] uppercase tracking-[0.24em] text-blue-300">Back</div>
                                         {selectedTemplate?.backHeadline && (
                                             <div className="mt-3 text-xl font-semibold leading-tight">

@@ -24,6 +24,8 @@ type CampaignInput = {
     postageClass?: 'MARKETING' | 'FIRST_CLASS';
 };
 
+const DATA_IMAGE_URL_PATTERN = /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i;
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
     apiVersion: '2026-02-25.clover',
 });
@@ -160,8 +162,17 @@ export async function createMailTemplate(data: {
     if (!orgId) return { success: false, error: 'Unauthorized.' };
 
     const imageUrl = data.imageUrl?.trim() || null;
-    if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) {
-        return { success: false, error: 'Background image must be a valid http or https URL.' };
+    if (imageUrl) {
+        const isHttpUrl = /^https?:\/\/\S+$/i.test(imageUrl);
+        const isDataUrl = DATA_IMAGE_URL_PATTERN.test(imageUrl);
+
+        if (!isHttpUrl && !isDataUrl) {
+            return { success: false, error: 'Background image must be an image URL or uploaded image file.' };
+        }
+
+        if (isDataUrl && imageUrl.length > 4_500_000) {
+            return { success: false, error: 'Uploaded image is too large. Keep it under 3MB.' };
+        }
     }
 
     const template = await prisma.mailTemplate.create({
