@@ -2,6 +2,11 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   outputFileTracingRoot: path.resolve(process.cwd()),
   async redirects() {
     return [
