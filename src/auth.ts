@@ -1,12 +1,53 @@
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getUserAuthContextByEmail } from '@/lib/organizationProvisioning';
 
 const providers = [];
+
+async function syncGoogleUser(user: { email?: string | null; name?: string | null; image?: string | null }) {
+    const normalizedEmail = user.email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+        return null;
+    }
+
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            email: {
+                equals: normalizedEmail,
+                mode: 'insensitive',
+            },
+        },
+    });
+
+    if (existingUser) {
+        await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+                email: normalizedEmail,
+                name: user.name ?? existingUser.name,
+                image: user.image ?? existingUser.image,
+                emailVerified: existingUser.emailVerified ?? new Date(),
+            },
+        });
+
+        return existingUser.id;
+    }
+
+    const createdUser = await prisma.user.create({
+        data: {
+            email: normalizedEmail,
+            name: user.name ?? normalizedEmail.split('@')[0],
+            image: user.image ?? null,
+            emailVerified: new Date(),
+            role: 'USER',
+        },
+    });
+
+    return createdUser.id;
+}
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     providers.push(
@@ -64,8 +105,6 @@ providers.push(
 );
 
 export const authOptions: NextAuthOptions = {
-    // Cast adapter because of generic type mismatch between Prisma NextAuth packages, but it operates correctly.
-    adapter: PrismaAdapter(prisma) as never,
     secret: process.env.NEXTAUTH_SECRET,
     providers,
     session: {
@@ -73,8 +112,25 @@ export const authOptions: NextAuthOptions = {
     },
     debug: true,
     callbacks: {
-        async signIn({ user }) {
-            return Boolean(user.email);
+        async signIn({ user, account }) {
+            if (!user.email) {
+                return false;
+            }
+
+            if (account?.provider === 'google') {
+                try {
+                    await syncGoogleUser({
+                        email: user.email,
+                        name: user.name,
+                        image: user.image,
+                    });
+                } catch (error) {
+                    console.error('--- GOOGLE USER SYNC FAILED ---', error);
+                    return false;
+                }
+            }
+
+            return true;
         },
         async redirect({ url, baseUrl }) {
             console.log('--- REDIRECT FIRED ---', { url, baseUrl });
