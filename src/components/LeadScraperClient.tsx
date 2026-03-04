@@ -2,7 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, Play, Database, CheckCircle2, Clock, RefreshCw, Send, Activity, Lock, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startScraperJob, syncAllExtractedToCrm, syncLeadToCrm, getScraperStatus, cancelScraperJob, type ScraperListingType } from '@/app/actions/scraper';
 import { revealLeadContact } from '@/app/actions/credits';
@@ -32,6 +32,20 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const [isCancelling, setIsCancelling] = useState(false);
     const [isUpgrading, setIsUpgrading] = useState(false);
+    const [queueSearch, setQueueSearch] = useState('');
+
+    const filteredLeads = useMemo(() => {
+        const query = queueSearch.trim().toLowerCase();
+        if (!query) return initialLeads;
+
+        return initialLeads.filter((lead) => {
+            const haystack = [lead.name, lead.address, lead.phone, lead.source, lead.status]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [initialLeads, queueSearch]);
 
     const handleCancel = async () => {
         if (!activeJobId) return;
@@ -268,10 +282,24 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
                 {/* Live Scrape Results Table */}
                 <Card className="bg-[#111] border-white/5 shadow-md lg:col-span-2 flex flex-col">
                     <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg font-semibold text-white">Extracted Queue</CardTitle>
-                        <span className="px-3 py-1 bg-[#1A1A1A] border border-white/5 rounded-full text-xs text-gray-400 font-mono">
-                            {initialLeads.length} leads found
-                        </span>
+                        <div className="flex flex-col gap-3 w-full">
+                            <div className="flex items-center justify-between gap-3">
+                                <CardTitle className="text-lg font-semibold text-white">Extracted Queue</CardTitle>
+                                <span className="px-3 py-1 bg-[#1A1A1A] border border-white/5 rounded-full text-xs text-gray-400 font-mono">
+                                    {filteredLeads.length} / {initialLeads.length} leads
+                                </span>
+                            </div>
+                            <div className="relative max-w-md">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                <input
+                                    type="text"
+                                    value={queueSearch}
+                                    onChange={(e) => setQueueSearch(e.target.value)}
+                                    placeholder="Search owner, address, phone, source..."
+                                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                />
+                            </div>
+                        </div>
                     </CardHeader>
                     <div className="flex-1 overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-400">
@@ -287,12 +315,19 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
                             <tbody className="divide-y divide-white/5">
                                 {initialLeads.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                                             No leads have been extracted yet. Start a job to populate this table.
                                         </td>
                                     </tr>
                                 )}
-                                {initialLeads.map((lead) => (
+                                {initialLeads.length > 0 && filteredLeads.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                            No extracted leads match "{queueSearch}".
+                                        </td>
+                                    </tr>
+                                )}
+                                {filteredLeads.map((lead) => (
                                     <tr key={lead.id} className="hover:bg-[#161616] transition-colors relative group">
                                         <td className="px-6 py-4 font-medium text-gray-200">
                                             {lead.isRevealed ? (
