@@ -586,7 +586,7 @@ Requirements:
 7. Do not include images or image placeholders.
 8. The H1 is rendered outside the markdown body, so do not include an H1 in contentMarkdown.
 9. Keep the CTA near the end and make it practical, local, and calm.
-10. Target at least 900 words.
+10. Target about 800 words. Stay roughly in the 700 to 900 word range.
 11. Let the article find its own rhythm. If the topic needs a sharper opening, a process walkthrough, a comparison section, or a cautionary section, do that naturally instead of forcing a fixed pattern.
 12. Prefer concrete, useful phrasing over generic copy. If a sentence sounds templated, rewrite it.
 
@@ -683,7 +683,8 @@ Requirements:
    - bullet points where useful
    - a strong CTA section near the end
 8. The page title will be rendered as the H1 outside the markdown body, so do not repeat the H1 inside contentMarkdown.
-9. Include exactly 5 long-tail SEO keywords.
+9. Keep the article close to 800 words.
+10. Include exactly 5 long-tail SEO keywords.
 
 Output format MUST be a valid JSON object matching this schema:
 {
