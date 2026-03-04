@@ -126,6 +126,7 @@ export default async function DirectMailPage() {
                 id: campaign.id,
                 name: campaign.name,
                 status: campaign.status,
+                stripePaymentStatus: campaign.stripePaymentStatus || null,
                 costCents: campaign.costCents,
                 sentCount: campaign.sentCount,
                 failedCount: campaign.failedCount,

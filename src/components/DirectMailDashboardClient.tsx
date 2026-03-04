@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     cancelMailCampaign,
     createMailCampaign,
+    createDirectMailCheckoutSession,
     createMailTemplate,
     saveMailSenderProfile,
     sendMailCampaign,
@@ -40,6 +41,7 @@ type CampaignRecord = {
     id: string;
     name: string;
     status: string;
+    stripePaymentStatus: string | null;
     costCents: number;
     sentCount: number;
     failedCount: number;
@@ -200,13 +202,24 @@ export function DirectMailDashboardClient({
             }
 
             if (sendImmediately) {
-                const sendResult = await sendMailCampaign(createResult.campaignId);
-                if (!sendResult.success) {
-                    setError(sendResult.error || 'Failed to send campaign.');
-                    return;
-                }
+                if (mailMode === 'live') {
+                    const checkoutResult = await createDirectMailCheckoutSession(createResult.campaignId);
+                    if (!checkoutResult.success || !checkoutResult.url) {
+                        setError(checkoutResult.error || 'Failed to create direct mail checkout.');
+                        return;
+                    }
 
-                setFeedback(sendResult.message || 'Campaign processed.');
+                    window.location.href = checkoutResult.url;
+                    return;
+                } else {
+                    const sendResult = await sendMailCampaign(createResult.campaignId);
+                    if (!sendResult.success) {
+                        setError(sendResult.error || 'Failed to send campaign.');
+                        return;
+                    }
+
+                    setFeedback(sendResult.message || 'Campaign processed.');
+                }
             } else {
                 setFeedback('Campaign draft saved.');
             }
@@ -283,14 +296,24 @@ export function DirectMailDashboardClient({
         }
 
         startTransition(async () => {
-            const result = await sendMailCampaign(campaignId);
-            if (!result.success) {
-                setError(result.error || 'Failed to send campaign.');
-                return;
-            }
+            if (mailMode === 'live') {
+                const result = await createDirectMailCheckoutSession(campaignId);
+                if (!result.success || !result.url) {
+                    setError(result.error || 'Failed to create direct mail checkout.');
+                    return;
+                }
 
-            setFeedback(result.message || 'Campaign processed.');
-            router.refresh();
+                window.location.href = result.url;
+                return;
+            } else {
+                const result = await sendMailCampaign(campaignId);
+                if (!result.success) {
+                    setError(result.error || 'Failed to send campaign.');
+                    return;
+                }
+
+                setFeedback(result.message || 'Campaign processed.');
+            }
         });
     };
 
@@ -548,7 +571,7 @@ export function DirectMailDashboardClient({
                                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(37,99,235,0.35)] transition-all hover:bg-blue-500 disabled:opacity-50"
                                 >
                                     <Send className="h-4 w-4" />
-                                    {mailMode === 'live' ? 'Create & Send' : 'Create & Run Demo'}
+                                    {mailMode === 'live' ? 'Checkout & Send' : 'Create & Run Demo'}
                                 </button>
                             </div>
                         </CardContent>
@@ -675,6 +698,12 @@ export function DirectMailDashboardClient({
                                         </div>
                                     </div>
 
+                                    {campaign.stripePaymentStatus && (
+                                        <div className="mt-3 rounded-full border border-white/10 bg-[#111] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-gray-400 inline-flex">
+                                            Payment: {campaign.stripePaymentStatus}
+                                        </div>
+                                    )}
+
                                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-300">
                                         <div>
                                             <div className="text-xs uppercase tracking-[0.18em] text-gray-500">Cost</div>
@@ -715,7 +744,7 @@ export function DirectMailDashboardClient({
                                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-500 disabled:opacity-50"
                                             >
                                                 <Send className="h-4 w-4" />
-                                                {mailMode === 'live' ? 'Send Campaign' : 'Run Demo'}
+                                                {mailMode === 'live' ? 'Checkout & Send' : 'Run Demo'}
                                             </button>
                                         )}
                                         {campaign.status !== 'CANCELLED' && campaign.status !== 'COMPLETED' && (

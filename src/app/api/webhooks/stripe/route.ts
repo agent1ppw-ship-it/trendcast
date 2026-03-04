@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
+import { processMailCampaignSend } from '@/lib/mailCampaigns';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
     apiVersion: '2026-02-25.clover',
@@ -33,8 +34,46 @@ export async function POST(req: Request) {
     // Handle the checkout.session.completed event
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session;
-
+        const directMailCampaignId = session.metadata?.directMailCampaignId;
         const orgId = session.client_reference_id;
+
+        if (directMailCampaignId && orgId) {
+            try {
+                await prisma.mailCampaign.update({
+                    where: { id: directMailCampaignId },
+                    data: {
+                        stripeCheckoutId: session.id,
+                        stripePaymentStatus: 'PAID',
+                    },
+                });
+
+                const result = await processMailCampaignSend(orgId, directMailCampaignId);
+
+                if (!result.success) {
+                    await prisma.mailCampaign.update({
+                        where: { id: directMailCampaignId },
+                        data: {
+                            stripePaymentStatus: 'PAID_SEND_FAILED',
+                            status: 'FAILED',
+                        },
+                    });
+                    console.error('Direct mail campaign failed after payment:', result.error);
+                } else {
+                    await prisma.mailCampaign.update({
+                        where: { id: directMailCampaignId },
+                        data: {
+                            stripePaymentStatus: 'PAID_SENT',
+                        },
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to process paid direct mail campaign:', error);
+                return NextResponse.json({ error: 'Direct mail campaign processing failed' }, { status: 500 });
+            }
+
+            return NextResponse.json({ received: true });
+        }
+
         const tierUpgrade = session.metadata?.tierUpgrade;
         const stripeCustomerId = session.customer as string;
         const stripeSubscriptionId = session.subscription as string;
