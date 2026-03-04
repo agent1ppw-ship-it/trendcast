@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Mail, Send, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Mail, Maximize2, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     cancelMailCampaign,
@@ -67,6 +67,18 @@ type SenderProfileRecord = {
 };
 
 const MAX_TEMPLATE_IMAGE_BYTES = 8 * 1024 * 1024;
+
+type PostcardPreviewTemplate = {
+    name: string;
+    size: string;
+    frontHeadline: string;
+    frontBody: string;
+    backHeadline: string | null;
+    backBody: string;
+    ctaText: string | null;
+    accentColor: string;
+    imageUrl: string | null;
+};
 
 function formatUsd(cents: number) {
     return new Intl.NumberFormat('en-US', {
@@ -134,6 +146,8 @@ export function DirectMailDashboardClient({
     const [mailCity, setMailCity] = useState(senderProfile.mailCity);
     const [mailState, setMailState] = useState(senderProfile.mailState);
     const [mailZip, setMailZip] = useState(senderProfile.mailZip);
+    const [fullPreviewTemplate, setFullPreviewTemplate] = useState<PostcardPreviewTemplate | null>(null);
+    const [fullPreviewSide, setFullPreviewSide] = useState<'front' | 'back'>('front');
 
     const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0] || null;
 
@@ -167,6 +181,17 @@ export function DirectMailDashboardClient({
         mailZip.trim() &&
         (mailFromName.trim() || mailFromCompany.trim())
     );
+    const draftTemplateForPreview: PostcardPreviewTemplate = {
+        name: newTemplateName || 'Custom template',
+        size: '4X6',
+        frontHeadline: newTemplateFrontHeadline || 'Front headline preview',
+        frontBody: newTemplateFrontBody || 'Front body preview text appears here.',
+        backHeadline: newTemplateBackHeadline || null,
+        backBody: newTemplateBackBody || 'Back body preview text appears here.',
+        ctaText: newTemplateCta || null,
+        accentColor: newTemplateAccent || '#2563EB',
+        imageUrl: newTemplateImageUrl || null,
+    };
 
     const toggleLead = (leadId: string) => {
         setSelectedLeadIds((current) => (
@@ -181,6 +206,10 @@ export function DirectMailDashboardClient({
     };
 
     const clearSelection = () => setSelectedLeadIds([]);
+    const openFullPreview = (template: PostcardPreviewTemplate, side: 'front' | 'back' = 'front') => {
+        setFullPreviewTemplate(template);
+        setFullPreviewSide(side);
+    };
 
     const handleCreateCampaign = (sendImmediately: boolean) => {
         setError('');
@@ -658,16 +687,26 @@ export function DirectMailDashboardClient({
                                 <div className="rounded-2xl border border-white/10 bg-[#171717] p-4">
                                     <div className="mb-2 flex items-center justify-between">
                                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Front Preview</div>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setNewTemplateImageUrl('');
-                                                setNewTemplateImageLabel('');
-                                            }}
-                                            className="rounded-lg border border-white/10 bg-[#111] px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-[#1B1B1B]"
-                                        >
-                                            Remove Image
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => openFullPreview(draftTemplateForPreview, 'front')}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 hover:bg-blue-500/20"
+                                            >
+                                                <Maximize2 className="h-3.5 w-3.5" />
+                                                Full Size
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewTemplateImageUrl('');
+                                                    setNewTemplateImageLabel('');
+                                                }}
+                                                className="rounded-lg border border-white/10 bg-[#111] px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-[#1B1B1B]"
+                                            >
+                                                Remove Image
+                                            </button>
+                                        </div>
                                     </div>
                                     <div
                                         className="rounded-xl p-5 text-white"
@@ -708,7 +747,19 @@ export function DirectMailDashboardClient({
                 <div className="space-y-8">
                     <Card className="border-white/5 bg-[#111] shadow-md">
                         <CardHeader className="border-b border-white/5 pb-4">
-                            <CardTitle className="text-lg font-semibold text-white">Campaign Preview</CardTitle>
+                            <div className="flex items-center justify-between gap-3">
+                                <CardTitle className="text-lg font-semibold text-white">Campaign Preview</CardTitle>
+                                {selectedTemplate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => openFullPreview(selectedTemplate, 'front')}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 hover:bg-blue-500/20"
+                                    >
+                                        <Maximize2 className="h-3.5 w-3.5" />
+                                        Full Size
+                                    </button>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-5 pt-6">
                             <div className="rounded-2xl border border-white/5 bg-[#161616] p-5">
@@ -860,6 +911,94 @@ export function DirectMailDashboardClient({
                     </Card>
                 </div>
             </div>
+
+            {fullPreviewTemplate && (
+                <div className="fixed inset-0 z-[70] bg-black/80 p-4 backdrop-blur-sm md:p-8">
+                    <div className="mx-auto flex h-full max-w-6xl flex-col rounded-2xl border border-white/10 bg-[#101010] shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                            <div>
+                                <div className="text-sm font-semibold text-white">{fullPreviewTemplate.name}</div>
+                                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-gray-500">{fullPreviewTemplate.size} Postcard Preview</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setFullPreviewSide('front')}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition-all ${fullPreviewSide === 'front' ? 'bg-white text-black' : 'bg-[#171717] text-gray-300 hover:bg-[#1B1B1B]'}`}
+                                >
+                                    Front
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFullPreviewSide('back')}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition-all ${fullPreviewSide === 'back' ? 'bg-white text-black' : 'bg-[#171717] text-gray-300 hover:bg-[#1B1B1B]'}`}
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFullPreviewTemplate(null)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-[#171717] px-3 py-2 text-xs font-medium text-gray-300 hover:bg-[#1B1B1B]"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                            <div className="mx-auto w-full max-w-5xl rounded-2xl border border-white/10 bg-[#0B0B0B] p-4 md:p-6">
+                                <div
+                                    className="aspect-[3/2] w-full rounded-2xl p-6 text-white md:p-10"
+                                    style={fullPreviewSide === 'front'
+                                        ? fullPreviewTemplate.imageUrl
+                                            ? {
+                                                backgroundColor: fullPreviewTemplate.accentColor || '#2563EB',
+                                                backgroundImage: `linear-gradient(rgba(15,23,42,0.42), rgba(15,23,42,0.42)), url(${fullPreviewTemplate.imageUrl})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center',
+                                            }
+                                            : { backgroundColor: fullPreviewTemplate.accentColor || '#2563EB' }
+                                        : { backgroundColor: '#0F172A' }}
+                                >
+                                    {fullPreviewSide === 'front' ? (
+                                        <div className="flex h-full flex-col justify-between">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-[0.24em] opacity-80">Front</div>
+                                                <div className="mt-4 text-3xl font-bold leading-tight md:text-5xl">
+                                                    {applyMergeTags(fullPreviewTemplate.frontHeadline, previewLead)}
+                                                </div>
+                                                <p className="mt-4 max-w-4xl text-base leading-8 opacity-95 md:text-xl md:leading-9">
+                                                    {applyMergeTags(fullPreviewTemplate.frontBody, previewLead)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-full flex-col justify-between">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-[0.24em] text-blue-300">Back</div>
+                                                {fullPreviewTemplate.backHeadline && (
+                                                    <div className="mt-4 text-2xl font-semibold leading-tight md:text-4xl">
+                                                        {applyMergeTags(fullPreviewTemplate.backHeadline, previewLead)}
+                                                    </div>
+                                                )}
+                                                <p className="mt-4 max-w-4xl text-base leading-8 text-gray-200 md:text-xl md:leading-9">
+                                                    {applyMergeTags(fullPreviewTemplate.backBody, previewLead)}
+                                                </p>
+                                            </div>
+                                            {fullPreviewTemplate.ctaText && (
+                                                <div className="inline-flex w-fit rounded-full bg-white px-5 py-3 text-sm font-semibold text-black md:text-base">
+                                                    {applyMergeTags(fullPreviewTemplate.ctaText, previewLead)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
