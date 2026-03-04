@@ -80,7 +80,8 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
             const statusRes = await getScraperStatus(result.jobId!);
 
             if (statusRes.success) {
-                setJobProgress((statusRes.progress as { phase: string; percent: number }) || { phase: 'Starting Job...', percent: 0 });
+                const progress = (statusRes.progress as { phase?: string; percent?: number } | undefined);
+                setJobProgress(progress ? { phase: progress.phase || 'Starting Job...', percent: progress.percent || 0 } : { phase: 'Starting Job...', percent: 0 });
 
                 if (statusRes.state === 'completed' || statusRes.state === 'failed') {
                     clearInterval(pollInterval);
@@ -89,6 +90,8 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
 
                     if (statusRes.state === 'failed') {
                         setQueueWarning('The extraction job failed. Please check the backend logs.');
+                    } else if ((progress?.phase || '').toLowerCase().includes('no new properties found')) {
+                        setQueueWarning('No new properties were found for this ZIP in this run. Try a different ZIP or switch the property filter.');
                     }
 
                     router.refresh();

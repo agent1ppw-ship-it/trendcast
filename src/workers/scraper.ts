@@ -34,6 +34,100 @@ interface ScrapePayload {
     listingType?: 'RECENTLY_SOLD' | 'RECENTLY_LISTED';
 }
 
+function normalizeWhitespace(value: string) {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeAddressForCompare(value: string) {
+    return normalizeWhitespace(value)
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, ' ');
+}
+
+function sanitizeAddress(value: string) {
+    return normalizeWhitespace(value)
+        .replace(/\s+,/g, ',')
+        .replace(/,+/g, ',')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+function looksLikeStreetAddress(value: string) {
+    const cleaned = sanitizeAddress(value);
+    return /^\d{1,6}\s+[a-z0-9]/i.test(cleaned) && cleaned.length >= 8 && !/redfin|map|save/i.test(cleaned);
+}
+
+function collectJsonLdAddresses(node: unknown, results: Set<string>) {
+    if (!node || typeof node !== 'object') return;
+
+    if (Array.isArray(node)) {
+        for (const item of node) collectJsonLdAddresses(item, results);
+        return;
+    }
+
+    const record = node as Record<string, unknown>;
+    const addressNode = record.address;
+    if (addressNode && typeof addressNode === 'object' && !Array.isArray(addressNode)) {
+        const address = addressNode as Record<string, unknown>;
+        const street = typeof address.streetAddress === 'string' ? address.streetAddress : '';
+        const city = typeof address.addressLocality === 'string' ? address.addressLocality : '';
+        const state = typeof address.addressRegion === 'string' ? address.addressRegion : '';
+        const postal = typeof address.postalCode === 'string' ? address.postalCode : '';
+        const formatted = sanitizeAddress([street, city, [state, postal].filter(Boolean).join(' ')].filter(Boolean).join(', '));
+        if (looksLikeStreetAddress(formatted)) {
+            results.add(formatted);
+        }
+    }
+
+    for (const value of Object.values(record)) {
+        collectJsonLdAddresses(value, results);
+    }
+}
+
+function extractRedfinAddressesFromHtml(html: string) {
+    const $ = cheerio.load(html);
+    const addresses = new Set<string>();
+
+    const selectors = [
+        '.bp-Homecard__Address',
+        '[data-rf-test-id="abp-address"]',
+        '[data-rf-test-id="homecard-address"]',
+        '[data-rf-test-id="home-card-address"]',
+        '.homeAddressV2',
+        '.HomeCardAddress',
+        'span[itemprop="streetAddress"]',
+    ];
+
+    for (const selector of selectors) {
+        $(selector).each((_, el) => {
+            const text = sanitizeAddress($(el).text());
+            if (looksLikeStreetAddress(text)) addresses.add(text);
+        });
+    }
+
+    $('script[type="application/ld+json"]').each((_, el) => {
+        const raw = $(el).contents().text();
+        if (!raw) return;
+        try {
+            collectJsonLdAddresses(JSON.parse(raw), addresses);
+        } catch {
+            // Ignore malformed JSON-LD blocks.
+        }
+    });
+
+    if (addresses.size === 0) {
+        const textBody = normalizeWhitespace($.root().text());
+        const inlineMatches = textBody.match(/\d{1,6}\s+[A-Za-z0-9.'#\-/ ]{3,90},\s*[A-Za-z .'-]{2,40},\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?/g) || [];
+        for (const match of inlineMatches) {
+            const text = sanitizeAddress(match);
+            if (looksLikeStreetAddress(text)) addresses.add(text);
+        }
+    }
+
+    return Array.from(addresses);
+}
+
 function getScrapeTarget(listingType: ScrapePayload['listingType'], zipCode: string, pageNumber: number) {
     if (listingType === 'RECENTLY_LISTED') {
         return {
@@ -164,6 +258,7 @@ export const scraperWorker = new Worker(
             let pageNum = 1;
             const maxPages = 3; // Prevent infinite loops or excessive proxy usage
             const newAddresses: string[] = [];
+            const queuedAddressKeys = new Set<string>();
 
             await job.updateProgress({ phase: 'Navigating & Bypassing Bot Protection...', percent: 40 });
 
@@ -198,14 +293,7 @@ export const scraperWorker = new Worker(
                 await page.mouse.move(100, 200);
 
                 const html = await page.content();
-                const $ = cheerio.load(html);
-
-                const rawAddresses: string[] = [];
-
-                // Extract real addresses from the Redfin DOM
-                $('.bp-Homecard__Address').each((i, el) => {
-                    rawAddresses.push($(el).text().trim());
-                });
+                const rawAddresses = extractRedfinAddressesFromHtml(html);
 
                 await job.updateProgress({ phase: `Comparing ${rawAddresses.length} properties against CRM Database...`, percent: 60 + (pageNum * 5) });
 
@@ -213,15 +301,22 @@ export const scraperWorker = new Worker(
                 if (rawAddresses.length > 0) {
                     console.log(`[Worker] Extracted ${rawAddresses.length} addresses from page ${pageNum}. Checking for duplicates...`);
                     for (const addr of rawAddresses) {
+                        const normalizedAddress = normalizeAddressForCompare(addr);
+                        if (!normalizedAddress || queuedAddressKeys.has(normalizedAddress)) continue;
+
                         const existingLead = await prisma.lead.findFirst({
                             where: {
                                 orgId: job.data.orgId,
-                                address: addr
+                                address: {
+                                    equals: addr,
+                                    mode: 'insensitive',
+                                }
                             }
                         });
 
-                        if (!existingLead && !newAddresses.includes(addr)) {
+                        if (!existingLead) {
                             newAddresses.push(addr);
+                            queuedAddressKeys.add(normalizedAddress);
                             if (newAddresses.length >= 10) break; // Limit to 10 NEW properties per batch
                         }
                     }
