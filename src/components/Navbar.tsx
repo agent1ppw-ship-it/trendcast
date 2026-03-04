@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { signOut, useSession } from 'next-auth/react';
 
 const desktopNavItems = [
     { href: '/#features', label: 'Features' },
@@ -27,6 +28,8 @@ const mobileNavItems = [
 
 export function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { status } = useSession();
+    const isSignedIn = status === 'authenticated';
 
     return (
         <nav className="fixed top-0 w-full bg-[#0A0A0A]/70 backdrop-blur-xl z-50 border-b border-white/10 supports-[backdrop-filter]:bg-[#0A0A0A]/50">
@@ -57,12 +60,22 @@ export function Navbar() {
                                 {label}
                             </Link>
                         ))}
-                        <Link
-                            href="/signup"
-                            className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
-                        >
-                            Login / Signup
-                        </Link>
+                        {isSignedIn ? (
+                            <button
+                                type="button"
+                                onClick={() => signOut({ callbackUrl: '/signup?mode=signin' })}
+                                className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
+                            >
+                                Sign Out
+                            </button>
+                        ) : (
+                            <Link
+                                href="/signup"
+                                className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
+                            >
+                                Login / Signup
+                            </Link>
+                        )}
                     </div>
 
                     {/* Mobile menu button */}
@@ -97,13 +110,26 @@ export function Navbar() {
                             {label}
                         </Link>
                     ))}
-                    <Link
-                        href="/signup"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
-                    >
-                        Login / Signup
-                    </Link>
+                    {isSignedIn ? (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsMobileMenuOpen(false);
+                                signOut({ callbackUrl: '/signup?mode=signin' });
+                            }}
+                            className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
+                        >
+                            Sign Out
+                        </button>
+                    ) : (
+                        <Link
+                            href="/signup"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
+                        >
+                            Login / Signup
+                        </Link>
+                    )}
                 </div>
             )}
         </nav>
