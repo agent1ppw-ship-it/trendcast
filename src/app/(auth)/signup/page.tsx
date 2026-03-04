@@ -14,7 +14,6 @@ function SignUpContent() {
     const { status } = useSession();
     const checkout = searchParams.get('checkout');
     const requestedMode = searchParams.get('mode');
-    const [preferredDashboardPath, setPreferredDashboardPath] = useState('/dashboard/crm');
 
     const [mode, setMode] = useState<AuthMode>(requestedMode === 'signin' ? 'signin' : 'signup');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,21 +24,7 @@ function SignUpContent() {
         password: '',
     });
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const mediaQuery = window.matchMedia('(max-width: 767px)');
-        const updatePreferredDashboardPath = () => {
-            setPreferredDashboardPath(mediaQuery.matches ? '/dashboard' : '/dashboard/crm');
-        };
-
-        updatePreferredDashboardPath();
-        mediaQuery.addEventListener('change', updatePreferredDashboardPath);
-
-        return () => mediaQuery.removeEventListener('change', updatePreferredDashboardPath);
-    }, []);
-
-    const callbackUrl = checkout ? `/dashboard?checkout=${checkout}` : preferredDashboardPath;
+    const callbackUrl = checkout ? `/dashboard?checkout=${checkout}` : '/dashboard';
 
     const title = useMemo(
         () => (mode === 'signup' ? 'Create Your Account' : 'Sign In to TrendCast'),
@@ -100,7 +85,7 @@ function SignUpContent() {
     if (status === 'authenticated') {
         return (
             <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-gray-300">
-                Redirecting to your CRM dashboard...
+                Redirecting to your dashboard...
             </div>
         );
     }

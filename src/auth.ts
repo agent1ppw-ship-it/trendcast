@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
             console.log('--- REDIRECT FIRED ---', { url, baseUrl });
             if (url.startsWith('/')) return `${baseUrl}${url}`;
             else if (new URL(url).origin === baseUrl) return url;
-            return baseUrl + '/dashboard/crm';
+            return baseUrl + '/dashboard';
         },
         async jwt({ token, user, account }) {
             console.log('--- JWT CALLBACK FIRED ---');
