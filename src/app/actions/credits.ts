@@ -21,7 +21,7 @@ export async function revealLeadContact(leadId: string) {
         }
 
         if (lead.organization.credits < 50) {
-            return { success: false, error: 'Insufficient credits! Your free trial has ended. Subscribe to the Intro Tier for 500 more reveals.' };
+            return { success: false, error: 'Insufficient credits! Subscribe to the Intro Tier for 2,500 additional contact reveal credits.' };
         }
 
         if (!lead.address) {
@@ -53,8 +53,8 @@ export async function revealLeadContact(leadId: string) {
 
         try {
             revalidatePath('/dashboard/leads');
-        } catch (e: any) {
-            console.warn("revalidatePath skipped:", e.message);
+        } catch (e: unknown) {
+            console.warn('revalidatePath skipped:', e instanceof Error ? e.message : String(e));
         }
 
         return { success: true };

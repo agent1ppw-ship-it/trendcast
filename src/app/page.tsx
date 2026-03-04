@@ -188,7 +188,7 @@ export default function Home() {
                   <div className="space-y-4">
                     <div className="bg-[#242424] p-3 rounded-lg text-sm border border-white/5">
                       <p className="font-semibold text-gray-200">Jane Doe</p>
-                      <p className="text-gray-400 truncate mt-1">"Do you guys do driveway washing?..."</p>
+                      <p className="text-gray-400 truncate mt-1">&quot;Do you guys do driveway washing?...&quot;</p>
                       <div className="mt-3 text-[11px] font-medium tracking-wide uppercase bg-green-500/10 text-green-400 inline-block px-2 py-1 rounded border border-green-500/20">Auto-replied</div>
                     </div>
                   </div>
@@ -312,8 +312,8 @@ export default function Home() {
                 <span className="text-gray-500">/mo</span>
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 150 Address Extracts /mo</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 1,000 Contact Reveal Credits</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 250 Address Extracts /mo</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 2,500 Contact Reveal Credits</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>

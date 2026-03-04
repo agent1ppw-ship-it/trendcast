@@ -24,9 +24,10 @@ export async function POST(req: Request) {
 
     try {
         event = stripe.webhooks.constructEvent(bodyText, sig, getWebhookSecret());
-    } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
-        return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown webhook error';
+        console.error(`Webhook signature verification failed: ${message}`);
+        return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 });
     }
 
     // Handle the checkout.session.completed event
@@ -48,8 +49,8 @@ export async function POST(req: Request) {
             let creditsToAdd = 0;
 
             if (tierUpgrade === 'INTRO') {
-                extractsToAdd = 150;
-                creditsToAdd = 1000;
+                extractsToAdd = 250;
+                creditsToAdd = 2500;
             } else if (tierUpgrade === 'PRO') {
                 extractsToAdd = 1000;
                 creditsToAdd = 5000;
