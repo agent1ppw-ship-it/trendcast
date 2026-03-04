@@ -30,6 +30,12 @@ export interface KeywordOpportunityReport {
     keywords: KeywordOpportunity[];
     dataSource: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
     disclaimer: string;
+    diagnostics?: {
+        attemptedProvider: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | null;
+        configuredProviders: Array<'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS'>;
+        liveDataActive: boolean;
+        fallbackReason: string | null;
+    };
 }
 
 type KeywordModelResponse = {
@@ -436,6 +442,12 @@ function buildFallbackReport(industry: string, location: string): KeywordOpportu
         keywords,
         dataSource: 'TEMPLATE_FALLBACK',
         disclaimer: 'These are fallback keyword estimates, not live keyword metrics. Add DataForSEO credentials to pull real search volume, CPC, and competition data.',
+        diagnostics: {
+            attemptedProvider: null,
+            configuredProviders: [],
+            liveDataActive: false,
+            fallbackReason: 'No live keyword provider credentials are configured.',
+        },
     };
 }
 
@@ -674,6 +686,12 @@ async function fetchGoogleAdsKeywordPlannerReport(industry: string, location: st
         keywords,
         dataSource: 'GOOGLE_ADS_KEYWORD_PLANNER',
         disclaimer: 'Live keyword metrics are sourced from Google Ads Keyword Planner via the Google Ads API. Trend direction is derived from recent monthly search-volume movement in the returned historical metrics.',
+        diagnostics: {
+            attemptedProvider: 'GOOGLE_ADS_KEYWORD_PLANNER',
+            configuredProviders: ['GOOGLE_ADS_KEYWORD_PLANNER'],
+            liveDataActive: true,
+            fallbackReason: null,
+        },
     };
 }
 
@@ -875,6 +893,12 @@ async function fetchDataForSeoKeywordReport(industry: string, location: string):
         keywords,
         dataSource: 'DATAFORSEO_GOOGLE_ADS',
         disclaimer: 'Live keyword metrics are sourced from Google Ads data via DataForSEO. Values reflect provider-reported average monthly search volume, paid competition, and CPC, not internal estimates.',
+        diagnostics: {
+            attemptedProvider: 'DATAFORSEO_GOOGLE_ADS',
+            configuredProviders: ['DATAFORSEO_GOOGLE_ADS'],
+            liveDataActive: true,
+            fallbackReason: null,
+        },
     };
 }
 
@@ -971,6 +995,14 @@ Output valid JSON only with this schema:
             keywords,
             dataSource: 'AI_ESTIMATE',
             disclaimer: 'These are AI-assisted keyword estimates, not live search-volume or CPC metrics. Add DataForSEO credentials to pull real search volume, CPC, and competition data.',
+            diagnostics: {
+                attemptedProvider: null,
+                configuredProviders: [],
+                liveDataActive: false,
+                fallbackReason: process.env.OPENAI_API_KEY
+                    ? 'No live keyword provider returned results, so the tool fell back to AI estimates.'
+                    : 'No live keyword provider or AI model is configured, so the tool fell back to estimates.',
+            },
         };
     } catch (error) {
         console.error('Failed to generate keyword opportunity report:', error);
@@ -979,27 +1011,58 @@ Output valid JSON only with this schema:
 }
 
 export async function generateKeywordOpportunityReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
+    const configuredProviders: Array<'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS'> = [];
+    let attemptedProvider: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | null = null;
+    let fallbackReason: string | null = null;
+
     if (hasGoogleAdsKeywordPlannerCredentials()) {
+        configuredProviders.push('GOOGLE_ADS_KEYWORD_PLANNER');
+        attemptedProvider = 'GOOGLE_ADS_KEYWORD_PLANNER';
         try {
             const report = await fetchGoogleAdsKeywordPlannerReport(industry, location);
             if (report) {
+                report.diagnostics = {
+                    attemptedProvider,
+                    configuredProviders,
+                    liveDataActive: true,
+                    fallbackReason: null,
+                };
                 return report;
             }
+            fallbackReason = 'Google Keyword Planner returned no keyword ideas for this search.';
         } catch (error) {
             console.error('Google Ads Keyword Planner report failed, falling back to DataForSEO/AI estimation.', error);
+            fallbackReason = error instanceof Error ? error.message : 'Google Keyword Planner request failed.';
         }
     }
 
     if (hasDataForSeoCredentials()) {
+        configuredProviders.push('DATAFORSEO_GOOGLE_ADS');
+        attemptedProvider = 'DATAFORSEO_GOOGLE_ADS';
         try {
             const report = await fetchDataForSeoKeywordReport(industry, location);
             if (report) {
+                report.diagnostics = {
+                    attemptedProvider,
+                    configuredProviders,
+                    liveDataActive: true,
+                    fallbackReason: null,
+                };
                 return report;
             }
+            fallbackReason = 'DataForSEO returned no keyword ideas for this search.';
         } catch (error) {
             console.error('DataForSEO keyword report failed, falling back to AI estimation.', error);
+            fallbackReason = error instanceof Error ? error.message : 'DataForSEO keyword request failed.';
         }
     }
 
-    return buildAiEstimateReport(industry, location);
+    const fallbackReport = await buildAiEstimateReport(industry, location);
+    fallbackReport.diagnostics = {
+        attemptedProvider,
+        configuredProviders,
+        liveDataActive: false,
+        fallbackReason: fallbackReason || fallbackReport.diagnostics?.fallbackReason || 'No live keyword provider returned results.',
+    };
+    return fallbackReport;
 }

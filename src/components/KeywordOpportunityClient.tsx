@@ -48,6 +48,20 @@ function isLiveKeywordProvider(dataSource: KeywordOpportunityReport['dataSource'
     return dataSource === 'GOOGLE_ADS_KEYWORD_PLANNER' || dataSource === 'DATAFORSEO_GOOGLE_ADS';
 }
 
+function formatProviderLabel(dataSource: KeywordOpportunityReport['dataSource'] | undefined) {
+    if (dataSource === 'GOOGLE_ADS_KEYWORD_PLANNER') return 'Google Keyword Planner';
+    if (dataSource === 'DATAFORSEO_GOOGLE_ADS') return 'DataForSEO (Google Ads)';
+    if (dataSource === 'AI_ESTIMATE') return 'AI Estimate';
+    if (dataSource === 'TEMPLATE_FALLBACK') return 'Template Fallback';
+    return 'Unknown';
+}
+
+function formatProviderName(provider: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | null | undefined) {
+    if (provider === 'GOOGLE_ADS_KEYWORD_PLANNER') return 'Google Keyword Planner';
+    if (provider === 'DATAFORSEO_GOOGLE_ADS') return 'DataForSEO';
+    return 'No live provider';
+}
+
 export function KeywordOpportunityClient({
     defaultIndustry,
 }: {
@@ -320,8 +334,35 @@ export function KeywordOpportunityClient({
                                     ? 'Live keyword volume, CPC, competition, and recent trend movement are being pulled from Google Keyword Planner data via the Google Ads API.'
                                     : report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
                                         ? 'Live keyword volume, CPC, and competition are being pulled from Google Ads data via DataForSEO for this report.'
-                                    : 'This tool falls back to AI-assisted scoring when no paid keyword-data provider is configured or available.'}
+                                        : 'This tool falls back to AI-assisted scoring when no paid keyword-data provider is configured or available.'}
                             </p>
+                            {report && (
+                                <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-300">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-semibold uppercase tracking-[0.18em] text-gray-500">Current Source</span>
+                                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white">
+                                            {formatProviderLabel(report.dataSource)}
+                                        </span>
+                                    </div>
+                                    {report.diagnostics?.configuredProviders?.length ? (
+                                        <p>
+                                            Configured live providers: {report.diagnostics.configuredProviders.map((provider) => formatProviderName(provider)).join(', ')}
+                                        </p>
+                                    ) : (
+                                        <p>No live keyword providers are configured for this deployment.</p>
+                                    )}
+                                    {!report.diagnostics?.liveDataActive && report.diagnostics?.attemptedProvider && (
+                                        <p>
+                                            Attempted provider: {formatProviderName(report.diagnostics.attemptedProvider)}
+                                        </p>
+                                    )}
+                                    {!report.diagnostics?.liveDataActive && report.diagnostics?.fallbackReason && (
+                                        <p className="text-amber-300">
+                                            Fallback reason: {report.diagnostics.fallbackReason}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {error && (
