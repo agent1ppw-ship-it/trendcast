@@ -66,6 +66,8 @@ type SenderProfileRecord = {
     mailZip: string;
 };
 
+const MAX_TEMPLATE_IMAGE_BYTES = 8 * 1024 * 1024;
+
 function formatUsd(cents: number) {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -273,8 +275,8 @@ export function DirectMailDashboardClient({
             return;
         }
 
-        if (file.size > 3 * 1024 * 1024) {
-            setError('Image is too large. Keep uploads under 3MB.');
+        if (file.size > MAX_TEMPLATE_IMAGE_BYTES) {
+            setError('Image is too large. Keep uploads under 8MB.');
             event.target.value = '';
             return;
         }
@@ -633,7 +635,7 @@ export function DirectMailDashboardClient({
                                     className="w-full cursor-pointer rounded-xl border border-white/10 bg-[#111] px-3 py-2 text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-500"
                                 />
                                 <p className="mt-2 text-xs text-gray-500">
-                                    Upload a front-side postcard image (max 3MB).
+                                    Upload a front-side postcard image (max 8MB).
                                 </p>
                                 {newTemplateImageLabel && (
                                     <div className="mt-2 text-xs text-gray-400">

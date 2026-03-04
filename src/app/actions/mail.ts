@@ -25,6 +25,14 @@ type CampaignInput = {
 };
 
 const DATA_IMAGE_URL_PATTERN = /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i;
+const MAX_TEMPLATE_IMAGE_BYTES = 8 * 1024 * 1024;
+
+function getDataUrlByteSize(dataUrl: string) {
+    const [, payload = ''] = dataUrl.split(',', 2);
+    const sanitizedPayload = payload.replace(/\s/g, '');
+    const padding = (sanitizedPayload.match(/=+$/)?.[0].length || 0);
+    return Math.floor((sanitizedPayload.length * 3) / 4) - padding;
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_123', {
     apiVersion: '2026-02-25.clover',
@@ -170,8 +178,8 @@ export async function createMailTemplate(data: {
             return { success: false, error: 'Background image must be an image URL or uploaded image file.' };
         }
 
-        if (isDataUrl && imageUrl.length > 4_500_000) {
-            return { success: false, error: 'Uploaded image is too large. Keep it under 3MB.' };
+        if (isDataUrl && getDataUrlByteSize(imageUrl) > MAX_TEMPLATE_IMAGE_BYTES) {
+            return { success: false, error: 'Uploaded image is too large. Keep it under 8MB.' };
         }
     }
 
