@@ -23,8 +23,8 @@ export async function GET() {
                 "tier" TEXT NOT NULL DEFAULT 'INTRO',
                 "industry" TEXT NOT NULL,
                 "stripeCustomerId" TEXT,
-                "credits" INTEGER NOT NULL DEFAULT 50,
-                "extracts" INTEGER NOT NULL DEFAULT 10,
+                "credits" INTEGER NOT NULL DEFAULT 100,
+                "extracts" INTEGER NOT NULL DEFAULT 20,
                 "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT "Organization_pkey" PRIMARY KEY ("id")
             );
@@ -167,11 +167,11 @@ export async function GET() {
         `);
 
         return NextResponse.json({ success: true, message: "Prisma executeRaw deployed tables perfectly to Vercel!" });
-    } catch (e: any) {
+    } catch (e: unknown) {
         return NextResponse.json({
             success: false,
             error: "Prisma Execution failed",
-            details: e.message || String(e)
+            details: e instanceof Error ? e.message : String(e)
         }, { status: 500 });
     }
 }

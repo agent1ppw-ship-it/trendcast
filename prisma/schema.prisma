@@ -21,8 +21,8 @@ model Organization {
   mailZip          String?
   stripeCustomerId     String?
   stripeSubscriptionId String?
-  credits          Int      @default(50)
-  extracts         Int      @default(10)
+  credits          Int      @default(100)
+  extracts         Int      @default(20)
   createdAt        DateTime @default(now())
   
   users            User[]

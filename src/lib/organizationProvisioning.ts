@@ -35,8 +35,8 @@ export async function ensureUserOrganizationByEmail(email: string) {
             name: `${normalizedEmail.split('@')[0]}'s Business`,
             tier: 'INTRO',
             industry: 'Home Services',
-            extracts: 10,
-            credits: 50,
+            extracts: 20,
+            credits: 100,
             aiSettings: {
                 create: {
                     systemPrompt: 'You are a helpful home service estimator assistant.',

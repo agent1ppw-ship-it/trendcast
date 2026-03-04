@@ -1,0 +1,3 @@
+ALTER TABLE "Organization"
+ALTER COLUMN "credits" SET DEFAULT 100,
+ALTER COLUMN "extracts" SET DEFAULT 20;

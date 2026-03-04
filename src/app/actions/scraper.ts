@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { revalidatePath } from 'next/cache';
 import { ensureOrganization } from '@/app/actions/auth';
+import { getScraperExtractCost, refundScraperExtractsOnce } from '@/lib/scraperCredits';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = new IORedis(redisUrl, {
@@ -11,12 +12,15 @@ const redisConnection = new IORedis(redisUrl, {
     ...(redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {})
 });
 
-const scrapeQueue = new Queue('ScrapeQueue', { connection: redisConnection as any });
+const scrapeQueue = new Queue('ScrapeQueue', { connection: redisConnection as never });
 import { prisma } from '@/lib/prisma';
 
 export async function startScraperJob(zipCode: string) {
+    let orgId: string | null = null;
+    let extractsDeducted = false;
+
     try {
-        const orgId = await ensureOrganization();
+        orgId = await ensureOrganization();
         if (!orgId) return { success: false, error: 'Unauthorized. Please sign in.' };
 
         const org = await prisma.organization.findUnique({
@@ -27,28 +31,37 @@ export async function startScraperJob(zipCode: string) {
             return { success: false, error: 'No active organization found' };
         }
 
-        if (org.extracts <= 9) {
+        if (org.extracts < getScraperExtractCost()) {
             return {
                 success: false,
-                error: 'You need at least 10 Free Trial extracts to run a batch! Please subscribe to the Intro Tier to continue generating leads.',
+                error: 'You need at least 10 extracts to run a batch. Please upgrade or add more extracts to continue generating leads.',
                 errorCode: 'UPGRADE_REQUIRED'
             };
         }
 
-        // Deduct exactly 10 extracts upfront for this batch job
+        // Deduct extracts upfront, then refund automatically if queueing or execution fails.
         await prisma.organization.update({
             where: { id: org.id },
-            data: { extracts: { decrement: 10 } }
+            data: { extracts: { decrement: getScraperExtractCost() } }
         });
+        extractsDeducted = true;
 
         const job = await scrapeQueue.add('scrape-job', {
             zipCode,
             orgId: org.id
         });
 
-        return { success: true, message: `Scraper queued for ${zipCode}. 10 Extracts deducted.`, jobId: job.id };
+        return { success: true, message: `Scraper queued for ${zipCode}. ${getScraperExtractCost()} extracts reserved.`, jobId: job.id };
     } catch (error) {
         console.error('Failed to queue scraper job:', error);
+        if (extractsDeducted && orgId) {
+            await prisma.organization.update({
+                where: { id: orgId },
+                data: { extracts: { increment: getScraperExtractCost() } }
+            }).catch((refundError) => {
+                console.error('Failed to refund extracts after queue error:', refundError);
+            });
+        }
         const redisIsSet = !!process.env.REDIS_URL;
         return {
             success: false,
@@ -127,11 +140,7 @@ export async function cancelScraperJob(jobId: string) {
             }
         }
 
-        // Refund the 10 upfront extracts back to the User
-        await prisma.organization.update({
-            where: { id: orgId },
-            data: { extracts: { increment: 10 } }
-        });
+        await refundScraperExtractsOnce(redisConnection, jobId, orgId);
 
         return { success: true };
     } catch (error) {

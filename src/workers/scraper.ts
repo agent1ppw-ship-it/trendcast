@@ -6,6 +6,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
 import { prisma } from '../lib/prisma';
+import { getScraperExtractCost, refundScraperExtractsOnce } from '../lib/scraperCredits';
 import {
     buildBrowserLocationQueries,
     extractBusinessesFromYellowPagesHtml,
@@ -223,6 +224,15 @@ export const scraperWorker = new Worker(
 
             if (newAddresses.length === 0) {
                 console.log(`[Worker] All extracted properties across ${pageNum} pages already exist in the CRM database.`);
+                const refunded = await refundScraperExtractsOnce(redisConnection, String(job.id), job.data.orgId);
+                await job.updateProgress({
+                    phase: refunded
+                        ? 'No new properties found. Extracts refunded.'
+                        : 'No new properties found.',
+                    percent: 100,
+                    error: false,
+                });
+                return { success: true, count: 0, refundedExtracts: refunded ? getScraperExtractCost() : 0 };
             }
 
             console.log(`[Worker] Proceeding to Enrichment with ${newAddresses.length} new properties.`);
@@ -262,7 +272,17 @@ export const scraperWorker = new Worker(
 
         } catch (error) {
             console.error(`[Worker] Error in job ${job.id}:`, error);
-            await job.updateProgress({ phase: 'Job Failed during execution.', percent: 0, error: true });
+            try {
+                const refunded = await refundScraperExtractsOnce(redisConnection, String(job.id), job.data.orgId);
+                await job.updateProgress({
+                    phase: refunded ? 'Job Failed during execution. Extracts refunded.' : 'Job Failed during execution.',
+                    percent: 0,
+                    error: true,
+                });
+            } catch (refundError) {
+                console.error(`[Worker] Failed to refund extracts for job ${job.id}:`, refundError);
+                await job.updateProgress({ phase: 'Job Failed during execution.', percent: 0, error: true });
+            }
             throw error;
         } finally {
             await browser.close();

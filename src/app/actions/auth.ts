@@ -72,8 +72,8 @@ export async function registerWithEmailPassword(data: {
                 name: `${businessBaseName}'s Business`,
                 tier: 'INTRO',
                 industry: 'Home Services',
-                extracts: 10,
-                credits: 50,
+                extracts: 20,
+                credits: 100,
                 users: {
                     create: {
                         name,
