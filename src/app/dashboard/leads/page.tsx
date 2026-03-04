@@ -1,4 +1,4 @@
-import { PrismaClient, Lead } from '@prisma/client';
+import { Lead } from '@prisma/client';
 import { LeadScraperClient } from '@/components/LeadScraperClient';
 import { ensureOrganization } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
@@ -17,7 +17,9 @@ export default async function LeadScraperPage() {
         leads = await prisma.lead.findMany({
             where: {
                 orgId: orgId,
-                source: 'SCRAPER',
+                source: {
+                    in: ['SCRAPER', 'SCRAPER_LISTED'],
+                },
                 status: 'EXTRACTED'
             },
             orderBy: {
