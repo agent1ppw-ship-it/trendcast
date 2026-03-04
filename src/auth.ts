@@ -4,7 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { ensureUserOrganizationByEmail, getUserAuthContextByEmail } from '@/lib/organizationProvisioning';
+import { getUserAuthContextByEmail } from '@/lib/organizationProvisioning';
 
 const providers = [];
 
@@ -62,15 +62,7 @@ export const authOptions: NextAuthOptions = {
     debug: true,
     callbacks: {
         async signIn({ user }) {
-            if (!user.email) return false;
-
-            try {
-                await ensureUserOrganizationByEmail(user.email);
-                return true;
-            } catch (error) {
-                console.error('--- SIGNIN CALLBACK FAILED ---', error);
-                return false;
-            }
+            return Boolean(user.email);
         },
         async redirect({ url, baseUrl }) {
             console.log('--- REDIRECT FIRED ---', { url, baseUrl });
@@ -91,11 +83,15 @@ export const authOptions: NextAuthOptions = {
             }
 
             if (token.email) {
-                const authContext = await getUserAuthContextByEmail(token.email);
-                if (authContext) {
-                    token.id = authContext.id;
-                    token.role = authContext.role;
-                    token.orgId = authContext.orgId;
+                try {
+                    const authContext = await getUserAuthContextByEmail(token.email);
+                    if (authContext) {
+                        token.id = authContext.id;
+                        token.role = authContext.role;
+                        token.orgId = authContext.orgId;
+                    }
+                } catch (error) {
+                    console.error('--- JWT AUTH CONTEXT LOOKUP FAILED ---', error);
                 }
             }
 
