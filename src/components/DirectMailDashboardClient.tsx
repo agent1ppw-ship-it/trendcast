@@ -51,6 +51,7 @@ type CampaignRecord = {
         size: string;
     };
     orderCount: number;
+    recentLobIds: string[];
 };
 
 type SenderProfileRecord = {
@@ -692,6 +693,19 @@ export function DirectMailDashboardClient({
                                             <div className="mt-1 font-semibold text-white">{campaign.failedCount}</div>
                                         </div>
                                     </div>
+
+                                    {campaign.recentLobIds.length > 0 && (
+                                        <div className="mt-4 rounded-xl border border-white/5 bg-[#111] p-3">
+                                            <div className="text-xs uppercase tracking-[0.18em] text-gray-500">Recent Lob IDs</div>
+                                            <div className="mt-2 space-y-1">
+                                                {campaign.recentLobIds.map((lobId) => (
+                                                    <div key={lobId} className="truncate font-mono text-xs text-blue-300">
+                                                        {lobId}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="mt-4 flex flex-col gap-2">
                                         {campaign.status !== 'COMPLETED' && campaign.status !== 'CANCELLED' && (

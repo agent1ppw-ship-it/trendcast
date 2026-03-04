@@ -57,6 +57,20 @@ export default async function DirectMailPage() {
                         orders: true,
                     },
                 },
+                orders: {
+                    where: {
+                        lobObjectId: {
+                            not: null,
+                        },
+                    },
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                    take: 3,
+                    select: {
+                        lobObjectId: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
             take: 20,
@@ -120,6 +134,9 @@ export default async function DirectMailPage() {
                 scheduledAt: campaign.scheduledAt?.toISOString() || null,
                 template: campaign.template,
                 orderCount: campaign._count.orders,
+                recentLobIds: campaign.orders
+                    .map((order) => order.lobObjectId)
+                    .filter((lobObjectId): lobObjectId is string => Boolean(lobObjectId)),
             }))}
         />
     );

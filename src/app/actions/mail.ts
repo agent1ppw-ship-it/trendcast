@@ -257,6 +257,7 @@ export async function sendMailCampaign(campaignId: string) {
         let sentCount = 0;
         let failedCount = 0;
         let lobCreatedCount = 0;
+        const createdLobIds: string[] = [];
         const lobErrors: string[] = [];
         const skippedAddressErrors: string[] = [];
 
@@ -399,6 +400,7 @@ export async function sendMailCampaign(campaignId: string) {
                     lobTrackingId = lobMailPiece.trackingId;
                     if (lobObjectId) {
                         lobCreatedCount += 1;
+                        createdLobIds.push(lobObjectId);
                     }
                 } catch (error) {
                     console.error('Lob postcard creation failed.', error);
@@ -489,8 +491,8 @@ export async function sendMailCampaign(campaignId: string) {
             lobEnvironment,
             message: mode === 'live'
                 ? lobEnvironment === 'test'
-                    ? `Campaign submitted to Lob test mode. ${lobCreatedCount} mail piece(s) created.`
-                    : `Campaign submitted to Lob live mode. ${lobCreatedCount} mail piece(s) created.`
+                    ? `Campaign submitted to Lob test mode. ${lobCreatedCount} mail piece(s) created.${createdLobIds.length ? ` Lob IDs: ${createdLobIds.slice(0, 3).join(', ')}${createdLobIds.length > 3 ? '...' : ''}` : ''}`
+                    : `Campaign submitted to Lob live mode. ${lobCreatedCount} mail piece(s) created.${createdLobIds.length ? ` Lob IDs: ${createdLobIds.slice(0, 3).join(', ')}${createdLobIds.length > 3 ? '...' : ''}` : ''}`
                 : 'Campaign processed in demo mode. Add a Lob API key to create real mail pieces.',
         };
     } catch (error) {
