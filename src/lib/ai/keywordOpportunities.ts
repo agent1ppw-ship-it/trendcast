@@ -20,6 +20,7 @@ export interface KeywordOpportunity {
     monthlySearchVolume: number | null;
     competitionScore: number | null;
     costPerClickUsd: number | null;
+    trendPercent: number | null;
 }
 
 export interface KeywordOpportunityReport {
@@ -27,7 +28,7 @@ export interface KeywordOpportunityReport {
     location: string;
     industry: string;
     keywords: KeywordOpportunity[];
-    dataSource: 'DATAFORSEO_GOOGLE_ADS' | 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
+    dataSource: 'GOOGLE_ADS_KEYWORD_PLANNER' | 'DATAFORSEO_GOOGLE_ADS' | 'AI_ESTIMATE' | 'TEMPLATE_FALLBACK';
     disclaimer: string;
 }
 
@@ -52,6 +53,47 @@ type DataForSeoResponse = {
             }>;
         }>;
     }>;
+};
+
+type GoogleAdsAccessTokenResponse = {
+    access_token?: string;
+    expires_in?: number;
+    token_type?: string;
+};
+
+type GoogleAdsGeoSuggestionResponse = {
+    geoTargetConstantSuggestions?: Array<{
+        geoTargetConstant?: {
+            resourceName?: string;
+            status?: string;
+            name?: string;
+            countryCode?: string;
+            targetType?: string;
+            canonicalName?: string;
+        };
+        reach?: string;
+        searchTerm?: string;
+    }>;
+};
+
+type GoogleAdsKeywordIdeaResponse = {
+    results?: Array<{
+        text?: string;
+        keywordIdeaMetrics?: {
+            avgMonthlySearches?: string | number;
+            competition?: string;
+            competitionIndex?: string | number;
+            lowTopOfPageBidMicros?: string | number;
+            highTopOfPageBidMicros?: string | number;
+            monthlySearchVolumes?: Array<{
+                year?: string | number;
+                month?: string;
+                monthlySearches?: string | number;
+            }>;
+        };
+    }>;
+    nextPageToken?: string;
+    totalSize?: string | number;
 };
 
 const industryKeywordMap: Record<string, string[]> = {
@@ -227,6 +269,15 @@ function normalizeCompetitionScore(rawCompetition: number | null | undefined, ra
     return null;
 }
 
+function parseMetricNumber(value: string | number | null | undefined) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+}
+
 function deriveCompetitionOutlook(competitionScore: number | null, keyword: string) {
     if (competitionScore === null) {
         return inferCompetition(keyword);
@@ -298,14 +349,28 @@ function buildRealMetricRationale(params: {
     competitionScore: number | null;
     competitionOutlook: KeywordCompetitionOutlook;
     buyerIntent: KeywordBuyerIntent;
+    trendPercent?: number | null;
 }) {
     const searchVolume = params.monthlySearchVolume !== null ? `${params.monthlySearchVolume.toLocaleString()} avg monthly searches` : 'unknown monthly search volume';
     const cpc = params.costPerClickUsd !== null ? `$${params.costPerClickUsd.toFixed(2)} CPC` : 'no CPC available';
     const competition = params.competitionScore !== null
         ? `${params.competitionScore}/100 paid competition (${params.competitionOutlook.toLowerCase()})`
         : `${params.competitionOutlook.toLowerCase()} directional competition`;
+    const trend = typeof params.trendPercent === 'number'
+        ? `${params.trendPercent > 0 ? '+' : ''}${params.trendPercent}% recent search trend`
+        : 'no recent trend signal available';
 
-    return `${searchVolume}, ${cpc}, and ${competition} with ${params.buyerIntent.toLowerCase()} buyer intent.`;
+    return `${searchVolume}, ${cpc}, ${competition}, and ${trend} with ${params.buyerIntent.toLowerCase()} buyer intent.`;
+}
+
+function hasGoogleAdsKeywordPlannerCredentials() {
+    return Boolean(
+        process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
+        process.env.GOOGLE_ADS_CLIENT_ID &&
+        process.env.GOOGLE_ADS_CLIENT_SECRET &&
+        process.env.GOOGLE_ADS_REFRESH_TOKEN &&
+        process.env.GOOGLE_ADS_CUSTOMER_ID
+    );
 }
 
 function hasDataForSeoCredentials() {
@@ -360,6 +425,7 @@ function buildFallbackReport(industry: string, location: string): KeywordOpportu
             monthlySearchVolume: null,
             competitionScore: null,
             costPerClickUsd: null,
+            trendPercent: null,
         } satisfies KeywordOpportunity;
     });
 
@@ -370,6 +436,244 @@ function buildFallbackReport(industry: string, location: string): KeywordOpportu
         keywords,
         dataSource: 'TEMPLATE_FALLBACK',
         disclaimer: 'These are fallback keyword estimates, not live keyword metrics. Add DataForSEO credentials to pull real search volume, CPC, and competition data.',
+    };
+}
+
+function normalizeGoogleAdsCustomerId(value: string) {
+    return value.replace(/-/g, '').trim();
+}
+
+function buildGoogleAdsLocationQuery(location: string) {
+    const parts = location.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 2) return location.trim();
+
+    const [city, stateOrRegion] = parts;
+    const stateKey = stateOrRegion.toUpperCase();
+    const fullState = stateNameMap[stateKey] || toTitleCase(stateOrRegion);
+    return `${toTitleCase(city)}, ${fullState}`;
+}
+
+async function fetchGoogleAdsAccessToken() {
+    const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
+        throw new Error('Google Ads OAuth credentials are not fully configured.');
+    }
+
+    const response = await withTimeout('Google Ads access token', async () => {
+        const requestBody = new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+        });
+
+        return fetch('https://www.googleapis.com/oauth2/v3/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: requestBody.toString(),
+            cache: 'no-store',
+        });
+    });
+
+    const raw = await response.text();
+    if (!response.ok) {
+        throw new Error(`Google OAuth token request failed (${response.status}): ${raw}`);
+    }
+
+    const parsed = JSON.parse(raw) as GoogleAdsAccessTokenResponse;
+    if (!parsed.access_token) {
+        throw new Error('Google OAuth token response did not include an access token.');
+    }
+
+    return parsed.access_token;
+}
+
+async function googleAdsApiRequest<T>(path: string, body: Record<string, unknown>) {
+    const accessToken = await fetchGoogleAdsAccessToken();
+    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
+
+    if (!developerToken) {
+        throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN is not configured.');
+    }
+
+    const response = await withTimeout(`Google Ads API ${path}`, () => fetch(`https://googleads.googleapis.com/v22/${path}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'developer-token': developerToken,
+            ...(loginCustomerId ? { 'login-customer-id': normalizeGoogleAdsCustomerId(loginCustomerId) } : {}),
+        },
+        body: JSON.stringify(body),
+        cache: 'no-store',
+    }));
+
+    const raw = await response.text();
+    if (!response.ok) {
+        throw new Error(`Google Ads API request failed (${response.status}): ${raw}`);
+    }
+
+    return JSON.parse(raw) as T;
+}
+
+async function fetchGoogleAdsGeoTargetConstant(location: string) {
+    const locationQuery = buildGoogleAdsLocationQuery(location);
+    const response = await googleAdsApiRequest<GoogleAdsGeoSuggestionResponse>('geoTargetConstants:suggest', {
+        locale: 'en',
+        countryCode: 'US',
+        locationNames: {
+            names: [locationQuery],
+        },
+    });
+
+    const suggestion = (response.geoTargetConstantSuggestions || [])
+        .map((entry) => entry.geoTargetConstant)
+        .find((geoTarget) => geoTarget?.resourceName && geoTarget.status === 'ENABLED');
+
+    return suggestion?.resourceName || null;
+}
+
+function normalizeCompetitionFromGoogleAds(rawCompetition: string | undefined, competitionScore: number | null) {
+    if (rawCompetition === 'LOW') return 'LOW' as const;
+    if (rawCompetition === 'MEDIUM') return 'MEDIUM' as const;
+    if (rawCompetition === 'HIGH') return 'HIGH' as const;
+    return deriveCompetitionOutlook(competitionScore, rawCompetition || '');
+}
+
+function computeTrendPercent(monthlySearchVolumes: Array<{ year?: string | number; month?: string; monthlySearches?: string | number }> | undefined) {
+    if (!monthlySearchVolumes || monthlySearchVolumes.length < 6) {
+        return null;
+    }
+
+    const values = monthlySearchVolumes
+        .map((entry) => parseMetricNumber(entry.monthlySearches))
+        .filter((value): value is number => value !== null);
+
+    if (values.length < 6) {
+        return null;
+    }
+
+    const recent = values.slice(0, 3).reduce((sum, value) => sum + value, 0);
+    const prior = values.slice(3, 6).reduce((sum, value) => sum + value, 0);
+
+    if (prior <= 0) {
+        return recent > 0 ? 100 : null;
+    }
+
+    return Math.round(((recent - prior) / prior) * 100);
+}
+
+async function fetchGoogleAdsKeywordPlannerReport(industry: string, location: string): Promise<KeywordOpportunityReport | null> {
+    const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
+    if (!customerId) {
+        return null;
+    }
+
+    const seedKeywords = buildSeedKeywords(industry, location).slice(0, 10);
+    const geoTargetConstant = await fetchGoogleAdsGeoTargetConstant(location).catch((error) => {
+        console.error('Google Ads geo target lookup failed, falling back to keyword-only targeting.', error);
+        return null;
+    });
+
+    const response = await googleAdsApiRequest<GoogleAdsKeywordIdeaResponse>(`customers/${normalizeGoogleAdsCustomerId(customerId)}:generateKeywordIdeas`, {
+        language: 'languageConstants/1000',
+        ...(geoTargetConstant ? { geoTargetConstants: [geoTargetConstant] } : {}),
+        keywordPlanNetwork: 'GOOGLE_SEARCH_AND_PARTNERS',
+        keywordSeed: {
+            keywords: seedKeywords,
+        },
+    });
+
+    type RankedKeywordOpportunity = KeywordOpportunity & { relevanceScore: number };
+
+    const rankedKeywords = (response.results || [])
+        .map((item) => {
+            const keyword = sanitizeKeyword(item.text || '');
+            if (!keyword) return null;
+
+            const metrics = item.keywordIdeaMetrics;
+            const monthlySearchVolume = parseMetricNumber(metrics?.avgMonthlySearches);
+            const competitionScore = normalizeCompetitionScore(
+                null,
+                parseMetricNumber(metrics?.competitionIndex),
+            );
+            const trendPercent = computeTrendPercent(metrics?.monthlySearchVolumes);
+            const competitionOutlook = normalizeCompetitionFromGoogleAds(metrics?.competition, competitionScore);
+            const highBidMicros = parseMetricNumber(metrics?.highTopOfPageBidMicros);
+            const lowBidMicros = parseMetricNumber(metrics?.lowTopOfPageBidMicros);
+            const cpcMicros = highBidMicros ?? lowBidMicros;
+            const cpc = typeof cpcMicros === 'number' ? cpcMicros / 1_000_000 : null;
+            const buyerIntent = inferBuyerIntent(keyword);
+
+            return {
+                keyword,
+                buyerIntent,
+                competitionOutlook,
+                opportunityScore: Math.min(
+                    100,
+                    computeRealOpportunityScore({
+                        keyword,
+                        buyerIntent,
+                        competitionScore,
+                        monthlySearchVolume,
+                        costPerClickUsd: cpc,
+                    }) + (typeof trendPercent === 'number' && trendPercent > 0 ? Math.min(12, Math.round(trendPercent / 10)) : 0),
+                ),
+                suggestedAsset: inferAsset(keyword),
+                rationale: buildRealMetricRationale({
+                    keyword,
+                    monthlySearchVolume,
+                    costPerClickUsd: cpc,
+                    competitionScore,
+                    competitionOutlook,
+                    buyerIntent,
+                    trendPercent,
+                }),
+                monthlySearchVolume,
+                competitionScore,
+                costPerClickUsd: cpc,
+                trendPercent,
+                relevanceScore: scoreKeywordRelevance(keyword, industry, location),
+            } as RankedKeywordOpportunity;
+        })
+        .filter((item): item is RankedKeywordOpportunity => item !== null)
+        .sort((left, right) => {
+            const leftTrend = left.trendPercent ?? Number.NEGATIVE_INFINITY;
+            const rightTrend = right.trendPercent ?? Number.NEGATIVE_INFINITY;
+            if (rightTrend !== leftTrend) return rightTrend - leftTrend;
+            if (right.relevanceScore !== left.relevanceScore) return right.relevanceScore - left.relevanceScore;
+            if ((right.monthlySearchVolume || 0) !== (left.monthlySearchVolume || 0)) {
+                return (right.monthlySearchVolume || 0) - (left.monthlySearchVolume || 0);
+            }
+            return right.opportunityScore - left.opportunityScore;
+        });
+
+    const keywords = rankedKeywords
+        .filter((item, index, values) => values.findIndex((entry) => entry.keyword.toLowerCase() === item.keyword.toLowerCase()) === index)
+        .slice(0, 20)
+        .map((item) => {
+            const { relevanceScore, ...rest } = item;
+            void relevanceScore;
+            return rest;
+        });
+
+    if (keywords.length === 0) {
+        return null;
+    }
+
+    return {
+        summary: `Pulled ${keywords.length} live keyword opportunities for ${toTitleCase(industry)} in ${location} from Google Keyword Planner data. Results are ranked toward recent trend movement, search volume, and buyer intent.`,
+        location,
+        industry: toTitleCase(industry),
+        keywords,
+        dataSource: 'GOOGLE_ADS_KEYWORD_PLANNER',
+        disclaimer: 'Live keyword metrics are sourced from Google Ads Keyword Planner via the Google Ads API. Trend direction is derived from recent monthly search-volume movement in the returned historical metrics.',
     };
 }
 
@@ -495,7 +799,9 @@ async function fetchDataForSeoKeywordReport(industry: string, location: string):
         return null;
     }
 
-    const keywords = items
+    type RankedKeywordOpportunity = KeywordOpportunity & { relevanceScore: number };
+
+    const rankedKeywords = items
         .map((item) => {
             const keyword = sanitizeKeyword(item.keyword || '');
             if (!keyword) return null;
@@ -531,21 +837,25 @@ async function fetchDataForSeoKeywordReport(industry: string, location: string):
                     competitionScore,
                     competitionOutlook,
                     buyerIntent,
+                    trendPercent: null,
                 }),
                 monthlySearchVolume,
                 competitionScore,
                 costPerClickUsd: cpc,
+                trendPercent: null,
                 relevanceScore: scoreKeywordRelevance(keyword, industry, location),
-            };
+            } as RankedKeywordOpportunity;
         })
-        .filter((item): item is KeywordOpportunity & { relevanceScore: number } => Boolean(item))
+        .filter((item): item is RankedKeywordOpportunity => item !== null)
         .sort((left, right) => {
             if (right.relevanceScore !== left.relevanceScore) return right.relevanceScore - left.relevanceScore;
             if ((right.monthlySearchVolume || 0) !== (left.monthlySearchVolume || 0)) {
                 return (right.monthlySearchVolume || 0) - (left.monthlySearchVolume || 0);
             }
             return right.opportunityScore - left.opportunityScore;
-        })
+        });
+
+    const keywords = rankedKeywords
         .filter((item, index, values) => values.findIndex((entry) => entry.keyword.toLowerCase() === item.keyword.toLowerCase()) === index)
         .slice(0, 20)
         .map((item) => {
@@ -645,6 +955,7 @@ Output valid JSON only with this schema:
                     monthlySearchVolume: null,
                     competitionScore: null,
                     costPerClickUsd: null,
+                    trendPercent: null,
                 } satisfies KeywordOpportunity;
             })
             .filter((item) => item.keyword);
@@ -668,6 +979,17 @@ Output valid JSON only with this schema:
 }
 
 export async function generateKeywordOpportunityReport(industry: string, location: string): Promise<KeywordOpportunityReport> {
+    if (hasGoogleAdsKeywordPlannerCredentials()) {
+        try {
+            const report = await fetchGoogleAdsKeywordPlannerReport(industry, location);
+            if (report) {
+                return report;
+            }
+        } catch (error) {
+            console.error('Google Ads Keyword Planner report failed, falling back to DataForSEO/AI estimation.', error);
+        }
+    }
+
     if (hasDataForSeoCredentials()) {
         try {
             const report = await fetchDataForSeoKeywordReport(industry, location);

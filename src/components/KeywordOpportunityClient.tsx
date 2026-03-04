@@ -39,6 +39,15 @@ function formatUsd(value: number | null) {
     }).format(value);
 }
 
+function formatTrendPercent(value: number | null) {
+    if (value === null) return 'N/A';
+    return `${value > 0 ? '+' : ''}${value}%`;
+}
+
+function isLiveKeywordProvider(dataSource: KeywordOpportunityReport['dataSource'] | undefined) {
+    return dataSource === 'GOOGLE_ADS_KEYWORD_PLANNER' || dataSource === 'DATAFORSEO_GOOGLE_ADS';
+}
+
 export function KeywordOpportunityClient({
     defaultIndustry,
 }: {
@@ -49,7 +58,7 @@ export function KeywordOpportunityClient({
     const [report, setReport] = useState<KeywordOpportunityReport | null>(null);
     const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
     const [blogDraft, setBlogDraft] = useState<KeywordTargetedBlogDraft | null>(null);
-    const [sortBy, setSortBy] = useState<'opportunity' | 'searchVolume' | 'cpc' | 'competition'>('opportunity');
+    const [sortBy, setSortBy] = useState<'opportunity' | 'searchVolume' | 'trend' | 'cpc' | 'competition'>('opportunity');
     const [error, setError] = useState('');
     const [blogError, setBlogError] = useState('');
     const [isPending, startTransition] = useTransition();
@@ -80,6 +89,12 @@ export function KeywordOpportunityClient({
         keywords.sort((left, right) => {
             if (sortBy === 'searchVolume') {
                 return (right.monthlySearchVolume || -1) - (left.monthlySearchVolume || -1);
+            }
+
+            if (sortBy === 'trend') {
+                const leftTrend = left.trendPercent ?? Number.NEGATIVE_INFINITY;
+                const rightTrend = right.trendPercent ?? Number.NEGATIVE_INFINITY;
+                return rightTrend - leftTrend;
             }
 
             if (sortBy === 'cpc') {
@@ -115,7 +130,7 @@ export function KeywordOpportunityClient({
             setSelectedKeywords([]);
             setBlogDraft(null);
             setBlogError('');
-            setSortBy(result.report.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? 'searchVolume' : 'opportunity');
+            setSortBy(result.report.dataSource === 'GOOGLE_ADS_KEYWORD_PLANNER' ? 'trend' : isLiveKeywordProvider(result.report.dataSource) ? 'searchVolume' : 'opportunity');
         });
     };
 
@@ -243,16 +258,16 @@ export function KeywordOpportunityClient({
                 <Card className="border-white/5 bg-[#111] shadow-md">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center justify-between text-sm font-medium text-gray-400">
-                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? 'Avg Search Volume' : 'Avg Opportunity'}
+                            {isLiveKeywordProvider(report?.dataSource) ? 'Avg Search Volume' : 'Avg Opportunity'}
                             <BarChart3 className="h-4 w-4 text-gray-500" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-extrabold text-white">
-                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS' ? formatMetricNumber(averageSearchVolume) : averageOpportunityScore}
+                            {isLiveKeywordProvider(report?.dataSource) ? formatMetricNumber(averageSearchVolume) : averageOpportunityScore}
                         </div>
                         <p className="mt-1 text-xs text-gray-500">
-                            {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
+                            {isLiveKeywordProvider(report?.dataSource)
                                 ? `Average monthly searches across the set. Avg CPC ${formatUsd(averageCpc)}.`
                                 : 'Directional score across the generated set'}
                         </p>
@@ -301,8 +316,10 @@ export function KeywordOpportunityClient({
                         <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-4">
                             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Data Status</p>
                             <p className="text-sm leading-6 text-gray-300">
-                                {report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
-                                    ? 'Live keyword volume, CPC, and competition are being pulled from Google Ads data via DataForSEO for this report.'
+                                {report?.dataSource === 'GOOGLE_ADS_KEYWORD_PLANNER'
+                                    ? 'Live keyword volume, CPC, competition, and recent trend movement are being pulled from Google Keyword Planner data via the Google Ads API.'
+                                    : report?.dataSource === 'DATAFORSEO_GOOGLE_ADS'
+                                        ? 'Live keyword volume, CPC, and competition are being pulled from Google Ads data via DataForSEO for this report.'
                                     : 'This tool falls back to AI-assisted scoring when no paid keyword-data provider is configured or available.'}
                             </p>
                         </div>
@@ -339,11 +356,12 @@ export function KeywordOpportunityClient({
                                 <div className="flex flex-wrap items-center gap-3">
                                     <select
                                         value={sortBy}
-                                        onChange={(event) => setSortBy(event.target.value as 'opportunity' | 'searchVolume' | 'cpc' | 'competition')}
+                                        onChange={(event) => setSortBy(event.target.value as 'opportunity' | 'searchVolume' | 'trend' | 'cpc' | 'competition')}
                                         className="rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-xs font-medium text-gray-300 outline-none focus:border-blue-500/50"
                                     >
                                         <option value="opportunity">Sort: Opportunity</option>
                                         <option value="searchVolume">Sort: Search Volume</option>
+                                        <option value="trend">Sort: Trend</option>
                                         <option value="cpc">Sort: CPC</option>
                                         <option value="competition">Sort: Lowest Competition</option>
                                     </select>
@@ -368,6 +386,7 @@ export function KeywordOpportunityClient({
                                         <th className="px-6 py-4 font-medium tracking-wider">Select</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Keyword</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Search Volume</th>
+                                        <th className="px-6 py-4 font-medium tracking-wider">Trend</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">CPC</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Intent</th>
                                         <th className="px-6 py-4 font-medium tracking-wider">Competition</th>
@@ -378,7 +397,7 @@ export function KeywordOpportunityClient({
                                 <tbody className="divide-y divide-white/5">
                                     {!report && (
                                         <tr>
-                                            <td colSpan={8} className="px-6 py-16 text-center">
+                                            <td colSpan={9} className="px-6 py-16 text-center">
                                                 <div className="mx-auto max-w-md">
                                                     <p className="mb-2 text-base text-gray-300">No keyword set generated yet.</p>
                                                     <p className="text-sm text-gray-500">
@@ -428,6 +447,15 @@ export function KeywordOpportunityClient({
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="font-mono text-gray-200">{formatMetricNumber(keyword.monthlySearchVolume)}</div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className={keyword.trendPercent !== null && keyword.trendPercent > 0
+                                                        ? 'font-mono text-emerald-300'
+                                                        : keyword.trendPercent !== null && keyword.trendPercent < 0
+                                                            ? 'font-mono text-rose-300'
+                                                            : 'font-mono text-gray-400'}>
+                                                        {formatTrendPercent(keyword.trendPercent)}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="font-mono text-gray-200">{formatUsd(keyword.costPerClickUsd)}</div>
