@@ -65,13 +65,14 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden bg-[#0A0A0A] text-gray-100">
+    <div className="flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
 
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-40 overflow-hidden isolate">
         {/* Abstract Dark Background Glows */}
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[800px] h-[800px] bg-blue-900/30 rounded-full blur-[120px] -z-10" />
-        <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/3 w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-[100px] -z-10" />
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[800px] h-[800px] bg-emerald-500/20 rounded-full blur-[120px] -z-10" />
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/3 w-[600px] h-[600px] bg-cyan-500/15 rounded-full blur-[100px] -z-10" />
+        <div className="absolute bottom-0 right-1/3 translate-y-1/3 w-[520px] h-[520px] bg-fuchsia-500/10 rounded-full blur-[110px] -z-10" />
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 -z-10 mix-blend-overlay"></div>
 
@@ -82,17 +83,17 @@ export default function Home() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="max-w-4xl mx-auto"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1A1A1A] border border-white/10 text-gray-300 text-sm font-medium mb-8 shadow-2xl backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111315] border border-emerald-400/30 text-emerald-100 text-sm font-medium mb-8 shadow-[0_0_30px_rgba(34,197,94,0.2)] backdrop-blur-md">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
               </span>
               Enterprise Voice AI Agents are Live
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-8 leading-[1.1]">
               The unfair AI advantage for <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-emerald-300 to-fuchsia-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.35)]">
                 Home Services
               </span>
             </h1>
@@ -104,7 +105,7 @@ export default function Home() {
             <div className="flex items-center justify-center">
               <Link
                 href="/signup"
-                className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] hover:-translate-y-1 flex items-center justify-center"
+                className="w-full sm:w-auto px-8 py-4 bg-lime-400 text-black rounded-full font-extrabold text-lg hover:bg-lime-300 transition-all shadow-[0_0_30px_rgba(163,230,53,0.35)] hover:shadow-[0_0_45px_rgba(163,230,53,0.55)] hover:-translate-y-1 flex items-center justify-center"
               >
                 Try for Free
               </Link>
@@ -134,9 +135,9 @@ export default function Home() {
                       href={href}
                       target={external ? '_blank' : undefined}
                       rel={external ? 'noreferrer noopener' : undefined}
-                      className="group rounded-2xl border border-white/8 bg-[#171717] p-4 transition-all hover:border-blue-400/30 hover:bg-[#1B1B1B]"
+                      className="group rounded-2xl border border-cyan-400/20 bg-[linear-gradient(155deg,rgba(8,10,15,0.98),rgba(5,20,17,0.9))] p-4 transition-all hover:border-emerald-400/40 hover:bg-[#101414]"
                     >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300 ring-1 ring-blue-500/20 transition-transform group-hover:scale-105">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/30 transition-transform group-hover:scale-105">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="mt-4 text-sm font-semibold leading-5 text-white">
@@ -159,7 +160,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-20 relative max-w-5xl mx-auto perspective-1000"
           >
-            <div className="rounded-2xl border border-white/10 bg-[#141414]/80 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden ring-1 ring-white/5">
+            <div className="rounded-2xl border border-cyan-400/20 bg-[#101116]/85 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.55)] overflow-hidden ring-1 ring-emerald-400/20">
               {/* MacOS Window Header */}
               <div className="bg-[#1A1A1A] flex items-center px-4 py-3 border-b border-white/5">
                 <div className="flex gap-2">
@@ -216,7 +217,7 @@ export default function Home() {
       </section>
 
       {/* CORE FEATURES */}
-      <section id="features" className="py-24 bg-[#0A0A0A] border-t border-white/5">
+      <section id="features" className="py-24 bg-[#060708] border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl font-bold text-white sm:text-4xl mb-4">Everything you need to scale</h2>
@@ -230,8 +231,8 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative"
           >
             {/* Feature Cards - Glassmorphic Dark */}
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(7,10,18,0.98),rgba(4,20,24,0.88))] rounded-2xl p-8 border border-cyan-400/20 hover:border-cyan-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(34,211,238,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-blue-500/20">
                 <LineChart className="w-6 h-6 text-blue-400" />
               </div>
@@ -239,8 +240,8 @@ export default function Home() {
               <p className="text-gray-400 leading-relaxed text-sm">Dominate local search results. We auto-generate dozens of highly-targeted, location-specific landing pages that rank fast.</p>
             </motion.div>
 
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(18,10,5,0.98),rgba(22,18,4,0.88))] rounded-2xl p-8 border border-amber-400/20 hover:border-amber-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(251,191,36,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-yellow-500/20">
                 <Zap className="w-6 h-6 text-yellow-500" />
               </div>
@@ -248,8 +249,8 @@ export default function Home() {
               <p className="text-gray-400 leading-relaxed text-sm">Our invisible bots scrape newly sold homes in your zip codes and enrich them with homeowner cell phone numbers automatically.</p>
             </motion.div>
 
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(10,6,24,0.98),rgba(16,6,26,0.88))] rounded-2xl p-8 border border-fuchsia-400/20 hover:border-fuchsia-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(217,70,239,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-indigo-500/20">
                 <Bot className="w-6 h-6 text-indigo-400" />
               </div>
@@ -257,8 +258,8 @@ export default function Home() {
               <p className="text-gray-400 leading-relaxed text-sm">Missed a call? Our AI texts them back instantly, qualifies the lead, checks your availability, and provides rough estimates.</p>
             </motion.div>
 
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(4,16,7,0.98),rgba(4,22,10,0.88))] rounded-2xl p-8 border border-emerald-400/20 hover:border-emerald-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(74,222,128,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-green-500/20">
                 <ShieldCheck className="w-6 h-6 text-green-400" />
               </div>
@@ -266,8 +267,8 @@ export default function Home() {
               <p className="text-gray-400 leading-relaxed text-sm">Automated post-job text surveys. 5-star reviews go straight to Google. 1-star complaints go straight to your private inbox.</p>
             </motion.div>
 
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(20,4,8,0.98),rgba(24,6,10,0.88))] rounded-2xl p-8 border border-rose-400/20 hover:border-rose-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(251,113,133,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-red-500/20">
                 <PhoneCall className="w-6 h-6 text-red-400" />
               </div>
@@ -275,8 +276,8 @@ export default function Home() {
               <p className="text-gray-400 leading-relaxed text-sm">A human-sounding voice assistant that answers your phones 24/7, books jobs directly into your CRM, and never calls in sick.</p>
             </motion.div>
 
-            <motion.div variants={fadeIn} className="bg-[#111111] rounded-2xl p-8 border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <motion.div variants={fadeIn} className="bg-[linear-gradient(155deg,rgba(6,8,20,0.98),rgba(4,8,24,0.88))] rounded-2xl p-8 border border-indigo-400/20 hover:border-indigo-300/40 transition-colors group relative overflow-hidden shadow-[0_0_30px_rgba(129,140,248,0.08)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center shadow-inner border border-white/5 mb-6 group-hover:scale-110 transition-transform ring-1 ring-purple-500/20">
                 <CalendarCheck className="w-6 h-6 text-purple-400" />
               </div>
@@ -288,7 +289,7 @@ export default function Home() {
       </section>
 
       {/* PRICING SECTION */}
-      <section id="pricing" className="py-24 bg-[#050505] border-t border-white/5">
+      <section id="pricing" className="py-24 bg-[#050506] border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl font-bold sm:text-4xl text-white mb-4">Simple, powerful tiers</h2>
@@ -297,7 +298,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {/* Tier 1 */}
-            <div className="bg-[#111111] rounded-3xl p-8 border border-white/10 flex flex-col hover:border-white/20 transition-colors shadow-2xl">
+            <div className="bg-[linear-gradient(160deg,rgba(8,12,10,0.98),rgba(6,20,12,0.9))] rounded-3xl p-8 border border-emerald-400/20 flex flex-col hover:border-emerald-300/40 transition-colors shadow-[0_0_35px_rgba(34,197,94,0.08)]">
               <h3 className="text-2xl font-bold text-white mb-2">Intro</h3>
               <p className="text-gray-400 mb-6 min-h-[48px] text-sm">Generate client-ready long-tail keyword blog posts that boost local SEO and drive new leads.</p>
               <div className="mb-6">
@@ -305,24 +306,24 @@ export default function Home() {
                 <span className="text-gray-500">/mo</span>
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 250 Address Extracts /mo</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 2,500 Contact Reveal Credits</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Lead Scoring Dashboard</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> 250 Address Extracts /mo</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> 2,500 Contact Reveal Credits</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> Keyword Opportunities + Blog Post Generator</li>
+                <li className="flex items-start gap-3"><span className="text-emerald-400">✓</span> Lead Scoring Dashboard</li>
               </ul>
               <button
                 onClick={() => handleUpgrade('INTRO')}
                 disabled={!!isLoading}
-                className="w-full py-3.5 rounded-xl bg-[#222222] text-white hover:bg-[#333333] border border-white/5 font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-lime-400 text-black hover:bg-lime-300 border border-lime-300/60 font-extrabold transition-colors flex items-center justify-center gap-2 shadow-[0_0_22px_rgba(163,230,53,0.35)] disabled:opacity-50"
               >
                 {isLoading === 'INTRO' ? <Activity className="w-5 h-5 animate-pulse" /> : 'Start Intro'}
               </button>
             </div>
 
             {/* Tier 2 */}
-            <div className="bg-[#111111] rounded-3xl p-8 border border-white/10 flex flex-col hover:border-white/20 transition-colors shadow-2xl">
+            <div className="bg-[linear-gradient(160deg,rgba(6,10,18,0.98),rgba(4,16,24,0.9))] rounded-3xl p-8 border border-cyan-400/20 flex flex-col hover:border-cyan-300/40 transition-colors shadow-[0_0_35px_rgba(34,211,238,0.08)]">
               <h3 className="text-2xl font-bold text-white mb-2">Pro</h3>
               <p className="text-gray-400 mb-6 min-h-[48px] text-sm">The Outbound Engine that hunts down leads for you.</p>
               <div className="mb-6">
@@ -331,26 +332,26 @@ export default function Home() {
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
                 <li className="flex items-start gap-3 font-semibold text-gray-100">Everything in Intro, plus:</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 2,000 Address Extracts /mo</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 10,000 Contact Reveal Credits</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Playwright Stealth Proxy Pool</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Advanced Bot Bypass API</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> Keyword Opportunities + Blog Post Generator</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> 2,000 Address Extracts /mo</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> 10,000 Contact Reveal Credits</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> Playwright Stealth Proxy Pool</li>
+                <li className="flex items-start gap-3"><span className="text-cyan-300">✓</span> Advanced Bot Bypass API</li>
               </ul>
               <button
                 onClick={() => handleUpgrade('PRO')}
                 disabled={!!isLoading}
-                className="w-full py-3.5 rounded-xl bg-[#222222] text-white hover:bg-[#333333] border border-white/5 font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-cyan-400 text-black hover:bg-cyan-300 border border-cyan-300/60 font-extrabold transition-colors flex items-center justify-center gap-2 shadow-[0_0_22px_rgba(34,211,238,0.35)] disabled:opacity-50"
               >
                 {isLoading === 'PRO' ? <Activity className="w-5 h-5 animate-pulse" /> : 'Start Pro'}
               </button>
             </div>
 
             {/* Tier 3 (Highlighted) */}
-            <div className="bg-gradient-to-b from-[#1E293B] to-[#0F172A] rounded-3xl p-8 border border-blue-500/50 flex flex-col transform md:-translate-y-4 shadow-[0_0_40px_rgba(59,130,246,0.15)] relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold px-4 py-1 rounded-full text-[10px] tracking-wider uppercase shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+            <div className="bg-[linear-gradient(165deg,rgba(22,6,26,0.98),rgba(16,8,30,0.9))] rounded-3xl p-8 border border-fuchsia-400/45 flex flex-col transform md:-translate-y-4 shadow-[0_0_45px_rgba(217,70,239,0.18)] relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white font-bold px-4 py-1 rounded-full text-[10px] tracking-wider uppercase shadow-[0_0_20px_rgba(249,115,22,0.45)]">
                 Most Popular
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Ultimate</h3>
@@ -373,14 +374,14 @@ export default function Home() {
               <button
                 onClick={() => handleUpgrade('ULTIMATE')}
                 disabled={!!isLoading}
-                className="w-full py-3.5 rounded-xl bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:bg-blue-400 font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-fuchsia-500 text-white shadow-[0_0_24px_rgba(217,70,239,0.45)] hover:bg-fuchsia-400 font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isLoading === 'ULTIMATE' ? <Activity className="w-5 h-5 animate-pulse" /> : 'Start Ultimate'}
               </button>
             </div>
 
             {/* Tier 4 */}
-            <div className="bg-[#111111] rounded-3xl p-8 border border-white/10 flex flex-col hover:border-white/20 transition-colors shadow-2xl">
+            <div className="bg-[linear-gradient(160deg,rgba(14,10,4,0.98),rgba(24,14,4,0.9))] rounded-3xl p-8 border border-orange-300/20 flex flex-col hover:border-orange-200/40 transition-colors shadow-[0_0_35px_rgba(251,146,60,0.08)]">
               <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
               <p className="text-gray-400 mb-6 min-h-[48px] text-sm">The Autonomous Business. Replace your entire back office.</p>
               <div className="mb-6">
@@ -389,29 +390,29 @@ export default function Home() {
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">
                 <li className="flex items-start gap-3 font-semibold text-gray-100">Everything in Ultimate, plus:</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Automated Sales Funnel Sync</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> SEO Powerhouse Website</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Long Tail Keyword Articles</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Custom Domain Routing</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Business Search Tool</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Free Pipeline CRM</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Keyword Opportunities + Blog Post Generator</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Automated Sales Funnel Sync</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> SEO Powerhouse Website</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Long Tail Keyword Articles</li>
+                <li className="flex items-start gap-3"><span className="text-orange-300">✓</span> Custom Domain Routing</li>
               </ul>
-              <button className="w-full py-3.5 rounded-xl bg-[#222222] text-white hover:bg-[#333333] border border-white/5 font-semibold transition-colors">Contact Sales</button>
+              <button className="w-full py-3.5 rounded-xl bg-orange-400 text-black hover:bg-orange-300 border border-orange-300/60 font-extrabold transition-colors shadow-[0_0_22px_rgba(251,146,60,0.35)]">Contact Sales</button>
             </div>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#050505] border-t border-white/5 py-12">
+      <footer className="bg-[#050506] border-t border-white/5 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100">
             <div className="w-8 h-8 rounded-lg bg-[#222222] border border-white/10 flex items-center justify-center">
-              <span className="text-white font-bold text-xl">T</span>
+              <span className="text-cyan-300 font-bold text-xl">T</span>
             </div>
             <span className="font-bold text-xl tracking-tight text-white">
-              trendcast<span className="text-blue-500">.io</span>
+              trendcast<span className="text-cyan-300">.io</span>
             </span>
           </div>
           <p className="text-gray-600 text-sm">© 2026 trendcast.io. All rights reserved.</p>

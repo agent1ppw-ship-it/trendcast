@@ -32,17 +32,17 @@ export function Navbar() {
     const isSignedIn = status === 'authenticated';
 
     return (
-        <nav className="fixed top-0 w-full bg-[#0A0A0A]/70 backdrop-blur-xl z-50 border-b border-white/10 supports-[backdrop-filter]:bg-[#0A0A0A]/50">
+        <nav className="fixed top-0 w-full bg-[#050607]/80 backdrop-blur-xl z-50 border-b border-emerald-400/20 supports-[backdrop-filter]:bg-[#050607]/65">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
                     {/* Logo */}
                     <div className="flex-shrink-0 flex items-center">
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                                <span className="text-white font-bold text-xl drop-shadow-md">T</span>
+                            <div className="w-8 h-8 rounded-lg bg-cyan-400 flex items-center justify-center shadow-[0_0_18px_rgba(34,211,238,0.55)]">
+                                <span className="text-black font-bold text-xl drop-shadow-md">T</span>
                             </div>
                             <span className="font-extrabold text-2xl tracking-tight text-white">
-                                trendcast<span className="text-blue-500">.io</span>
+                                trendcast<span className="text-cyan-300">.io</span>
                             </span>
                         </Link>
                     </div>
@@ -54,7 +54,7 @@ export function Navbar() {
                                 key={href}
                                 href={href}
                                 className={accent
-                                    ? 'text-blue-400 hover:text-blue-300 font-bold transition-colors'
+                                    ? 'text-emerald-300 hover:text-emerald-200 font-bold transition-colors drop-shadow-[0_0_12px_rgba(74,222,128,0.35)]'
                                     : 'text-gray-300 hover:text-white font-medium transition-colors'}
                             >
                                 {label}
@@ -64,14 +64,14 @@ export function Navbar() {
                             <button
                                 type="button"
                                 onClick={() => signOut({ callbackUrl: '/signup?mode=signin' })}
-                                className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
+                                className="bg-lime-400 text-black px-5 py-2.5 rounded-full font-extrabold hover:bg-lime-300 transition-all shadow-[0_0_24px_rgba(163,230,53,0.35)] hover:shadow-[0_0_30px_rgba(163,230,53,0.55)] hover:-translate-y-0.5"
                             >
                                 Sign Out
                             </button>
                         ) : (
                             <Link
                                 href="/signup"
-                                className="bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
+                                className="bg-lime-400 text-black px-5 py-2.5 rounded-full font-extrabold hover:bg-lime-300 transition-all shadow-[0_0_24px_rgba(163,230,53,0.35)] hover:shadow-[0_0_30px_rgba(163,230,53,0.55)] hover:-translate-y-0.5"
                             >
                                 Login / Signup
                             </Link>
@@ -92,7 +92,7 @@ export function Navbar() {
 
             {/* Mobile Navigation Dropdown Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain bg-[#0F0F0F] border-b border-white/5 shadow-2xl px-6 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] space-y-3 rounded-b-2xl">
+                <div className="md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain bg-[#0F1012] border-b border-emerald-400/20 shadow-2xl px-6 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] space-y-3 rounded-b-2xl">
                     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-500">
                         Explore Trendcast
                     </div>
@@ -104,7 +104,7 @@ export function Navbar() {
                             rel={external ? 'noreferrer noopener' : undefined}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={accent
-                                ? 'block border-b border-white/5 pb-3 text-lg font-bold text-blue-400 transition-colors hover:text-blue-300'
+                                ? 'block border-b border-white/5 pb-3 text-lg font-bold text-emerald-300 transition-colors hover:text-emerald-200'
                                 : 'block border-b border-white/5 pb-3 text-lg font-medium text-gray-300 transition-colors hover:text-white'}
                         >
                             {label}
@@ -117,7 +117,7 @@ export function Navbar() {
                                 setIsMobileMenuOpen(false);
                                 signOut({ callbackUrl: '/signup?mode=signin' });
                             }}
-                            className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
+                            className="block w-full text-center bg-lime-400 text-black px-5 py-3.5 rounded-xl font-extrabold hover:bg-lime-300 transition-all shadow-[0_0_24px_rgba(163,230,53,0.35)] mt-6"
                         >
                             Sign Out
                         </button>
@@ -125,7 +125,7 @@ export function Navbar() {
                         <Link
                             href="/signup"
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="block w-full text-center bg-white text-black px-5 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] mt-6"
+                            className="block w-full text-center bg-lime-400 text-black px-5 py-3.5 rounded-xl font-extrabold hover:bg-lime-300 transition-all shadow-[0_0_24px_rgba(163,230,53,0.35)] mt-6"
                         >
                             Login / Signup
                         </Link>
