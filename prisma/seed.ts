@@ -8,6 +8,7 @@ async function main() {
 
     // Clean existing data to prevent unique constraint conflicts
     await prisma.aiConfig.deleteMany();
+    await prisma.inventoryPricing.deleteMany();
     await prisma.lead.deleteMany();
     await prisma.job.deleteMany();
     await prisma.user.deleteMany();
@@ -65,6 +66,23 @@ async function main() {
     }
 
     console.log(`Seeded ${leadsData.length} leads.`);
+
+    await prisma.inventoryPricing.createMany({
+        data: [
+            { orgId: org.id, sku: 'labor_hourly_rate', label: 'Labor Hourly Rate', category: 'LABOR', unitCost: 95, unit: 'hour' },
+            { orgId: org.id, sku: 'overhead_rate', label: 'Overhead Rate', category: 'LABOR', unitCost: 0.14, unit: 'ratio' },
+            { orgId: org.id, sku: 'margin_good', label: 'Good Tier Margin', category: 'LABOR', unitCost: 0.2, unit: 'ratio' },
+            { orgId: org.id, sku: 'margin_better', label: 'Better Tier Margin', category: 'LABOR', unitCost: 0.34, unit: 'ratio' },
+            { orgId: org.id, sku: 'margin_best', label: 'Best Tier Margin', category: 'LABOR', unitCost: 0.5, unit: 'ratio' },
+            { orgId: org.id, sku: 'pvc_pipe', label: 'PVC Pipe', category: 'MATERIAL', unitCost: 32, unit: 'item' },
+            { orgId: org.id, sku: 'breaker_panel', label: 'Breaker Panel', category: 'MATERIAL', unitCost: 520, unit: 'item' },
+            { orgId: org.id, sku: 'wire_spool', label: 'Wire Spool', category: 'MATERIAL', unitCost: 140, unit: 'item' },
+            { orgId: org.id, sku: 'sealant', label: 'Sealant', category: 'MATERIAL', unitCost: 22, unit: 'item' },
+            { orgId: org.id, sku: 'concrete_mix', label: 'Concrete Mix', category: 'MATERIAL', unitCost: 38, unit: 'item' },
+        ],
+    });
+
+    console.log('Seeded InventoryPricing defaults.');
     console.log('Seeding finished.');
 }
 

@@ -32,6 +32,7 @@ model Organization {
   mailTemplates    MailTemplate[]
   mailCampaigns    MailCampaign[]
   mailOrders       MailOrder[]
+  inventoryPricing InventoryPricing[]
 }
 
 model User {
@@ -209,4 +210,21 @@ model AddressVerification {
   lobId               String?
   metadata            Json?
   createdAt           DateTime @default(now())
+}
+
+model InventoryPricing {
+  id            String        @id @default(uuid())
+  orgId         String?
+  organization  Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  sku           String
+  label         String
+  category      String        // MATERIAL, LABOR
+  unitCost      Float
+  unit          String        @default("unit")
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([orgId, category])
+  @@unique([orgId, sku])
 }

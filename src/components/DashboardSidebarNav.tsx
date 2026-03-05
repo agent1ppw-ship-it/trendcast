@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useSyncExternalStore } from 'react';
-import { BarChart, Building2, Clapperboard, FileText, Home, Layers, Mailbox, Settings, Target, Users } from 'lucide-react';
+import { BarChart, Building2, Clapperboard, FileText, Home, Layers, Mailbox, Settings, Target, User, Users, Wrench } from 'lucide-react';
 import { hasUnreadBlogDraft, markBlogDraftAsViewed, subscribeToBlogDraftInbox } from '@/lib/blogDraftInbox';
 
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: Home },
     { href: '/dashboard/crm', label: 'CRM Command Center', icon: Layers },
+    { href: '/dashboard/customers', label: 'Customers', icon: User },
+    { href: '/dashboard/estimator', label: 'AI Estimator', icon: Wrench },
     { href: '/dashboard/leads', label: 'Lead Scraper', icon: Users },
     { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
     { href: '/dashboard/mail', label: 'Direct Mail', icon: Mailbox },
