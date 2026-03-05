@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Activity,
   ArrowRight,
@@ -47,36 +47,6 @@ export default function Home() {
 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const { scrollYProgress } = useScroll();
-
-  const glowAY = useTransform(scrollYProgress, [0, 1], [-140, 260]);
-  const glowAX = useTransform(scrollYProgress, [0, 1], [0, 120]);
-  const glowBY = useTransform(scrollYProgress, [0, 1], [120, -220]);
-  const glowBX = useTransform(scrollYProgress, [0, 1], [0, -90]);
-  const glowCY = useTransform(scrollYProgress, [0, 1], [-80, 320]);
-  const glowDY = useTransform(scrollYProgress, [0, 1], [-260, 440]);
-  const glowDX = useTransform(scrollYProgress, [0, 1], [90, -180]);
-  const glowEY = useTransform(scrollYProgress, [0, 1], [140, -320]);
-  const glowEX = useTransform(scrollYProgress, [0, 1], [-50, 130]);
-  const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 32]);
-  const ringY = useTransform(scrollYProgress, [0, 1], [0, 180]);
-  const ringRotateReverse = useTransform(ringRotate, (value) => value * -1.3);
-  const ringYSoft = useTransform(ringY, (value) => value * 0.7);
-  const shardAY = useTransform(scrollYProgress, [0, 1], [0, 320]);
-  const shardAX = useTransform(scrollYProgress, [0, 1], [0, -200]);
-  const shardRotate = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const shardBY = useTransform(scrollYProgress, [0, 1], [100, -260]);
-  const shardBX = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const shardRotateReverse = useTransform(scrollYProgress, [0, 1], [0, -170]);
-  const beamY = useTransform(scrollYProgress, [0, 1], [0, 420]);
-  const beamRotate = useTransform(scrollYProgress, [0, 1], [0, 20]);
-  const beamRotateReverse = useTransform(scrollYProgress, [0, 1], [0, -24]);
-  const pulseScale = useTransform(scrollYProgress, [0, 0.5, 1], [0.9, 1.2, 0.95]);
-  const pulseOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [0.14, 0.32, 0.18]);
-  const dotAY = useTransform(scrollYProgress, [0, 1], [0, 360]);
-  const dotAX = useTransform(scrollYProgress, [0, 1], [0, 80]);
-  const dotBY = useTransform(scrollYProgress, [0, 1], [0, -260]);
-  const dotBX = useTransform(scrollYProgress, [0, 1], [0, -70]);
 
   const handleUpgrade = async (tier: 'INTRO' | 'PRO' | 'ULTIMATE') => {
     setIsLoading(tier);
@@ -95,61 +65,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <motion.div
-          style={{ y: glowAY, x: glowAX }}
-          className="absolute -left-28 top-44 h-72 w-72 rounded-full bg-emerald-400/20 blur-[95px]"
-        />
-        <motion.div
-          style={{ y: glowBY, x: glowBX }}
-          className="absolute -right-24 top-[32rem] h-[26rem] w-[26rem] rounded-full bg-cyan-400/16 blur-[120px]"
-        />
-        <motion.div
-          style={{ y: glowCY }}
-          className="absolute left-1/2 top-[64rem] h-64 w-64 -translate-x-1/2 rounded-full bg-fuchsia-500/14 blur-[110px]"
-        />
-        <motion.div
-          style={{ y: glowDY, x: glowDX, opacity: pulseOpacity }}
-          className="absolute left-[10%] top-[84rem] h-[24rem] w-[24rem] rounded-full bg-lime-300/25 blur-[120px]"
-        />
-        <motion.div
-          style={{ y: glowEY, x: glowEX, scale: pulseScale }}
-          className="absolute right-[5%] top-[102rem] h-[20rem] w-[20rem] rounded-full bg-orange-400/16 blur-[100px]"
-        />
-        <motion.div
-          style={{ rotate: ringRotate, y: ringY }}
-          className="absolute left-[8%] top-[22rem] hidden h-72 w-72 rounded-full border border-cyan-300/20 md:block"
-        />
-        <motion.div
-          style={{ rotate: ringRotateReverse, y: ringYSoft }}
-          className="absolute right-[9%] top-[68rem] hidden h-56 w-56 rounded-full border border-emerald-300/20 md:block"
-        />
-        <motion.div
-          style={{ x: shardAX, y: shardAY, rotate: shardRotate }}
-          className="absolute left-[14%] top-[34rem] hidden h-28 w-28 rounded-[2rem] border border-fuchsia-300/30 bg-fuchsia-400/10 shadow-[0_0_26px_rgba(217,70,239,0.2)] md:block"
-        />
-        <motion.div
-          style={{ x: shardBX, y: shardBY, rotate: shardRotateReverse }}
-          className="absolute right-[18%] top-[90rem] hidden h-24 w-24 rounded-[1.5rem] border border-cyan-300/30 bg-cyan-400/10 shadow-[0_0_26px_rgba(34,211,238,0.2)] md:block"
-        />
-        <motion.div
-          style={{ y: beamY, rotate: beamRotate }}
-          className="absolute -left-8 top-56 hidden h-[28rem] w-[2px] bg-gradient-to-b from-transparent via-emerald-300/50 to-transparent blur-[1px] md:block"
-        />
-        <motion.div
-          style={{ y: ringYSoft, rotate: beamRotateReverse }}
-          className="absolute right-10 top-[52rem] hidden h-[24rem] w-[2px] bg-gradient-to-b from-transparent via-cyan-300/45 to-transparent blur-[1px] md:block"
-        />
-        <motion.div
-          style={{ y: dotAY, x: dotAX }}
-          className="absolute left-[48%] top-[18rem] h-3 w-3 rounded-full bg-cyan-300/70 shadow-[0_0_16px_rgba(34,211,238,0.9)]"
-        />
-        <motion.div
-          style={{ y: dotBY, x: dotBX }}
-          className="absolute right-[34%] top-[74rem] h-2.5 w-2.5 rounded-full bg-lime-300/80 shadow-[0_0_16px_rgba(163,230,53,0.85)]"
-        />
-      </div>
+    <div className="flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
 
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-40 overflow-hidden isolate">
