@@ -92,7 +92,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 </header>
 
                 <div className="rounded-2xl border border-slate-200 bg-white px-6 py-8 shadow-[0_3px_18px_rgba(15,23,42,0.06)] sm:px-9 md:px-11">
-                    <div className="prose prose-slate prose-lg max-w-none font-[Georgia,Times_New_Roman,serif] prose-headings:font-semibold prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:mt-8 prose-h3:mb-3 prose-p:my-5 prose-p:text-[1.06rem] prose-p:leading-8 prose-ul:my-6 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-2 prose-li:text-slate-800 prose-strong:text-slate-950 prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-slate-400 prose-blockquote:bg-slate-50 prose-blockquote:px-4 prose-blockquote:py-2 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                    <div className="prose prose-slate prose-lg max-w-none font-[Georgia,Times_New_Roman,serif] prose-headings:font-semibold prose-headings:tracking-tight prose-h2:mt-16 prose-h2:mb-7 prose-h3:mt-12 prose-h3:mb-5 prose-p:my-8 prose-p:text-[1.08rem] prose-p:leading-[2.2] prose-ul:my-8 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-8 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-4 prose-li:leading-8 prose-li:text-slate-800 prose-strong:text-slate-950 prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline prose-blockquote:my-10 prose-blockquote:border-l-4 prose-blockquote:border-slate-400 prose-blockquote:bg-slate-50 prose-blockquote:px-4 prose-blockquote:py-3 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
                         <ReactMarkdown>
                             {cleanContent}
                         </ReactMarkdown>
@@ -115,4 +115,3 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
     );
 }
-
