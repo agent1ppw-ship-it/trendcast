@@ -299,7 +299,7 @@ export default function Home() {
             {/* Tier 1 */}
             <div className="bg-[#111111] rounded-3xl p-8 border border-white/10 flex flex-col hover:border-white/20 transition-colors shadow-2xl">
               <h3 className="text-2xl font-bold text-white mb-2">Intro</h3>
-              <p className="text-gray-400 mb-6 min-h-[48px] text-sm">The SEO Powerhouse to establish local dominance.</p>
+              <p className="text-gray-400 mb-6 min-h-[48px] text-sm">The Outbound Engine that hunts down leads for you.</p>
               <div className="mb-6">
                 <span className="text-4xl font-extrabold text-white">$34.99</span>
                 <span className="text-gray-500">/mo</span>
