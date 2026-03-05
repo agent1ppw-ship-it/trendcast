@@ -1,8 +1,6 @@
 import { getAllArticles } from '@/lib/mdx';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Navbar } from '@/components/Navbar';
-import { ChevronRight, Filter } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -14,55 +12,75 @@ export default function HubIndexPage() {
     const articles = getAllArticles();
 
     return (
-        <div className="min-h-screen bg-[#050505] text-gray-200 selection:bg-blue-500/30">
-            <Navbar />
+        <div className="min-h-screen bg-[#f6f6f3] text-slate-900 selection:bg-blue-100">
+            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+                <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+                    <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900">
+                        trendcast<span className="text-blue-700">.io</span>
+                    </Link>
+                    <Link
+                        href="/signup"
+                        className="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-all hover:bg-slate-50"
+                    >
+                        CRM Login
+                    </Link>
+                </div>
+            </header>
 
-            <main className="pt-32 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
-                {/* Background Glows */}
-                <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
-                <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-
-                <div className="mb-16">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-6 tracking-tight">
-                        Contractor Hub
+            <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-12 sm:px-6">
+                <section className="mb-10 border-b border-slate-200 pb-8">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Resources</p>
+                    <h1 className="mb-4 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+                        Home Service AI Playbooks
                     </h1>
-                    <p className="text-xl text-gray-400 font-light max-w-2xl leading-relaxed">
-                        The ultimate library of AI implementation guides for scaling your <span className="text-gray-200 font-medium tracking-wide">home service business</span>.
+                    <p className="max-w-3xl text-lg leading-8 text-slate-700">
+                        Practical implementation guides written in a clean editorial format. Every article focuses on direct AI deployments for home service operators.
                     </p>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {articles.map((article) => (
-                        <Link href={`/hub/${article.slug}`} key={article.slug} className="group flex">
-                            <Card className="bg-[#111] border-white/5 hover:border-white/20 transition-all duration-300 w-full flex flex-col hover:-translate-y-1 shadow-lg overflow-hidden position-relative group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                <section className="space-y-5">
+                    {articles.map((article) => {
+                        const wordCount = article.content.split(/\s+/).filter(Boolean).length;
+                        const readMinutes = Math.max(1, Math.round(wordCount / 220));
 
-                                <CardHeader>
-                                    <div className="flex justify-between items-center mb-4">
-                                        <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 border border-blue-500/20 bg-blue-500/10 px-2 py-1 rounded-full">
-                                            {article.industry}
-                                        </span>
-                                        <time className="text-xs text-gray-500 font-medium">
-                                            {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </time>
-                                    </div>
-                                    <CardTitle className="text-xl font-bold text-gray-100 group-hover:text-white transition-colors leading-tight">
+                        return (
+                            <article
+                                key={article.slug}
+                                className="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-[0_2px_14px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.09)] sm:px-7"
+                            >
+                                <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                    <span className="rounded-full bg-blue-50 px-2.5 py-1 font-semibold uppercase tracking-[0.16em] text-blue-700">
+                                        {article.industry}
+                                    </span>
+                                    <span>{new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    <span>{readMinutes} min read</span>
+                                </div>
+                                <h2 className="text-2xl font-semibold leading-tight tracking-tight text-slate-900">
+                                    <Link href={`/hub/${article.slug}`} className="hover:text-blue-700">
                                         {article.title}
-                                    </CardTitle>
-                                </CardHeader>
+                                    </Link>
+                                </h2>
+                                <p className="mt-3 max-w-3xl text-base leading-7 text-slate-700">
+                                    {article.description}
+                                </p>
+                                <div className="mt-4">
+                                    <Link
+                                        href={`/hub/${article.slug}`}
+                                        className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-800"
+                                    >
+                                        Read article <ChevronRight className="h-4 w-4" />
+                                    </Link>
+                                </div>
+                            </article>
+                        );
+                    })}
 
-                                <CardContent className="flex-1 flex flex-col justify-between">
-                                    <p className="text-sm text-gray-400 mb-6 line-clamp-3 leading-relaxed">
-                                        {article.description}
-                                    </p>
-                                    <div className="flex items-center text-sm font-semibold text-indigo-400 group-hover:text-indigo-300 transition-colors mt-auto">
-                                        Read Guide <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))}
-                </div>
+                    {articles.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-slate-500">
+                            No articles published yet.
+                        </div>
+                    )}
+                </section>
             </main>
         </div>
     );
