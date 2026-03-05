@@ -92,11 +92,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </div>
                 </header>
 
-                {/* Markdown Content rendering with custom typography styles tailored to dark mode */}
-                <div className="prose prose-invert prose-xl max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-headings:scroll-mt-28 prose-h2:mt-16 prose-h2:mb-7 prose-h3:mt-12 prose-h3:mb-5 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-p:indent-6 md:prose-p:indent-8 prose-p:my-7 md:prose-p:my-8 prose-p:leading-8 md:prose-p:leading-9 prose-ul:my-8 prose-ul:pl-8 prose-ol:my-8 prose-ol:pl-8 prose-li:my-3 prose-li:pl-1 prose-blockquote:my-10 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:px-6 prose-blockquote:py-2 prose-blockquote:rounded-r-lg prose-code:text-blue-300 prose-code:bg-blue-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-[#111] prose-pre:border prose-pre:border-white/10 prose-pre:my-10 prose-img:rounded-xl prose-img:shadow-2xl prose-img:my-10">
-                    <ReactMarkdown>
-                        {article.content}
-                    </ReactMarkdown>
+                {/* Markdown Content rendering with a cleaner "news article" reading layout */}
+                <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#0D0D0D]/70 px-5 py-8 sm:px-8 md:px-10 md:py-10 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+                    <div className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-headings:scroll-mt-28 prose-h2:mt-14 prose-h2:mb-5 prose-h3:mt-10 prose-h3:mb-4 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-p:my-5 prose-p:leading-8 prose-ul:my-6 prose-ul:pl-7 prose-ol:my-6 prose-ol:pl-7 prose-li:my-2 prose-li:pl-1 prose-blockquote:my-8 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:px-5 prose-blockquote:py-2 prose-blockquote:rounded-r-lg prose-code:text-blue-300 prose-code:bg-blue-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-[#111] prose-pre:border prose-pre:border-white/10 prose-pre:my-8 prose-img:rounded-xl prose-img:shadow-2xl prose-img:my-8">
+                        <ReactMarkdown>
+                            {article.content}
+                        </ReactMarkdown>
+                    </div>
                 </div>
 
                 {/* Call to Action Wrapper */}
