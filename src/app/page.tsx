@@ -334,8 +334,8 @@ export default function Home() {
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Business Search Tool</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Free Pipeline CRM</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Keyword Opportunities + Blog Post Generator</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 1,000 Address Extracts /mo</li>
-                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 5,000 Contact Reveal Credits</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 2,000 Address Extracts /mo</li>
+                <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> 10,000 Contact Reveal Credits</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Playwright Stealth Proxy Pool</li>
                 <li className="flex items-start gap-3"><span className="text-blue-500">✓</span> Advanced Bot Bypass API</li>
               </ul>

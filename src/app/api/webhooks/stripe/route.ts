@@ -91,8 +91,8 @@ export async function POST(req: Request) {
                 extractsToAdd = 250;
                 creditsToAdd = 2500;
             } else if (tierUpgrade === 'PRO') {
-                extractsToAdd = 1000;
-                creditsToAdd = 5000;
+                extractsToAdd = 2000;
+                creditsToAdd = 10000;
             } else if (tierUpgrade === 'ULTIMATE') {
                 // Large arbitrary numbers to simulate "Unlimited" limits while keeping integer logic
                 extractsToAdd = 1000000;
