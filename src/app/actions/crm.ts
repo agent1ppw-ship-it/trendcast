@@ -69,3 +69,52 @@ export async function createLead(data: { name: string; phone: string; address: s
         return { success: false, error: 'Database connection failed when creating Lead.' };
     }
 }
+
+export async function updateLeadDetails(
+    leadId: string,
+    data: {
+        name: string;
+        phone: string | null;
+        address: string | null;
+        source: string;
+        status: string;
+        leadScore: number;
+    }
+) {
+    try {
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
+
+        const normalizedName = data.name.trim();
+        if (!normalizedName) {
+            return { success: false, error: 'Name is required.' };
+        }
+
+        const normalizedScore = Number.isFinite(data.leadScore)
+            ? Math.max(0, Math.min(100, Math.round(data.leadScore)))
+            : 0;
+
+        const result = await prisma.lead.updateMany({
+            where: { id: leadId, orgId },
+            data: {
+                name: normalizedName,
+                phone: data.phone?.trim() || null,
+                address: data.address?.trim() || null,
+                source: data.source.trim() || 'MANUAL',
+                status: data.status.trim() || 'NEW',
+                leadScore: normalizedScore,
+            },
+        });
+
+        if (result.count === 0) return { success: false, error: 'Customer not found.' };
+
+        revalidatePath('/dashboard/customers');
+        revalidatePath('/dashboard/crm');
+        revalidatePath('/dashboard/leads');
+        revalidatePath('/dashboard/businesses');
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to update customer details:', error);
+        return { success: false, error: 'Failed to update customer details.' };
+    }
+}
