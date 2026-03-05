@@ -299,7 +299,7 @@ export default function Home() {
             {/* Tier 1 */}
             <div className="bg-[#111111] rounded-3xl p-8 border border-white/10 flex flex-col hover:border-white/20 transition-colors shadow-2xl">
               <h3 className="text-2xl font-bold text-white mb-2">Intro</h3>
-              <p className="text-gray-400 mb-6 min-h-[48px] text-sm">The Outbound Engine that hunts down leads for you.</p>
+              <p className="text-gray-400 mb-6 min-h-[48px] text-sm">Generate client-ready long-tail keyword blog posts that boost local SEO and drive new leads.</p>
               <div className="mb-6">
                 <span className="text-4xl font-extrabold text-white">$34.99</span>
                 <span className="text-gray-500">/mo</span>
@@ -354,13 +354,14 @@ export default function Home() {
                 Most Popular
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Ultimate</h3>
-              <p className="text-blue-200/70 mb-6 min-h-[48px] text-sm font-light">The Omnichannel AI Assistant that closes deals in your sleep.</p>
+              <p className="text-blue-200/70 mb-6 min-h-[48px] text-sm font-light">The Omnichannel AI Assistant plus a Local SEO Powerhouse Website built to rank and convert.</p>
               <div className="mb-6">
                 <span className="text-4xl font-extrabold text-white">$399.99</span>
                 <span className="text-blue-200/50">/mo</span>
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-blue-50">
                 <li className="flex items-start gap-3 font-semibold text-white">Everything in Pro, plus:</li>
+                <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Local SEO Powerhouse Website Build</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Business Search Tool</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Free Pipeline CRM</li>
                 <li className="flex items-start gap-3"><span className="text-yellow-400">★</span> Keyword Opportunities + Blog Post Generator</li>
