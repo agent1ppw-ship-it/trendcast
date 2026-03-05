@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, Loader2, UploadCloud, Wrench } from 'lucide-react';
 import type { VisualEstimateResponse } from '@/lib/visualEstimator/types';
+import { GoogleMapsSquareFootageEstimator } from '@/components/GoogleMapsSquareFootageEstimator';
 
 function formatUsd(value: number) {
     return new Intl.NumberFormat('en-US', {
@@ -21,6 +22,9 @@ export function VisualEstimatorClient({ defaultIndustry }: { defaultIndustry: st
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState<VisualEstimateResponse | null>(null);
+    const [mapSquareFootage, setMapSquareFootage] = useState<number | null>(null);
+    const [mapAddress, setMapAddress] = useState('');
+    const [manualSquareFootage, setManualSquareFootage] = useState('');
 
     const previews = useMemo(() => {
         return files.map((file) => ({
@@ -41,6 +45,18 @@ export function VisualEstimatorClient({ defaultIndustry }: { defaultIndustry: st
         setFiles(imageFiles);
     };
 
+    const manualSquareFootageValue = useMemo(() => {
+        const parsed = Number(manualSquareFootage);
+        return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+    }, [manualSquareFootage]);
+
+    const effectiveSquareFootage = mapSquareFootage || manualSquareFootageValue;
+
+    const handleMapEstimateChange = useCallback((squareFootage: number | null, meta?: { address?: string }) => {
+        setMapSquareFootage(squareFootage);
+        setMapAddress(meta?.address || '');
+    }, []);
+
     const handleSubmit = async () => {
         if (!files.length) {
             setError('Upload at least one photo to generate an instant estimate.');
@@ -58,6 +74,12 @@ export function VisualEstimatorClient({ defaultIndustry }: { defaultIndustry: st
             }
             body.append('issueContext', issueContext);
             body.append('industry', industry);
+            if (effectiveSquareFootage) {
+                body.append('squareFootage', String(effectiveSquareFootage));
+            }
+            if (mapAddress) {
+                body.append('mapAddress', mapAddress);
+            }
 
             const response = await fetch('/api/analyze-images', {
                 method: 'POST',
@@ -116,6 +138,24 @@ export function VisualEstimatorClient({ defaultIndustry }: { defaultIndustry: st
                                 placeholder="Example: Backyard is overgrown and needs cleanup before listing."
                                 className="w-full rounded-lg border border-white/10 bg-[#1A1A1A] px-4 py-3 text-white focus:border-blue-500/50 focus:outline-none"
                             />
+                        </div>
+
+                        <GoogleMapsSquareFootageEstimator onEstimateChange={handleMapEstimateChange} />
+
+                        <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">Manual Square Footage (Optional)</label>
+                            <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={manualSquareFootage}
+                                onChange={(event) => setManualSquareFootage(event.target.value)}
+                                placeholder="Enter sq ft if you prefer manual input"
+                                className="w-full rounded-lg border border-white/10 bg-[#1A1A1A] px-4 py-2.5 text-white focus:border-blue-500/50 focus:outline-none"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Google Maps polygon estimate takes priority when drawn.
+                            </p>
                         </div>
 
                         <label className="block cursor-pointer rounded-2xl border border-dashed border-blue-500/40 bg-blue-500/10 px-5 py-7 text-center transition-all hover:border-blue-400/60 hover:bg-blue-500/15">
@@ -225,6 +265,17 @@ export function VisualEstimatorClient({ defaultIndustry }: { defaultIndustry: st
                                             <p className="mt-2 text-2xl font-bold text-white">{result.estimatedLaborHours}</p>
                                         </div>
                                     </div>
+                                    {result.squareFootage ? (
+                                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
+                                            <p className="text-xs uppercase tracking-[0.18em] text-blue-300">Estimated Service Area</p>
+                                            <p className="mt-2 text-2xl font-bold text-white">
+                                                {result.squareFootage.toLocaleString('en-US')} sq ft
+                                            </p>
+                                            {result.mapAddress ? (
+                                                <p className="mt-1 text-xs text-blue-200/80">{result.mapAddress}</p>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Estimated Materials</p>
                                         <ul className="mt-2 list-disc space-y-1 pl-5 text-gray-300">

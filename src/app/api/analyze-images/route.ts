@@ -9,6 +9,13 @@ import { generateGoodBetterBestQuote } from '@/lib/visualEstimator/pricing';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function parseSquareFootage(input: FormDataEntryValue | null) {
+    if (typeof input !== 'string') return null;
+    const value = Number(input);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.min(500000, Math.round(value));
+}
+
 function safeKeySegment(value: string) {
     return value
         .toLowerCase()
@@ -73,16 +80,25 @@ export async function POST(request: Request) {
 
         const issueContext = String(formData.get('issueContext') || '').trim();
         const industry = String(formData.get('industry') || 'Home Services').trim() || 'Home Services';
+        const squareFootage = parseSquareFootage(formData.get('squareFootage'));
+        const mapAddress = String(formData.get('mapAddress') || '').trim();
+
+        if (squareFootage) {
+            diagnostics.push(`Using ${squareFootage.toLocaleString('en-US')} sq ft scope hint for pricing.`);
+        }
 
         const vision = await analyzeProjectImagesWithVision({
             imageUrls,
             industry,
             customerContext: issueContext,
+            squareFootageHint: squareFootage,
+            mapAddress,
         });
 
         const quotes = await generateGoodBetterBestQuote({
             orgId,
             vision,
+            squareFootage,
         });
 
         return NextResponse.json({
@@ -92,6 +108,8 @@ export async function POST(request: Request) {
                 complexityScore: vision.complexity_score,
                 estimatedLaborHours: vision.estimated_labor_hours,
                 materials: vision.estimated_materials,
+                squareFootage: squareFootage || undefined,
+                mapAddress: mapAddress || undefined,
                 imageUrls,
                 quotes,
                 diagnostics,
@@ -108,4 +126,3 @@ export async function POST(request: Request) {
         );
     }
 }
-

@@ -117,14 +117,23 @@ function buildTierQuote(params: {
 export async function generateGoodBetterBestQuote(params: {
     orgId: string;
     vision: VisionEstimateResult;
+    squareFootage?: number | null;
 }) {
     const priceBook = await loadPricing(params.orgId);
     const complexityFactor = 0.85 + params.vision.complexity_score * 0.09;
+    const normalizedSquareFootage = Number.isFinite(params.squareFootage)
+        ? Math.max(0, Math.round(Number(params.squareFootage)))
+        : 0;
 
-    const baseLabor = params.vision.estimated_labor_hours * priceBook.laborHourlyRate * complexityFactor;
+    // Area-based multiplier keeps the estimate responsive to job size without over-inflating extremes.
+    const areaMultiplier = normalizedSquareFootage > 0
+        ? Math.max(0.55, Math.min(4.5, Math.pow(normalizedSquareFootage / 700, 0.65)))
+        : 1;
+
+    const baseLabor = params.vision.estimated_labor_hours * priceBook.laborHourlyRate * complexityFactor * areaMultiplier;
     const baseMaterials = params.vision.estimated_materials.reduce((sum, material) => {
         return sum + resolveMaterialCost(material, priceBook);
-    }, 0) * Math.max(1, Math.round(complexityFactor));
+    }, 0) * Math.max(1, Math.round(complexityFactor)) * Math.max(0.8, areaMultiplier * 1.1);
 
     const good = buildTierQuote({
         tier: 'Good',
@@ -159,4 +168,3 @@ export async function generateGoodBetterBestQuote(params: {
 
     return [good, better, best] satisfies QuoteTier[];
 }
-

@@ -45,6 +45,42 @@ export async function deleteLead(leadId: string) {
     }
 }
 
+export async function deleteLeadsBulk(leadIds: string[]) {
+    try {
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
+
+        const uniqueLeadIds = Array.from(
+            new Set(
+                leadIds
+                    .map((id) => id.trim())
+                    .filter(Boolean),
+            ),
+        );
+
+        if (uniqueLeadIds.length === 0) {
+            return { success: false, error: 'No customers selected.' };
+        }
+
+        const result = await prisma.lead.deleteMany({
+            where: {
+                orgId,
+                id: { in: uniqueLeadIds },
+            },
+        });
+
+        revalidatePath('/dashboard/customers');
+        revalidatePath('/dashboard/crm');
+        revalidatePath('/dashboard/leads');
+        revalidatePath('/dashboard/businesses');
+
+        return { success: true, deletedCount: result.count };
+    } catch (error) {
+        console.error('Failed to bulk delete customers:', error);
+        return { success: false, error: 'Failed to delete selected customers.' };
+    }
+}
+
 export async function createLead(data: { name: string; phone: string; address: string; source: string }) {
     try {
         const orgId = await ensureOrganization();

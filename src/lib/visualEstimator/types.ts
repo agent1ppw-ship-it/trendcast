@@ -19,8 +19,9 @@ export interface VisualEstimateResponse {
     complexityScore: number;
     estimatedLaborHours: number;
     materials: string[];
+    squareFootage?: number;
+    mapAddress?: string;
     imageUrls: string[];
     quotes: QuoteTier[];
     diagnostics?: string[];
 }
-

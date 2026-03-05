@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Users, UserCheck, Target, Building2, X, Save } from 'lucide-react';
-import { updateLeadDetails } from '@/app/actions/crm';
+import { Search, Users, UserCheck, Target, Building2, X, Save, Trash2 } from 'lucide-react';
+import { deleteLeadsBulk, updateLeadDetails } from '@/app/actions/crm';
 
 interface CustomerRecord {
     id: string;
@@ -29,9 +29,12 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [sourceFilter, setSourceFilter] = useState('ALL');
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
     const [editError, setEditError] = useState('');
+    const [bulkError, setBulkError] = useState('');
     const [isSaving, startSaving] = useTransition();
+    const [isDeleting, startDeleting] = useTransition();
 
     const sourceOptions = useMemo(() => {
         return ['ALL', ...Array.from(new Set(customers.map((customer) => customer.source))).sort((a, b) => a.localeCompare(b))];
@@ -60,9 +63,81 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
         return { total, won, active, averageScore };
     }, [customers]);
 
+    const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+    const allFilteredSelected = useMemo(() => {
+        if (filteredCustomers.length === 0) return false;
+        return filteredCustomers.every((customer) => selectedIdSet.has(customer.id));
+    }, [filteredCustomers, selectedIdSet]);
+
+    const selectedFilteredCount = useMemo(() => {
+        return filteredCustomers.reduce((count, customer) => {
+            return selectedIdSet.has(customer.id) ? count + 1 : count;
+        }, 0);
+    }, [filteredCustomers, selectedIdSet]);
+
+    useEffect(() => {
+        const validIds = new Set(customers.map((customer) => customer.id));
+        setSelectedIds((current) => current.filter((id) => validIds.has(id)));
+    }, [customers]);
+
     const handleRowClick = (customer: CustomerRecord) => {
         setEditError('');
         setEditingCustomer(customer);
+    };
+
+    const toggleSingleSelection = (customerId: string) => {
+        setBulkError('');
+        setSelectedIds((current) =>
+            current.includes(customerId)
+                ? current.filter((id) => id !== customerId)
+                : [...current, customerId],
+        );
+    };
+
+    const toggleFilteredSelection = () => {
+        setBulkError('');
+        if (allFilteredSelected) {
+            const filteredIdSet = new Set(filteredCustomers.map((customer) => customer.id));
+            setSelectedIds((current) => current.filter((id) => !filteredIdSet.has(id)));
+            return;
+        }
+
+        const combined = new Set(selectedIds);
+        for (const customer of filteredCustomers) {
+            combined.add(customer.id);
+        }
+        setSelectedIds(Array.from(combined));
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) {
+            setBulkError('Select at least one customer to delete.');
+            return;
+        }
+        const idsToDelete = [...selectedIds];
+        const idsToDeleteSet = new Set(idsToDelete);
+
+        const confirmed = window.confirm(
+            `Delete ${idsToDelete.length} selected customer${idsToDelete.length === 1 ? '' : 's'}? This cannot be undone.`,
+        );
+        if (!confirmed) return;
+
+        setBulkError('');
+
+        startDeleting(async () => {
+            const result = await deleteLeadsBulk(idsToDelete);
+            if (!result.success) {
+                setBulkError(result.error || 'Failed to delete selected customers.');
+                return;
+            }
+
+            setCustomers((current) => current.filter((customer) => !idsToDeleteSet.has(customer.id)));
+            setSelectedIds([]);
+            if (editingCustomer && idsToDeleteSet.has(editingCustomer.id)) {
+                setEditingCustomer(null);
+            }
+        });
     };
 
     const handleSave = () => {
@@ -201,10 +276,58 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                 <div className="border-b border-white/5 px-5 py-3 text-xs text-gray-400">
                     Click any customer row to edit details.
                 </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-5 py-3">
+                    <p className="text-xs text-gray-400">
+                        {selectedIds.length} selected • {selectedFilteredCount} in current view
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={toggleFilteredSelection}
+                            disabled={filteredCustomers.length === 0}
+                            className="rounded-lg border border-white/10 bg-[#1A1A1A] px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-[#202020] disabled:opacity-50"
+                        >
+                            {allFilteredSelected ? 'Unselect filtered' : 'Select filtered'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedIds([])}
+                            disabled={selectedIds.length === 0}
+                            className="rounded-lg border border-white/10 bg-[#1A1A1A] px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-[#202020] disabled:opacity-50"
+                        >
+                            Clear selection
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleBulkDelete}
+                            disabled={selectedIds.length === 0 || isDeleting}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {isDeleting ? 'Deleting...' : 'Delete selected'}
+                        </button>
+                    </div>
+                </div>
+                {bulkError && (
+                    <div className="border-b border-white/5 px-5 py-3">
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                            {bulkError}
+                        </div>
+                    </div>
+                )}
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-gray-300">
                         <thead className="bg-[#161616] text-xs uppercase tracking-wider text-gray-500">
                             <tr>
+                                <th className="px-5 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={allFilteredSelected}
+                                        onChange={toggleFilteredSelection}
+                                        aria-label="Select all filtered customers"
+                                        className="h-4 w-4 rounded border-white/20 bg-[#1A1A1A] accent-blue-500"
+                                    />
+                                </th>
                                 <th className="px-5 py-4">Name</th>
                                 <th className="px-5 py-4">Phone</th>
                                 <th className="px-5 py-4">Address</th>
@@ -217,17 +340,21 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                         <tbody className="divide-y divide-white/5">
                             {filteredCustomers.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="px-5 py-14 text-center text-gray-500">
+                                    <td colSpan={8} className="px-5 py-14 text-center text-gray-500">
                                         No customer records match your current filters.
                                     </td>
                                 </tr>
                             )}
 
-                            {filteredCustomers.map((customer) => (
+                            {filteredCustomers.map((customer) => {
+                                const isSelected = selectedIdSet.has(customer.id);
+
+                                return (
                                 <tr
                                     key={customer.id}
                                     onClick={() => handleRowClick(customer)}
                                     onKeyDown={(event) => {
+                                        if (event.target !== event.currentTarget) return;
                                         if (event.key === 'Enter' || event.key === ' ') {
                                             event.preventDefault();
                                             handleRowClick(customer);
@@ -235,8 +362,19 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                                     }}
                                     role="button"
                                     tabIndex={0}
-                                    className="cursor-pointer transition-colors hover:bg-[#161616]"
+                                    className={`cursor-pointer transition-colors hover:bg-[#161616] ${isSelected ? 'bg-blue-500/5' : ''}`}
                                 >
+                                    <td className="px-5 py-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleSingleSelection(customer.id)}
+                                            onClick={(event) => event.stopPropagation()}
+                                            onKeyDown={(event) => event.stopPropagation()}
+                                            aria-label={`Select ${customer.name}`}
+                                            className="h-4 w-4 rounded border-white/20 bg-[#1A1A1A] accent-blue-500"
+                                        />
+                                    </td>
                                     <td className="px-5 py-4 font-medium text-gray-100">{customer.name}</td>
                                     <td className="px-5 py-4 text-gray-300">{customer.phone || 'N/A'}</td>
                                     <td className="px-5 py-4 text-gray-300">{customer.address || 'N/A'}</td>
@@ -254,7 +392,8 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                                     <td className="px-5 py-4 font-mono text-gray-300">{customer.leadScore || 0}</td>
                                     <td className="px-5 py-4 text-gray-400">{formatDate(customer.createdAt)}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

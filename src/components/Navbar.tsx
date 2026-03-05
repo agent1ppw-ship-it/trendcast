@@ -10,7 +10,7 @@ const desktopNavItems = [
     { href: '/#pricing', label: 'Pricing' },
     { href: '/signup?mode=signin', label: 'CRM Login' },
     { href: '/dashboard/leads', label: 'Lead Extractor' },
-    { href: '/hub', label: 'Resources', accent: true },
+    { href: '/hub', label: 'Contractor Forums', accent: true },
 ];
 
 const mobileNavItems = [
@@ -23,7 +23,7 @@ const mobileNavItems = [
     { href: '/dashboard/blog-posts', label: 'Blog Posts' },
     { href: '/dashboard/analytics', label: 'Analytics' },
     { href: 'https://clipgenerator.ai', label: 'AI Video Suite', external: true },
-    { href: '/hub', label: 'Resources', accent: true },
+    { href: '/hub', label: 'Contractor Forums', accent: true },
 ];
 
 export function Navbar() {

@@ -80,15 +80,17 @@ export async function analyzeProjectImagesWithVision(params: {
     imageUrls: string[];
     industry: string;
     customerContext?: string;
+    squareFootageHint?: number | null;
+    mapAddress?: string;
 }) {
-    const { imageUrls, industry, customerContext } = params;
+    const { imageUrls, industry, customerContext, squareFootageHint, mapAddress } = params;
     if (!imageUrls.length) {
         throw new Error('At least one image URL is required for visual analysis.');
     }
 
     if (!process.env.OPENAI_API_KEY) {
         return coerceVisionResult({
-            detected_issue: `${industry} issue visible from uploaded photos. Onsite validation recommended.`,
+            detected_issue: `${industry} issue visible from uploaded photos. Onsite validation recommended.${squareFootageHint ? ` Approximate area: ${squareFootageHint} sq ft.` : ''}`,
             estimated_materials: ['Primary service materials', 'Consumables', 'Fasteners/adhesives'],
             complexity_score: 5,
             estimated_labor_hours: 3.5,
@@ -98,6 +100,8 @@ export async function analyzeProjectImagesWithVision(params: {
     const userPrompt = [
         `Industry: ${industry}`,
         customerContext ? `Customer Context: ${customerContext}` : 'Customer Context: Not provided.',
+        mapAddress ? `Property Address: ${mapAddress}` : 'Property Address: Not provided.',
+        squareFootageHint ? `Estimated Service Area: ${squareFootageHint} square feet (from map/manual input). Use this as a scope hint.` : 'Estimated Service Area: Not provided.',
         'Analyze all provided images together and produce one consolidated estimate JSON object.',
     ].join('\n');
 
@@ -121,4 +125,3 @@ export async function analyzeProjectImagesWithVision(params: {
     const parsed = JSON.parse(extractJsonObject(raw));
     return coerceVisionResult(parsed);
 }
-

@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     if (!article) return { title: 'Not Found' };
 
     return {
-        title: `${article.title} | TrendCast Resources`,
+        title: `${article.title} | TrendCast Contractor Forums`,
         description: article.description,
         keywords: article.keywords,
         openGraph: {
@@ -58,7 +58,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         href="/hub"
                         className="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-all hover:bg-slate-50"
                     >
-                        All Resources
+                        Contractor Forums
                     </Link>
                 </div>
             </header>
@@ -66,7 +66,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <article className="mx-auto w-full max-w-3xl px-4 pb-20 pt-10 sm:px-6">
                 <Link href="/hub" className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
                     <ArrowLeft className="h-4 w-4" />
-                    Back to Resources
+                    Back to Contractor Forums
                 </Link>
 
                 <header className="mb-8 border-b border-slate-200 pb-7">
