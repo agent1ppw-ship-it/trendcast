@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Activity,
   ArrowRight,
@@ -47,6 +47,17 @@ export default function Home() {
 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const { scrollYProgress } = useScroll();
+
+  const glowAY = useTransform(scrollYProgress, [0, 1], [-140, 260]);
+  const glowAX = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const glowBY = useTransform(scrollYProgress, [0, 1], [120, -220]);
+  const glowBX = useTransform(scrollYProgress, [0, 1], [0, -90]);
+  const glowCY = useTransform(scrollYProgress, [0, 1], [-80, 320]);
+  const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 32]);
+  const ringY = useTransform(scrollYProgress, [0, 1], [0, 180]);
+  const ringRotateReverse = useTransform(ringRotate, (value) => value * -1.3);
+  const ringYSoft = useTransform(ringY, (value) => value * 0.7);
 
   const handleUpgrade = async (tier: 'INTRO' | 'PRO' | 'ULTIMATE') => {
     setIsLoading(tier);
@@ -65,7 +76,29 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
+    <div className="relative flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          style={{ y: glowAY, x: glowAX }}
+          className="absolute -left-28 top-44 h-72 w-72 rounded-full bg-emerald-400/20 blur-[95px]"
+        />
+        <motion.div
+          style={{ y: glowBY, x: glowBX }}
+          className="absolute -right-24 top-[32rem] h-[26rem] w-[26rem] rounded-full bg-cyan-400/16 blur-[120px]"
+        />
+        <motion.div
+          style={{ y: glowCY }}
+          className="absolute left-1/2 top-[64rem] h-64 w-64 -translate-x-1/2 rounded-full bg-fuchsia-500/14 blur-[110px]"
+        />
+        <motion.div
+          style={{ rotate: ringRotate, y: ringY }}
+          className="absolute left-[8%] top-[22rem] hidden h-72 w-72 rounded-full border border-cyan-300/20 md:block"
+        />
+        <motion.div
+          style={{ rotate: ringRotateReverse, y: ringYSoft }}
+          className="absolute right-[9%] top-[68rem] hidden h-56 w-56 rounded-full border border-emerald-300/20 md:block"
+        />
+      </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-40 overflow-hidden isolate">
