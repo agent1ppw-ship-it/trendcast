@@ -7,11 +7,14 @@ import { prisma } from '@/lib/prisma';
 
 export async function updateLeadStatus(leadId: string, newStatus: string) {
     try {
-        // In a real app, verify user session here
-        await prisma.lead.update({
-            where: { id: leadId },
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
+
+        const result = await prisma.lead.updateMany({
+            where: { id: leadId, orgId },
             data: { status: newStatus },
         });
+        if (result.count === 0) return { success: false, error: 'Lead not found' };
 
         // Invalidate the cache for the CRM page so it refetches the latest leads
         revalidatePath('/dashboard/crm');
@@ -24,9 +27,13 @@ export async function updateLeadStatus(leadId: string, newStatus: string) {
 
 export async function deleteLead(leadId: string) {
     try {
-        await prisma.lead.delete({
-            where: { id: leadId },
+        const orgId = await ensureOrganization();
+        if (!orgId) return { success: false, error: 'Unauthorized' };
+
+        const result = await prisma.lead.deleteMany({
+            where: { id: leadId, orgId },
         });
+        if (result.count === 0) return { success: false, error: 'Lead not found' };
 
         // Invalidate the cache for the CRM page so it refetches the latest leads
         revalidatePath('/dashboard/crm');

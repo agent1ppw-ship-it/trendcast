@@ -8,7 +8,7 @@ import { hasUnreadBlogDraft, markBlogDraftAsViewed, subscribeToBlogDraftInbox } 
 
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: Home },
-    { href: '/dashboard/crm', label: 'Pipeline CRM', icon: Layers },
+    { href: '/dashboard/crm', label: 'CRM Command Center', icon: Layers },
     { href: '/dashboard/leads', label: 'Lead Scraper', icon: Users },
     { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
     { href: '/dashboard/mail', label: 'Direct Mail', icon: Mailbox },

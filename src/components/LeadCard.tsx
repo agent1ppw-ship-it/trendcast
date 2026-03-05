@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, AlertTriangle, TrendingUp } from 'lucide-react';
 import { updateLeadStatus, deleteLead } from '@/app/actions/crm';
 import { useState } from 'react';
 
@@ -46,6 +46,23 @@ export function LeadCard({ lead }: { lead: any }) {
                         {lead.source}
                     </span>
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-wide">
+                    {typeof lead.leadScoreComputed === 'number' && (
+                        <span className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-blue-300">
+                            SCORE {lead.leadScoreComputed}
+                        </span>
+                    )}
+                    {lead.priorityBand && (
+                        <span className={`rounded border px-2 py-1 ${lead.priorityBand === 'URGENT'
+                            ? 'border-red-500/30 bg-red-500/10 text-red-300'
+                            : lead.priorityBand === 'HIGH'
+                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                : 'border-white/10 bg-white/5 text-gray-300'
+                            }`}>
+                            {lead.priorityBand}
+                        </span>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="p-4 pt-0 text-sm text-gray-400">
                 <p className="flex items-center gap-2 mt-1 truncate">
@@ -66,6 +83,23 @@ export function LeadCard({ lead }: { lead: any }) {
                         <span>No address</span>
                     )}
                 </div>
+                {lead.serviceFocus && (
+                    <p className="mt-2 text-xs text-gray-300 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                        {lead.serviceFocus}
+                    </p>
+                )}
+                {lead.estimateRange && (
+                    <p className="mt-1 text-xs text-emerald-300 font-medium">
+                        Est. Deal Value: {lead.estimateRange}
+                    </p>
+                )}
+                {lead.nextBestAction && (
+                    <p className="mt-2 text-xs text-amber-300 flex items-center gap-1.5 whitespace-normal break-words leading-relaxed">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                        {lead.nextBestAction}
+                    </p>
+                )}
 
                 {/* Hover Actions Overlay */}
                 <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#1A1A1A] to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between px-2 pb-2">
