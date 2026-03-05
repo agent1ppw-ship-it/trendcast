@@ -4,10 +4,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Save, Settings2, MessageSquare, PhoneCall, Key, Bot } from 'lucide-react';
 import { useState } from 'react';
 import { saveAiConfig } from '@/app/actions/settings';
+import { DEFAULT_INSTANT_REPLY_TEMPLATE } from '@/lib/ai/autoReply';
 
 export function SettingsForm({ initialConfig }: { initialConfig: any }) {
     const [twilioNumber, setTwilioNumber] = useState(initialConfig?.twilioNumber || '');
-    const [systemPrompt, setSystemPrompt] = useState(initialConfig?.systemPrompt || 'You are the virtual receptionist for trendcast.io. You are speaking to a potential customer via SMS. Your Goal: Gather the required information to provide an accurate estimate or book an on-site inspection. Always remain highly professional and concise.');
+    const [systemPrompt, setSystemPrompt] = useState(initialConfig?.systemPrompt || DEFAULT_INSTANT_REPLY_TEMPLATE);
     const [autoReplySMS, setAutoReplySMS] = useState(initialConfig?.autoReplySMS !== undefined ? initialConfig.autoReplySMS : true);
     const [autoSchedule, setAutoSchedule] = useState(initialConfig?.autoSchedule !== undefined ? initialConfig.autoSchedule : false);
 
@@ -58,8 +59,8 @@ export function SettingsForm({ initialConfig }: { initialConfig: any }) {
                                     />
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-gray-200 mb-1">Auto-Reply to Missed Calls</h4>
-                                    <p className="text-xs text-gray-400 leading-relaxed">Instantly text a caller back if the line is busy or missed. Uses Twilio integration.</p>
+                                    <h4 className="font-semibold text-gray-200 mb-1">Instant Inquiry Auto-Reply Bot</h4>
+                                    <p className="text-xs text-gray-400 leading-relaxed">Immediately send a customizable SMS reply to inbound inquiries on your Twilio number.</p>
                                 </div>
                             </label>
 
@@ -102,14 +103,16 @@ export function SettingsForm({ initialConfig }: { initialConfig: any }) {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">System Instructions (Prompt)</label>
+                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Instant Inquiry Auto-Reply Template</label>
                             <textarea
                                 value={systemPrompt}
                                 onChange={(e) => setSystemPrompt(e.target.value)}
-                                rows={4}
+                                rows={5}
                                 className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-3 text-gray-300 focus:outline-none focus:border-blue-500/50 transition-all font-mono text-sm leading-relaxed resize-y"
                             />
-                            <p className="text-xs text-gray-500 mt-2">This dictates how the AI speaks to customers over text. Use variable syntax like <code className="bg-white/5 px-1 py-0.5 rounded text-gray-400">{`{{businessData.name}}`}</code>.</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Placeholders: <code className="bg-white/5 px-1 py-0.5 rounded text-gray-400">{`{{businessName}}`}</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-gray-400">{`{{industry}}`}</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-gray-400">{`{{sender}}`}</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-gray-400">{`{{inquiry}}`}</code>.
+                            </p>
                         </div>
                     </CardContent>
                 </Card>

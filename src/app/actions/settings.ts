@@ -2,6 +2,7 @@
 
 import { ensureOrganization } from '@/app/actions/auth';
 import { revalidatePath } from 'next/cache';
+import { DEFAULT_INSTANT_REPLY_TEMPLATE, normalizePhoneNumber } from '@/lib/ai/autoReply';
 
 import { prisma } from '@/lib/prisma';
 
@@ -25,20 +26,23 @@ export async function saveAiConfig(data: any) {
     if (!orgId) return { success: false, error: 'Unauthorized' };
 
     try {
+        const normalizedTwilioNumber = normalizePhoneNumber(data.twilioNumber);
+        const systemPrompt = (data.systemPrompt || '').trim() || DEFAULT_INSTANT_REPLY_TEMPLATE;
+
         await prisma.aiConfig.upsert({
             where: { orgId },
             update: {
                 autoReplySMS: data.autoReplySMS,
                 autoSchedule: data.autoSchedule,
-                twilioNumber: data.twilioNumber,
-                systemPrompt: data.systemPrompt
+                twilioNumber: normalizedTwilioNumber || null,
+                systemPrompt
             },
             create: {
                 orgId,
                 autoReplySMS: data.autoReplySMS,
                 autoSchedule: data.autoSchedule,
-                twilioNumber: data.twilioNumber,
-                systemPrompt: data.systemPrompt
+                twilioNumber: normalizedTwilioNumber || null,
+                systemPrompt
             }
         });
 

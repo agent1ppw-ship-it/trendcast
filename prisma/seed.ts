@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { DEFAULT_INSTANT_REPLY_TEMPLATE } from '../src/lib/ai/autoReply';
 
 const prisma = new PrismaClient();
 
@@ -40,7 +41,7 @@ async function main() {
     await prisma.aiConfig.create({
         data: {
             orgId: org.id,
-            systemPrompt: 'You are an expert sales rep...',
+            systemPrompt: DEFAULT_INSTANT_REPLY_TEMPLATE,
             autoReplySMS: true,
             autoSchedule: true,
             twilioNumber: '+15555555555',

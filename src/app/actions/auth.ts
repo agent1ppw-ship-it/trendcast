@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ensureUserOrganizationByEmail } from '@/lib/organizationProvisioning';
+import { DEFAULT_INSTANT_REPLY_TEMPLATE } from '@/lib/ai/autoReply';
 
 // Get the NextAuth session server-side
 export async function getSession() {
@@ -84,7 +85,7 @@ export async function registerWithEmailPassword(data: {
                 },
                 aiSettings: {
                     create: {
-                        systemPrompt: 'You are a helpful home service estimator assistant.',
+                        systemPrompt: DEFAULT_INSTANT_REPLY_TEMPLATE,
                         autoReplySMS: false,
                         autoSchedule: false,
                     },

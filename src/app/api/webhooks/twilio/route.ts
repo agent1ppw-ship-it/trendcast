@@ -1,76 +1,77 @@
 import { NextResponse } from 'next/server';
-import { masterRouterPrompt } from '@/lib/ai/prompts';
+import { buildInstantReplyMessage, normalizePhoneNumber, xmlEscape } from '@/lib/ai/autoReply';
 
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
 
-// This route receives inbound SMS from Twilio and processes the intent
+function twimlResponse(message?: string) {
+    const body = message ? `<Message>${xmlEscape(message)}</Message>` : '';
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`;
+    return new NextResponse(xml, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'no-store',
+        },
+    });
+}
+
+// This route receives inbound SMS from Twilio and returns an instant auto-reply via TwiML.
 export async function POST(req: Request) {
     try {
         const formData = await req.formData();
 
-        // Twilio sends data as URL Encoded parameters
-        const incomingMessage = formData.get('Body') as string;
-        const senderNumber = formData.get('From') as string;
-        const toTwilioNumber = formData.get('To') as string;
-        const numMedia = formData.get('NumMedia');
-        const hasImage = numMedia && parseInt(numMedia.toString()) > 0;
+        const incomingMessage = (formData.get('Body') as string | null)?.trim() || '';
+        const senderNumber = (formData.get('From') as string | null)?.trim() || '';
+        const toTwilioNumber = (formData.get('To') as string | null)?.trim() || '';
 
         console.log(`[Twilio Webhook] Received message from ${senderNumber}: "${incomingMessage}"`);
 
-        // We locate which tenant (Business) owns this Twilio number
-        const aiConfig = await prisma.aiConfig.findFirst({
-            where: { twilioNumber: toTwilioNumber },
+        const normalizedToNumber = normalizePhoneNumber(toTwilioNumber);
+        let aiConfig = await prisma.aiConfig.findFirst({
+            where: { twilioNumber: normalizedToNumber },
             include: { organization: true },
         });
 
+        if (!aiConfig && normalizedToNumber) {
+            const configs = await prisma.aiConfig.findMany({
+                where: { twilioNumber: { not: null } },
+                include: { organization: true },
+            });
+            aiConfig = configs.find((config) => normalizePhoneNumber(config.twilioNumber) === normalizedToNumber) || null;
+        }
+
         if (!aiConfig) {
             console.warn(`[Twilio Webhook] No AI config found for number ${toTwilioNumber}`);
-            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+            return twimlResponse();
         }
 
-        // Step 1: Call the Master Router to determine the intent category
-        const intentClassification = await masterRouterPrompt(
-            incomingMessage,
-            aiConfig.organization.name,
-            aiConfig.organization.industry,
-            !!hasImage
-        );
-
-        if (!intentClassification) {
-            return NextResponse.json({ error: 'Failed to classify intent' }, { status: 500 });
+        if (!aiConfig.autoReplySMS) {
+            return twimlResponse();
         }
 
-        console.log(`[Master Router] Classified intent as: ${intentClassification.intent} with ${intentClassification.confidence_score}% confidence.`);
-
-        // Step 2: Handoff to specialized prompts based on structured output
-        switch (intentClassification.intent) {
-            case 'NEW_LEAD':
-                // Handoff to the Inbound Lead Qualification Prompt (The Closer)
-                // triggerLeadQualificationFlow(senderNumber, incomingMessage, aiConfig.orgId);
-                break;
-
-            case 'VISUAL_ESTIMATE':
-                // const imageUrl = formData.get('MediaUrl0') as string;
-                // triggerVisualEstimateFlow(senderNumber, imageUrl, aiConfig.orgId);
-                break;
-
-            case 'COMPLAINT':
-                // Alert the owner immediately via Slack/Email, don't auto-reply
-                break;
-
-            default:
-                // Handle STATUS_UPDATE or GENERAL_FAQ via RAG knowledge base
-                break;
+        if (!incomingMessage) {
+            return twimlResponse();
         }
 
-        // Return a standard 200 OK to Twilio so it stops retrying
-        // The actual SMS response will be sent asynchronously via the Twilio Node.js SDK
-        return NextResponse.json({ success: true, intent: intentClassification.intent });
+        const lowerMessage = incomingMessage.toLowerCase();
+        if (['stop', 'unsubscribe', 'cancel', 'end', 'quit', 'stopall'].includes(lowerMessage)) {
+            return twimlResponse();
+        }
+
+        const responseMessage = buildInstantReplyMessage(aiConfig.systemPrompt, {
+            businessName: aiConfig.organization.name,
+            industry: aiConfig.organization.industry,
+            sender: senderNumber,
+            inquiry: incomingMessage,
+            timestamp: new Date().toISOString(),
+        });
+
+        return twimlResponse(responseMessage);
 
     } catch (error) {
         console.error('[Twilio Webhook] Error processing incoming SMS:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return twimlResponse();
     }
 }
