@@ -51,6 +51,43 @@ export default async function DashboardOverview({
     const activeUserName = org?.users[0]?.name || org?.users[0]?.email?.split('@')[0] || 'User';
     const totalLeads = org?._count?.leads || 0;
     const wonLeads = org?.leads?.length || 0;
+    const now = new Date();
+    const pulseWindowHours = 24;
+    const pulseBucketCount = 12;
+    const pulseBucketMs = (pulseWindowHours / pulseBucketCount) * 60 * 60 * 1000;
+    const pulseWindowStart = new Date(now.getTime() - pulseWindowHours * 60 * 60 * 1000);
+    const scraperLeadsInWindow = await prisma.lead.findMany({
+        where: {
+            orgId,
+            source: 'SCRAPER',
+            createdAt: {
+                gte: pulseWindowStart,
+            },
+        },
+        select: {
+            createdAt: true,
+        },
+    });
+    const pulseBuckets = Array.from({ length: pulseBucketCount }, (_, index) => {
+        const bucketStart = new Date(pulseWindowStart.getTime() + index * pulseBucketMs);
+        return {
+            index,
+            count: 0,
+            label: bucketStart.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+            }),
+        };
+    });
+
+    scraperLeadsInWindow.forEach((lead) => {
+        const rawIndex = Math.floor((lead.createdAt.getTime() - pulseWindowStart.getTime()) / pulseBucketMs);
+        const bucketIndex = Math.min(Math.max(rawIndex, 0), pulseBucketCount - 1);
+        pulseBuckets[bucketIndex].count += 1;
+    });
+
+    const maxPulseCount = Math.max(...pulseBuckets.map((bucket) => bucket.count), 0);
+    const pulseActivityCount = scraperLeadsInWindow.length;
+
     const mobileQuickActions = [
         { href: '/dashboard/leads', label: 'Lead Scraper', icon: Search },
         { href: '/dashboard/businesses', label: 'Business Finder', icon: Building2 },
@@ -175,23 +212,57 @@ export default async function DashboardOverview({
                 <div className="lg:col-span-2">
                     <Card className="bg-[#111] border-white/5 shadow-md h-full">
                         <CardHeader className="border-b border-white/5 pb-4">
-                            <CardTitle className="text-lg font-semibold text-white">Scraping Engine Pulse</CardTitle>
+                            <div className="flex items-start justify-between gap-4">
+                                <CardTitle className="text-lg font-semibold text-white">Scraping Engine Pulse</CardTitle>
+                                <div className="text-right">
+                                    <div className="text-sm font-semibold text-blue-300">{pulseActivityCount} leads</div>
+                                    <div className="text-xs text-gray-500">Last 24h</div>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="pt-6 relative h-[300px] flex items-center justify-center">
                             <div className="absolute inset-0 bg-gradient-to-t from-[#111] to-transparent z-10"></div>
-                            {/* Fake visual chart via linear gradients */}
                             <div className="w-full h-full flex items-end justify-between px-4 pb-8 space-x-2">
-                                {[40, 70, 45, 90, 65, 85, 55, 100, 75, 40, 60, 30].map((height, i) => (
-                                    <div key={i} className="w-full bg-blue-500/20 rounded-t-sm relative group overflow-hidden" style={{ height: `${height}%` }}>
-                                        <div className="absolute bottom-0 w-full bg-blue-500 rounded-t-sm shadow-[0_0_10px_rgba(59,130,246,0.8)] transition-all group-hover:bg-blue-400" style={{ height: 'max(4px, 10%)' }}></div>
-                                    </div>
-                                ))}
+                                {pulseBuckets.map((bucket) => {
+                                    const normalizedHeight = maxPulseCount > 0
+                                        ? Math.round((bucket.count / maxPulseCount) * 100)
+                                        : 0;
+                                    const displayHeight = bucket.count > 0
+                                        ? Math.max(14, normalizedHeight)
+                                        : 6;
+
+                                    return (
+                                        <div
+                                            key={bucket.index}
+                                            className="w-full bg-blue-500/12 rounded-t-sm relative group overflow-hidden"
+                                            style={{ height: `${displayHeight}%` }}
+                                            title={`${bucket.label}: ${bucket.count} scraped leads`}
+                                        >
+                                            <div
+                                                className="absolute bottom-0 w-full bg-blue-500 rounded-t-sm shadow-[0_0_10px_rgba(59,130,246,0.8)] transition-all group-hover:bg-blue-400"
+                                                style={{ height: bucket.count > 0 ? '100%' : 'max(4px, 30%)' }}
+                                            />
+                                            <span className="pointer-events-none absolute -top-5 left-1/2 hidden -translate-x-1/2 text-[10px] font-medium text-blue-200 group-hover:block">
+                                                {bucket.count}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
+
+                            {pulseActivityCount === 0 && (
+                                <div className="absolute inset-0 z-20 flex items-center justify-center px-6 text-center">
+                                    <p className="rounded-xl border border-white/10 bg-[#0E1118]/85 px-4 py-3 text-sm text-gray-300">
+                                        No scraper activity yet in the last 24 hours. Run an extraction to start live pulse tracking.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="absolute inset-x-0 bottom-4 flex justify-between text-xs text-gray-500 px-6 z-20">
-                                <span>12 AM</span>
-                                <span>6 AM</span>
-                                <span>12 PM</span>
-                                <span>6 PM</span>
+                                <span>{pulseBuckets[0]?.label}</span>
+                                <span>{pulseBuckets[Math.floor(pulseBucketCount * 0.25)]?.label}</span>
+                                <span>{pulseBuckets[Math.floor(pulseBucketCount * 0.5)]?.label}</span>
+                                <span>{pulseBuckets[Math.floor(pulseBucketCount * 0.75)]?.label}</span>
                                 <span>Now</span>
                             </div>
                         </CardContent>
