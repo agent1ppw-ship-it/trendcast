@@ -32,7 +32,7 @@ export function Navbar() {
     const isSignedIn = status === 'authenticated';
 
     return (
-        <nav className="fixed top-0 z-50 w-full border-b border-blue-400/20 bg-[linear-gradient(180deg,rgba(8,18,38,0.88),rgba(6,13,28,0.78))] shadow-[0_10px_32px_rgba(2,6,23,0.55)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[linear-gradient(180deg,rgba(8,18,38,0.72),rgba(6,13,28,0.62))]">
+        <nav className="fixed top-0 z-50 w-full border-b border-blue-500/16 bg-[linear-gradient(180deg,rgba(3,6,12,0.94),rgba(2,5,10,0.88))] shadow-[0_10px_32px_rgba(1,4,10,0.72)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[linear-gradient(180deg,rgba(3,6,12,0.84),rgba(2,5,10,0.76))]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
                     {/* Logo */}
@@ -92,7 +92,7 @@ export function Navbar() {
 
             {/* Mobile Navigation Dropdown Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-b-2xl border-b border-blue-400/20 bg-[linear-gradient(180deg,rgba(9,18,36,0.96),rgba(7,14,30,0.94))] px-6 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] shadow-2xl space-y-3">
+                <div className="md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-b-2xl border-b border-blue-500/16 bg-[linear-gradient(180deg,rgba(4,8,16,0.98),rgba(3,7,14,0.96))] px-6 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] shadow-2xl space-y-3">
                     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-500">
                         Explore Trendcast
                     </div>

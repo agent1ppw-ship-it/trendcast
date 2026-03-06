@@ -65,14 +65,15 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden bg-[#040507] text-gray-100">
+    <div className="flex flex-col min-h-screen overflow-hidden bg-[#020306] text-gray-100">
 
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-40 overflow-hidden isolate">
         {/* Abstract Dark Background Glows */}
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[800px] h-[800px] bg-emerald-500/20 rounded-full blur-[120px] -z-10" />
-        <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/3 w-[600px] h-[600px] bg-cyan-500/15 rounded-full blur-[100px] -z-10" />
-        <div className="absolute bottom-0 right-1/3 translate-y-1/3 w-[520px] h-[520px] bg-fuchsia-500/10 rounded-full blur-[110px] -z-10" />
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 hidden h-[800px] w-[800px] rounded-full bg-emerald-500/20 blur-[120px] -z-10 md:block" />
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 h-[520px] w-[520px] rounded-full bg-blue-900/35 blur-[130px] -z-10 md:hidden" />
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/3 h-[600px] w-[600px] rounded-full bg-cyan-900/20 blur-[110px] -z-10 md:bg-cyan-500/15" />
+        <div className="absolute bottom-0 right-1/3 translate-y-1/3 h-[520px] w-[520px] rounded-full bg-fuchsia-900/12 blur-[115px] -z-10 md:bg-fuchsia-500/10" />
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 -z-10 mix-blend-overlay"></div>
 
@@ -83,10 +84,10 @@ export default function Home() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="max-w-4xl mx-auto"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111315] border border-emerald-400/30 text-emerald-100 text-sm font-medium mb-8 shadow-[0_0_30px_rgba(34,197,94,0.2)] backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111315] border border-cyan-400/30 text-cyan-100 text-sm font-medium mb-8 shadow-[0_0_30px_rgba(34,211,238,0.2)] backdrop-blur-md">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
               </span>
               Enterprise Voice AI Agents are Live
             </div>
@@ -135,9 +136,9 @@ export default function Home() {
                       href={href}
                       target={external ? '_blank' : undefined}
                       rel={external ? 'noreferrer noopener' : undefined}
-                      className="group rounded-2xl border border-cyan-400/20 bg-[linear-gradient(155deg,rgba(8,10,15,0.98),rgba(5,20,17,0.9))] p-4 transition-all hover:border-emerald-400/40 hover:bg-[#101414]"
+                      className="group rounded-2xl border border-cyan-400/20 bg-[linear-gradient(155deg,rgba(7,10,16,0.98),rgba(4,12,22,0.92))] p-4 transition-all hover:border-cyan-300/40 hover:bg-[#101722]"
                     >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/30 transition-transform group-hover:scale-105">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/30 transition-transform group-hover:scale-105">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="mt-4 text-sm font-semibold leading-5 text-white">
