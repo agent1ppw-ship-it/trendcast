@@ -11,14 +11,13 @@ import { getScraperExtractCost, refundScraperExtractsOnce } from '../lib/scraper
 import {
     buildBrowserLocationQueries,
     extractBusinessesFromYellowPagesHtml,
-    fetchLocationGeocode,
     fetchZipGeocode,
     getSafeSearchRadiusMiles,
     getIndustrySearchVariants,
     mapNominatimResultsToBusinessLeads,
     mergeBusinessLeads,
     type NominatimSearchResult,
-    searchOpenStreetMapBusinessesByLocation,
+    searchOpenStreetMapBusinessesByZip,
 } from '../lib/businessFinder';
 
 // Add stealth plugin to Playwright
@@ -179,7 +178,7 @@ async function searchBusinessesWithBrowserNominatim(
         const normalizedLocationTerm = locationTerm.trim() || targetZip;
         const searchCenter = targetZip
             ? await fetchZipGeocode(targetZip).catch(() => null)
-            : await fetchLocationGeocode(normalizedLocationTerm).catch(() => null);
+            : null;
         const queries = buildBrowserLocationQueries(industry, normalizedLocationTerm, searchCenter);
 
         const combinedResults: NominatimSearchResult[] = [];
@@ -629,12 +628,12 @@ export const businessFinderWorker = new Worker(
                 });
 
                 try {
-                    const openStreetMapResult = await searchOpenStreetMapBusinessesByLocation(
-                        locationLabel || geoLocationTerms || normalizedZip,
+                    const openStreetMapLocationSeed = targetZipForMatching || normalizedZip || geoLocationTerms || locationLabel;
+                    const openStreetMapResult = await searchOpenStreetMapBusinessesByZip(
+                        openStreetMapLocationSeed,
                         job.data.industry,
                         job.data.batchSize,
                         searchRadiusMiles,
-                        targetZipForMatching,
                     );
 
                     if (openStreetMapResult.leads.length > 0) {
