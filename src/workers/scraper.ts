@@ -6,17 +6,19 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
 import { prisma } from '../lib/prisma';
+import { enrichLead } from '../lib/enrichment';
 import { getScraperExtractCost, refundScraperExtractsOnce } from '../lib/scraperCredits';
 import {
     buildBrowserLocationQueries,
     extractBusinessesFromYellowPagesHtml,
+    fetchLocationGeocode,
     fetchZipGeocode,
     getSafeSearchRadiusMiles,
     getIndustrySearchVariants,
     mapNominatimResultsToBusinessLeads,
     mergeBusinessLeads,
     type NominatimSearchResult,
-    searchOpenStreetMapBusinessesByZip,
+    searchOpenStreetMapBusinessesByLocation,
 } from '../lib/businessFinder';
 
 // Add stealth plugin to Playwright
@@ -148,19 +150,25 @@ function getScrapeTarget(listingType: ScrapePayload['listingType'], zipCode: str
 
 interface BusinessFinderPayload {
     orgId: string;
+    locationType: 'zip' | 'city';
     zipCode: string;
+    city?: string;
+    state?: string;
+    geoLocationTerms?: string;
+    locationLabel?: string;
     industry: string;
     batchSize: number;
     radiusMiles: number;
 }
 
-function getBusinessFinderCacheKey(zipCode: string, industry: string, radiusMiles: number) {
-    return `business-finder-cache:${zipCode}:${industry.trim().toLowerCase()}:${getSafeSearchRadiusMiles(radiusMiles)}`;
+function getBusinessFinderCacheKey(locationLabel: string, industry: string, radiusMiles: number) {
+    return `business-finder-cache:${locationLabel.trim().toLowerCase()}:${industry.trim().toLowerCase()}:${getSafeSearchRadiusMiles(radiusMiles)}`;
 }
 
 async function searchBusinessesWithBrowserNominatim(
     context: BrowserContext,
-    zipCode: string,
+    locationTerm: string,
+    targetZip: string,
     industry: string,
     batchSize: number,
     radiusMiles: number,
@@ -168,8 +176,11 @@ async function searchBusinessesWithBrowserNominatim(
     const page = await context.newPage();
 
     try {
-        const searchCenter = await fetchZipGeocode(zipCode).catch(() => null);
-        const queries = buildBrowserLocationQueries(industry, zipCode, searchCenter);
+        const normalizedLocationTerm = locationTerm.trim() || targetZip;
+        const searchCenter = targetZip
+            ? await fetchZipGeocode(targetZip).catch(() => null)
+            : await fetchLocationGeocode(normalizedLocationTerm).catch(() => null);
+        const queries = buildBrowserLocationQueries(industry, normalizedLocationTerm, searchCenter);
 
         const combinedResults: NominatimSearchResult[] = [];
 
@@ -201,7 +212,7 @@ async function searchBusinessesWithBrowserNominatim(
 
         return mapNominatimResultsToBusinessLeads(
             combinedResults,
-            zipCode,
+            targetZip,
             industry,
             batchSize,
             'OpenStreetMap Browser Search',
@@ -224,6 +235,13 @@ export const scraperWorker = new Worker(
             await job.updateProgress({ phase: 'Job Failed: Organization not found.', percent: 0, error: true });
             throw new Error('Organization not found.');
         }
+        const existingScraperLeadCount = await prisma.lead.count({
+            where: {
+                orgId: job.data.orgId,
+                source: { in: ['SCRAPER', 'SCRAPER_LISTED'] },
+            },
+        });
+        const shouldAutoRevealDemoLead = existingScraperLeadCount === 0;
 
         await job.updateProgress({ phase: 'Initializing Playwright cluster...', percent: 5 });
 
@@ -354,6 +372,7 @@ export const scraperWorker = new Worker(
             console.log(`[Worker] Proceeding to Enrichment with ${newAddresses.length} new properties.`);
 
             let processed = 0;
+            const createdLeads: Array<{ id: string; address: string }> = [];
             for (const address of newAddresses) {
                 // Check if user clicked Stop during insertion
                 const isCancelled = await redisConnection.get(`cancel-job:${job.id}`);
@@ -366,7 +385,7 @@ export const scraperWorker = new Worker(
                 processed++;
                 await job.updateProgress({ phase: `Saving Extracted Property to Database: ${processed}/${newAddresses.length}...`, percent: 75 + Math.floor((processed / newAddresses.length) * 20) });
 
-                await prisma.lead.create({
+                const createdLead = await prisma.lead.create({
                     data: {
                         orgId: job.data.orgId,
                         name: 'Unknown',
@@ -378,8 +397,51 @@ export const scraperWorker = new Worker(
                         isRevealed: false
                     }
                 });
+                createdLeads.push({ id: createdLead.id, address });
 
                 console.log(`[Worker] Saved unrevealed lead for ${address}.`);
+            }
+
+            if (shouldAutoRevealDemoLead && createdLeads.length > 0) {
+                await job.updateProgress({
+                    phase: 'Unlocking one demo contact for your first extraction...',
+                    percent: 97,
+                });
+
+                let demoLeadRevealed = false;
+                const newestToOldestLeads = [...createdLeads].reverse();
+
+                for (const lead of newestToOldestLeads) {
+                    const enriched = await enrichLead(lead.address);
+                    if (!enriched) continue;
+
+                    const hasMeaningfulContact = Boolean(
+                        enriched.mobileNumber?.trim() || (enriched.ownerName && enriched.ownerName !== 'Unknown')
+                    );
+                    if (!hasMeaningfulContact) continue;
+
+                    await prisma.lead.update({
+                        where: { id: lead.id },
+                        data: {
+                            name: enriched.ownerName || 'Unknown',
+                            phone: enriched.mobileNumber || '',
+                            isRevealed: true,
+                        },
+                    });
+
+                    demoLeadRevealed = true;
+                    console.log(`[Worker] Auto-revealed demo lead ${lead.id} for first extraction run.`);
+                    break;
+                }
+
+                if (!demoLeadRevealed) {
+                    const fallbackLead = newestToOldestLeads[0];
+                    await prisma.lead.update({
+                        where: { id: fallbackLead.id },
+                        data: { isRevealed: true },
+                    });
+                    console.log(`[Worker] Auto-revealed fallback demo lead ${fallbackLead.id} for first extraction run.`);
+                }
             }
 
             console.log(`[Worker] Finished job ${job.id}`);
@@ -410,7 +472,17 @@ export const scraperWorker = new Worker(
 export const businessFinderWorker = new Worker(
     'BusinessFinderQueue',
     async (job: Job<BusinessFinderPayload>) => {
-        console.log(`[BusinessFinderWorker] Started job ${job.id} for ZIP ${job.data.zipCode} / ${job.data.industry}`);
+        const locationType = job.data.locationType === 'city' ? 'city' : 'zip';
+        const normalizedZip = (job.data.zipCode || '').trim();
+        const normalizedCity = (job.data.city || '').trim();
+        const normalizedState = (job.data.state || '').trim().toUpperCase();
+        const locationLabel = (job.data.locationLabel || (locationType === 'zip'
+            ? normalizedZip
+            : [normalizedCity, normalizedState].filter(Boolean).join(', '))).trim();
+        const geoLocationTerms = (job.data.geoLocationTerms || locationLabel || normalizedZip).trim();
+        const targetZipForMatching = locationType === 'zip' ? normalizedZip : '';
+
+        console.log(`[BusinessFinderWorker] Started job ${job.id} for ${locationLabel || normalizedZip} / ${job.data.industry}`);
         const searchRadiusMiles = getSafeSearchRadiusMiles(job.data.radiusMiles);
 
         const org = await prisma.organization.findUnique({ where: { id: job.data.orgId } });
@@ -464,7 +536,7 @@ export const businessFinderWorker = new Worker(
             let finalUrl = '';
             let pageTitle = '';
             let yellowPagesBlocked = false;
-            let yellowPagesResult = extractBusinessesFromYellowPagesHtml('', job.data.zipCode, job.data.industry, job.data.batchSize);
+            let yellowPagesResult = extractBusinessesFromYellowPagesHtml('', targetZipForMatching, job.data.industry, job.data.batchSize);
 
             await job.updateProgress({ phase: 'Loading live directory results...', percent: 35 });
 
@@ -472,7 +544,7 @@ export const businessFinderWorker = new Worker(
                 const searchTerm = yellowPagesVariants[variantIndex];
 
                 for (let pageNumber = 1; pageNumber <= 2; pageNumber += 1) {
-                    searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(job.data.zipCode)}${pageNumber > 1 ? `&page=${pageNumber}` : ''}`;
+                    searchUrl = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(searchTerm)}&geo_location_terms=${encodeURIComponent(geoLocationTerms)}${pageNumber > 1 ? `&page=${pageNumber}` : ''}`;
 
                     await page.goto(searchUrl, {
                         waitUntil: 'domcontentloaded',
@@ -508,7 +580,7 @@ export const businessFinderWorker = new Worker(
 
                     const pageResult = extractBusinessesFromYellowPagesHtml(
                         html,
-                        job.data.zipCode,
+                        targetZipForMatching,
                         job.data.industry,
                         job.data.batchSize,
                     );
@@ -557,11 +629,12 @@ export const businessFinderWorker = new Worker(
                 });
 
                 try {
-                    const openStreetMapResult = await searchOpenStreetMapBusinessesByZip(
-                        job.data.zipCode,
+                    const openStreetMapResult = await searchOpenStreetMapBusinessesByLocation(
+                        locationLabel || geoLocationTerms || normalizedZip,
                         job.data.industry,
                         job.data.batchSize,
                         searchRadiusMiles,
+                        targetZipForMatching,
                     );
 
                     if (openStreetMapResult.leads.length > 0) {
@@ -574,7 +647,8 @@ export const businessFinderWorker = new Worker(
                     } else {
                         const browserFallbackResult = await searchBusinessesWithBrowserNominatim(
                             context,
-                            job.data.zipCode,
+                            locationLabel || geoLocationTerms || normalizedZip,
+                            targetZipForMatching,
                             job.data.industry,
                             job.data.batchSize,
                             searchRadiusMiles,
@@ -589,7 +663,7 @@ export const businessFinderWorker = new Worker(
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
                             const cachedResults = await redisConnection.get(
-                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                                getBusinessFinderCacheKey(locationLabel || geoLocationTerms || normalizedZip, job.data.industry, searchRadiusMiles)
                             );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
@@ -615,7 +689,8 @@ export const businessFinderWorker = new Worker(
                     try {
                         const browserFallbackResult = await searchBusinessesWithBrowserNominatim(
                             context,
-                            job.data.zipCode,
+                            locationLabel || geoLocationTerms || normalizedZip,
+                            targetZipForMatching,
                             job.data.industry,
                             job.data.batchSize,
                             searchRadiusMiles,
@@ -630,7 +705,7 @@ export const businessFinderWorker = new Worker(
                             sourceLabel = browserFallbackResult.sourceLabel;
                         } else if (yellowPagesBlocked) {
                             const cachedResults = await redisConnection.get(
-                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                                getBusinessFinderCacheKey(locationLabel || geoLocationTerms || normalizedZip, job.data.industry, searchRadiusMiles)
                             );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
@@ -654,7 +729,7 @@ export const businessFinderWorker = new Worker(
                         console.error('[BusinessFinderWorker] Browser OpenStreetMap fallback failed:', browserFallbackError);
                         if (yellowPagesBlocked) {
                             const cachedResults = await redisConnection.get(
-                                getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles)
+                                getBusinessFinderCacheKey(locationLabel || geoLocationTerms || normalizedZip, job.data.industry, searchRadiusMiles)
                             );
                             if (cachedResults) {
                                 const parsedCache = JSON.parse(cachedResults) as {
@@ -680,7 +755,7 @@ export const businessFinderWorker = new Worker(
 
             if (finalResult.leads.length > 0 && !usedCache) {
                 await redisConnection.set(
-                    getBusinessFinderCacheKey(job.data.zipCode, job.data.industry, searchRadiusMiles),
+                    getBusinessFinderCacheKey(locationLabel || geoLocationTerms || normalizedZip, job.data.industry, searchRadiusMiles),
                     JSON.stringify({
                         leads: finalResult.leads,
                         matchStrategy: finalResult.matchStrategy,
