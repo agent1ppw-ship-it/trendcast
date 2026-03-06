@@ -131,3 +131,47 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .keyword-blog-content {
+    color: #e5e7eb;
+  }
+
+  .keyword-blog-content :where(div, section, article) {
+    background-color: transparent;
+  }
+
+  .keyword-blog-content :where([style*="background"], [style*="background-color"]) {
+    background-color: transparent !important;
+  }
+
+  .keyword-blog-content :where(h1, h2, h3, h4, h5, h6) {
+    color: #ffffff;
+  }
+
+  .keyword-blog-content :where(p, li, blockquote) {
+    color: #f3f4f6;
+  }
+
+  .keyword-blog-content :where(a) {
+    color: #67e8f9;
+  }
+
+  .keyword-blog-content :where(pre) {
+    background-color: #121a24 !important;
+    color: #f3f4f6 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .keyword-blog-content :where(code) {
+    background-color: #1b2230;
+    color: #f3f4f6;
+    border-radius: 0.35rem;
+    padding: 0.1rem 0.3rem;
+  }
+}

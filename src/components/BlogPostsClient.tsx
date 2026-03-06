@@ -1,12 +1,126 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore, useTransition } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react';
 import { FileText, Loader2, MapPin, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { KeywordTargetedBlogDraft } from '@/lib/ai/articleGenerator';
 import { generateKeywordBlogDraft } from '@/app/actions/keywords';
 import { clearLatestBlogDraft, loadLatestBlogDraft, markBlogDraftAsViewed, saveLatestBlogDraft, subscribeToBlogDraftInbox } from '@/lib/blogDraftInbox';
+
+type ContentBlock =
+    | { type: 'h2'; text: string }
+    | { type: 'h3'; text: string }
+    | { type: 'p'; text: string }
+    | { type: 'ul'; items: string[] }
+    | { type: 'ol'; items: string[] }
+    | { type: 'quote'; text: string };
+
+function normalizeText(value: string) {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+function stripHeavyIndentation(markdown: string) {
+    const source = markdown || '';
+    const lines = source.split('\n');
+    const nonEmpty = lines.filter((line) => line.trim().length > 0);
+    if (nonEmpty.length === 0) return source;
+
+    const indentedCount = nonEmpty.filter((line) => /^ {4,}\S/.test(line)).length;
+    if (indentedCount / nonEmpty.length < 0.6) return source;
+
+    return lines.map((line) => line.replace(/^ {4}/, '')).join('\n');
+}
+
+function parseMarkdownBlocks(markdown: string): ContentBlock[] {
+    const source = stripHeavyIndentation(markdown).replace(/\r\n/g, '\n');
+    const lines = source.split('\n');
+    const blocks: ContentBlock[] = [];
+    let paragraphLines: string[] = [];
+    let bulletItems: string[] = [];
+    let numberedItems: string[] = [];
+
+    const flushParagraph = () => {
+        const text = normalizeText(paragraphLines.join(' '));
+        if (text) blocks.push({ type: 'p', text });
+        paragraphLines = [];
+    };
+
+    const flushBullets = () => {
+        if (bulletItems.length > 0) blocks.push({ type: 'ul', items: bulletItems });
+        bulletItems = [];
+    };
+
+    const flushNumbers = () => {
+        if (numberedItems.length > 0) blocks.push({ type: 'ol', items: numberedItems });
+        numberedItems = [];
+    };
+
+    const flushAll = () => {
+        flushParagraph();
+        flushBullets();
+        flushNumbers();
+    };
+
+    for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+            flushAll();
+            continue;
+        }
+
+        if (/^!\[[^\]]*]\([^)]+\)$/.test(trimmed)) {
+            continue;
+        }
+
+        const h2Match = trimmed.match(/^##\s+(.+)$/);
+        if (h2Match) {
+            flushAll();
+            blocks.push({ type: 'h2', text: normalizeText(h2Match[1]) });
+            continue;
+        }
+
+        const h3Match = trimmed.match(/^###\s+(.+)$/);
+        if (h3Match) {
+            flushAll();
+            blocks.push({ type: 'h3', text: normalizeText(h3Match[1]) });
+            continue;
+        }
+
+        const quoteMatch = trimmed.match(/^>\s+(.+)$/);
+        if (quoteMatch) {
+            flushAll();
+            blocks.push({ type: 'quote', text: normalizeText(quoteMatch[1]) });
+            continue;
+        }
+
+        const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
+        if (bulletMatch) {
+            flushParagraph();
+            flushNumbers();
+            const value = normalizeText(bulletMatch[1]);
+            if (value) bulletItems.push(value);
+            continue;
+        }
+
+        const numberedMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+        if (numberedMatch) {
+            flushParagraph();
+            flushBullets();
+            const value = normalizeText(numberedMatch[1]);
+            if (value) numberedItems.push(value);
+            continue;
+        }
+
+        flushBullets();
+        flushNumbers();
+        paragraphLines.push(trimmed);
+    }
+
+    flushAll();
+    return blocks;
+}
 
 export function BlogPostsClient() {
     const draft = useSyncExternalStore(
@@ -22,6 +136,10 @@ export function BlogPostsClient() {
     }, []);
 
     const canRegenerate = Boolean(draft?.industry && draft?.location && draft?.primaryKeyword);
+    const contentBlocks = useMemo(
+        () => parseMarkdownBlocks(draft?.contentMarkdown || ''),
+        [draft?.contentMarkdown],
+    );
 
     const handleDelete = () => {
         setError('');
@@ -61,16 +179,16 @@ export function BlogPostsClient() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] p-8 text-gray-100">
+        <section className="min-h-screen bg-[#04070D] px-4 py-8 text-gray-100 md:px-8">
             <div className="mb-10">
                 <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">Blog Posts (Beta)</h1>
                 <p className="font-light text-gray-400">
-                    Review the latest keyword-targeted blog draft generated from the Keyword Opportunities tool.
+                    Review the latest keyword-targeted blog draft generated from Keyword Opportunities.
                 </p>
             </div>
 
             {!draft && (
-                <Card className="border-white/5 bg-[#111] shadow-md">
+                <Card className="border-white/10 bg-[#0D121C] shadow-md">
                     <CardContent className="px-8 py-20 text-center">
                         <div className="mx-auto max-w-md">
                             <p className="mb-2 text-base text-gray-300">No generated blog draft yet.</p>
@@ -84,10 +202,10 @@ export function BlogPostsClient() {
 
             {draft && (
                 <div className="grid grid-cols-1 gap-8 xl:grid-cols-[340px_minmax(0,1fr)]">
-                    <Card className="min-w-0 border-white/5 bg-[#111] shadow-md">
-                        <CardHeader className="border-b border-white/5 pb-4">
+                    <Card className="min-w-0 border-white/10 bg-[#0D121C] shadow-md">
+                        <CardHeader className="border-b border-white/10 pb-4">
                             <CardTitle className="flex items-center gap-2 text-lg font-semibold text-white">
-                                <Sparkles className="h-4 w-4 text-blue-400" />
+                                <Sparkles className="h-4 w-4 text-cyan-300" />
                                 Draft Summary
                             </CardTitle>
                         </CardHeader>
@@ -125,7 +243,7 @@ export function BlogPostsClient() {
 
                             <div>
                                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Source</div>
-                                <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                                <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
                                     <FileText className="h-3.5 w-3.5" />
                                     {draft.generatorVersion === 'legacy' ? 'Legacy Draft' : 'LLM Beta'}
                                 </div>
@@ -138,14 +256,14 @@ export function BlogPostsClient() {
                                 <button
                                     onClick={handleRegenerate}
                                     disabled={isRegenerating || !canRegenerate}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-600/10 px-4 py-2.5 text-sm font-medium text-blue-300 transition-all hover:bg-blue-600/20 disabled:opacity-50"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition-all hover:bg-cyan-500/20 disabled:opacity-50"
                                 >
                                     {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                     {isRegenerating ? 'Regenerating...' : 'Regenerate Draft'}
                                 </button>
                                 <button
                                     onClick={handleDelete}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition-all hover:bg-red-500/20"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                     Delete Draft
@@ -160,27 +278,79 @@ export function BlogPostsClient() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-white/5 bg-[#111] shadow-md">
-                        <CardHeader className="border-b border-white/5 pb-4">
+                    <Card className="border-white/10 bg-[#0D121C] shadow-md">
+                        <CardHeader className="border-b border-white/10 pb-4">
                             <CardTitle className="text-3xl font-bold tracking-tight text-white">{draft.title}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6 pt-6">
-                            <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/10 to-transparent p-5">
+                            <div className="rounded-2xl border border-cyan-400/20 bg-[#0A1322] p-5">
                                 <div className="flex items-start gap-2 text-sm text-gray-300">
                                     <MapPin className="mt-1 h-4 w-4 shrink-0 text-gray-500" />
                                     <p className="max-w-3xl leading-8">{draft.excerpt}</p>
                                 </div>
                             </div>
 
-                            <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 md:p-10 shadow-[0_8px_28px_rgba(0,0,0,0.18)]">
-                                <div className="prose prose-slate prose-lg mx-auto w-full max-w-3xl break-words font-[Georgia,Times_New_Roman,serif] prose-headings:break-words prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-5 prose-h3:mt-8 prose-h3:mb-4 prose-p:my-5 prose-p:text-[1.08rem] prose-p:leading-8 prose-strong:text-slate-950 prose-ul:my-6 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-2 prose-li:text-slate-800 prose-blockquote:border-l-4 prose-blockquote:border-slate-400 prose-blockquote:bg-slate-50 prose-blockquote:px-4 prose-blockquote:py-2 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
-                                    <ReactMarkdown components={{ img: () => null }}>{draft.contentMarkdown}</ReactMarkdown>
-                                </div>
+                            <div className="keyword-blog-content min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#09101A] px-5 py-6 md:px-8">
+                                {contentBlocks.length === 0 && (
+                                    <p className="text-gray-400">No readable content found in this draft.</p>
+                                )}
+
+                                {contentBlocks.map((block, index) => {
+                                    if (block.type === 'h2') {
+                                        return (
+                                            <h3 key={`h2-${index}`} className="mt-10 mb-4 text-3xl font-semibold tracking-tight text-white first:mt-0">
+                                                {block.text}
+                                            </h3>
+                                        );
+                                    }
+
+                                    if (block.type === 'h3') {
+                                        return (
+                                            <h4 key={`h3-${index}`} className="mt-8 mb-3 text-2xl font-semibold tracking-tight text-gray-100">
+                                                {block.text}
+                                            </h4>
+                                        );
+                                    }
+
+                                    if (block.type === 'ul') {
+                                        return (
+                                            <ul key={`ul-${index}`} className="my-5 list-disc space-y-2 pl-6 text-[1.08rem] leading-9 text-gray-100">
+                                                {block.items.map((item, itemIndex) => (
+                                                    <li key={`ul-${index}-${itemIndex}`}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        );
+                                    }
+
+                                    if (block.type === 'ol') {
+                                        return (
+                                            <ol key={`ol-${index}`} className="my-5 list-decimal space-y-2 pl-6 text-[1.08rem] leading-9 text-gray-100">
+                                                {block.items.map((item, itemIndex) => (
+                                                    <li key={`ol-${index}-${itemIndex}`}>{item}</li>
+                                                ))}
+                                            </ol>
+                                        );
+                                    }
+
+                                    if (block.type === 'quote') {
+                                        return (
+                                            <blockquote key={`q-${index}`} className="my-6 rounded-r-xl border-l-4 border-cyan-300/40 bg-[#121A24] px-4 py-3 text-[1.02rem] leading-8 text-gray-100">
+                                                {block.text}
+                                            </blockquote>
+                                        );
+                                    }
+
+                                    return (
+                                        <p key={`p-${index}`} className="my-5 text-[1.08rem] leading-9 text-gray-100">
+                                            {block.text}
+                                        </p>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
             )}
-        </div>
+        </section>
     );
 }

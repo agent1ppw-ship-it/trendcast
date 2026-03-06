@@ -56,6 +56,18 @@ function formatProviderLabel(dataSource: KeywordOpportunityReport['dataSource'] 
     return 'Unknown';
 }
 
+function normalizeRenderedDraftMarkdown(markdown: string) {
+    const source = markdown || '';
+    const lines = source.split('\n');
+    const nonEmpty = lines.filter((line) => line.trim().length > 0);
+    if (nonEmpty.length === 0) return source;
+
+    const indentedCount = nonEmpty.filter((line) => /^ {4,}\S/.test(line)).length;
+    if (indentedCount / nonEmpty.length < 0.6) return source;
+
+    return lines.map((line) => line.replace(/^ {4}/, '')).join('\n');
+}
+
 export function KeywordOpportunityClient({
     defaultIndustry,
 }: {
@@ -602,9 +614,18 @@ export function KeywordOpportunityClient({
                                         </p>
                                     </div>
 
-                                    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 md:p-10 shadow-[0_8px_28px_rgba(0,0,0,0.18)]">
-                                        <div className="prose prose-slate prose-lg mx-auto w-full max-w-3xl break-words font-[Georgia,Times_New_Roman,serif] prose-headings:break-words prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-5 prose-h3:mt-8 prose-h3:mb-4 prose-p:my-5 prose-p:text-[1.08rem] prose-p:leading-8 prose-strong:text-slate-950 prose-ul:my-6 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-2 prose-li:text-slate-800 prose-blockquote:border-l-4 prose-blockquote:border-slate-400 prose-blockquote:bg-slate-50 prose-blockquote:px-4 prose-blockquote:py-2 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
-                                            <ReactMarkdown components={{ img: () => null }}>{blogDraft.contentMarkdown}</ReactMarkdown>
+                                    <div className="keyword-blog-content min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#09101A] p-6 md:p-10 shadow-[0_8px_28px_rgba(0,0,0,0.42)]">
+                                        <div className="prose prose-invert prose-lg mx-auto w-full max-w-3xl break-words font-[Georgia,Times_New_Roman,serif] prose-headings:break-words prose-headings:font-semibold prose-headings:text-white prose-headings:tracking-tight prose-h2:mt-12 prose-h2:mb-5 prose-h3:mt-8 prose-h3:mb-4 prose-p:my-5 prose-p:text-[1.08rem] prose-p:leading-8 prose-p:text-gray-100 prose-strong:text-white prose-ul:my-6 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-2 prose-li:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-cyan-300/40 prose-blockquote:bg-[#121A24] prose-blockquote:px-4 prose-blockquote:py-2 prose-code:bg-[#1B2230] prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                                            <ReactMarkdown
+                                                components={{
+                                                    img: () => null,
+                                                    pre: ({ children }) => (
+                                                        <pre className="my-6 overflow-x-auto whitespace-pre-wrap rounded-xl bg-[#121A24] p-5 text-gray-100">{children}</pre>
+                                                    ),
+                                                }}
+                                            >
+                                                {normalizeRenderedDraftMarkdown(blogDraft.contentMarkdown)}
+                                            </ReactMarkdown>
                                         </div>
                                     </div>
                                 </div>
