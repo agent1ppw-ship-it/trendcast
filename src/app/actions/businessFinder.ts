@@ -4,11 +4,12 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { ensureOrganization } from '@/app/actions/auth';
 import type {
+    BusinessLeadContactEnrichment,
     BusinessFinderExtractionDiagnostics,
     BusinessFinderLead,
     BusinessFinderMatchStrategy,
 } from '@/lib/businessFinder';
-import { getSafeSearchRadiusMiles } from '@/lib/businessFinder';
+import { enrichBusinessLeadContact, getSafeSearchRadiusMiles } from '@/lib/businessFinder';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = new IORedis(redisUrl, {
@@ -108,6 +109,34 @@ export async function getBusinessSearchStatus(jobId: string) {
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to get business search status.',
+        };
+    }
+}
+
+export async function enrichBusinessFinderLead(lead: BusinessFinderLead): Promise<{
+    success: boolean;
+    contact?: BusinessLeadContactEnrichment;
+    error?: string;
+}> {
+    const orgId = await ensureOrganization();
+    if (!orgId) {
+        return { success: false, error: 'Unauthorized. Please sign in.' };
+    }
+
+    try {
+        const contact = await enrichBusinessLeadContact({
+            website: lead.website,
+            listingUrl: lead.listingUrl,
+            phone: lead.phone,
+            email: lead.email,
+        });
+
+        return { success: true, contact };
+    } catch (error) {
+        console.error('Failed to enrich business lead contact:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to enrich contact details.',
         };
     }
 }

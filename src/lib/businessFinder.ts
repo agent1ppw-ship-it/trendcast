@@ -11,6 +11,8 @@ export interface BusinessFinderLead {
     website: string;
     listingUrl: string;
     sourceLabel: string;
+    email?: string;
+    contactPageUrl?: string;
 }
 
 export type BusinessFinderMatchStrategy = 'exact_zip' | 'area_results';
@@ -224,6 +226,8 @@ function buildLead({
     website,
     listingUrl,
     sourceLabel = 'Yellow Pages',
+    email,
+    contactPageUrl,
 }: {
     name: string;
     industry: string;
@@ -234,6 +238,8 @@ function buildLead({
     website?: string;
     listingUrl?: string;
     sourceLabel?: string;
+    email?: string;
+    contactPageUrl?: string;
 }): BusinessFinderLead {
     const normalizedAddress = normalizeText(address);
     const normalizedName = normalizeText(name);
@@ -249,6 +255,8 @@ function buildLead({
         website: normalizeUrl(website, 'https://www.yellowpages.com'),
         listingUrl: normalizeUrl(listingUrl, 'https://www.yellowpages.com'),
         sourceLabel,
+        email: normalizeText(email),
+        contactPageUrl: normalizeUrl(contactPageUrl),
     };
 }
 
@@ -811,6 +819,7 @@ out center tags;
 
         const address = buildOpenStreetMapAddress(tags);
         const phone = tags.phone || tags['contact:phone'] || '';
+        const email = tags.email || tags['contact:email'] || '';
         const website = tags.website || tags['contact:website'] || tags.url || '';
         const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
         const listingUrl = `https://www.openstreetmap.org/${element.type}/${element.id}`;
@@ -822,6 +831,7 @@ out center tags;
             city,
             address: address || `${city} ${zipCode}`.trim(),
             phone,
+            email,
             website,
             listingUrl,
             sourceLabel: 'OpenStreetMap',
@@ -897,6 +907,7 @@ out center tags;
             const name = normalizeText(result.name || address.split(',')[0]);
             const tags = result.extratags || {};
             const phone = tags.phone || tags['contact:phone'] || '';
+            const email = tags.email || tags['contact:email'] || '';
             const website = tags.website || tags['contact:website'] || tags.url || '';
             const city = normalizeText(
                 result.address?.city ||
@@ -920,6 +931,7 @@ out center tags;
                 city,
                 address,
                 phone,
+                email,
                 website,
                 listingUrl,
                 sourceLabel: 'OpenStreetMap Search',
@@ -986,6 +998,7 @@ export function mapNominatimResultsToBusinessLeads(
         const name = normalizeText(result.name || address.split(',')[0]);
         const tags = result.extratags || {};
         const phone = tags.phone || tags['contact:phone'] || '';
+        const email = tags.email || tags['contact:email'] || '';
         const website = tags.website || tags['contact:website'] || tags.url || '';
         const city = normalizeText(
             result.address?.city ||
@@ -1009,6 +1022,7 @@ export function mapNominatimResultsToBusinessLeads(
             city,
             address,
             phone,
+            email,
             website,
             listingUrl,
             sourceLabel,
@@ -1043,4 +1057,177 @@ export function mapNominatimResultsToBusinessLeads(
 
 export function buildBrowserLocationQueries(industry: string, zipCode: string, geocode: ZipGeocodeResult | null) {
     return buildLocationQueries(industry, zipCode, geocode);
+}
+
+export interface BusinessLeadContactEnrichment {
+    email: string;
+    phone: string;
+    website: string;
+    contactPageUrl: string;
+    scannedUrls: string[];
+}
+
+function normalizeWebUrl(raw?: string) {
+    const normalized = normalizeUrl(raw);
+    if (!normalized) return '';
+
+    try {
+        const parsed = new URL(normalized);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        return parsed.toString();
+    } catch {
+        return '';
+    }
+}
+
+function extractEmailsFromText(content: string) {
+    const matches = content.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+    const blacklist = new Set([
+        'example.com',
+        'domain.com',
+    ]);
+
+    const unique = new Set<string>();
+    for (const match of matches) {
+        const email = match.toLowerCase().trim();
+        const domain = email.split('@')[1] || '';
+        if (blacklist.has(domain)) continue;
+        unique.add(email);
+    }
+
+    return Array.from(unique);
+}
+
+function normalizePhoneForDisplay(value: string) {
+    return normalizeText(value.replace(/\s+/g, ' '));
+}
+
+function extractPhoneFromText(content: string) {
+    const match = content.match(/\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+    return match ? normalizePhoneForDisplay(match[0]) : '';
+}
+
+function toAbsoluteHttpUrl(href: string, baseUrl: string) {
+    try {
+        const absolute = new URL(href, baseUrl);
+        if (!['http:', 'https:'].includes(absolute.protocol)) return '';
+        return absolute.toString();
+    } catch {
+        return '';
+    }
+}
+
+async function fetchHtml(url: string) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'trendcast-business-finder/1.0',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) return '';
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/html')) return '';
+        return await response.text();
+    } catch {
+        return '';
+    }
+}
+
+export async function enrichBusinessLeadContact(lead: Pick<BusinessFinderLead, 'website' | 'listingUrl' | 'phone' | 'email'>): Promise<BusinessLeadContactEnrichment> {
+    const baseWebsite = normalizeWebUrl(lead.website) || normalizeWebUrl(lead.listingUrl);
+    const scannedUrls: string[] = [];
+
+    if (!baseWebsite) {
+        return {
+            email: normalizeText(lead.email),
+            phone: normalizeText(lead.phone),
+            website: '',
+            contactPageUrl: '',
+            scannedUrls,
+        };
+    }
+
+    const seedUrls = [baseWebsite];
+    let bestEmail = normalizeText(lead.email);
+    let bestPhone = normalizeText(lead.phone);
+    let contactPageUrl = '';
+
+    const seen = new Set<string>();
+    const queue = [...seedUrls];
+    const contactCandidates: string[] = [];
+
+    while (queue.length > 0 && scannedUrls.length < 3) {
+        const currentUrl = queue.shift()!;
+        if (seen.has(currentUrl)) continue;
+        seen.add(currentUrl);
+
+        const html = await fetchHtml(currentUrl);
+        if (!html) continue;
+        scannedUrls.push(currentUrl);
+
+        const $ = cheerio.load(html);
+        const pageText = $('body').text();
+        const htmlEmails = extractEmailsFromText(`${pageText}\n${html}`);
+        if (!bestEmail && htmlEmails.length > 0) {
+            bestEmail = htmlEmails[0];
+        }
+
+        if (!bestPhone) {
+            const textPhone = extractPhoneFromText(pageText);
+            if (textPhone) bestPhone = textPhone;
+        }
+
+        $('a[href]').each((_, element) => {
+            const href = normalizeText($(element).attr('href'));
+            const anchorText = normalizeText($(element).text()).toLowerCase();
+            if (!href) return;
+
+            if (href.startsWith('mailto:')) {
+                const mail = normalizeText(href.replace(/^mailto:/i, '').split('?')[0]).toLowerCase();
+                if (!bestEmail && mail.includes('@')) bestEmail = mail;
+                return;
+            }
+
+            const absoluteUrl = toAbsoluteHttpUrl(href, currentUrl);
+            if (!absoluteUrl) return;
+
+            try {
+                const targetHost = new URL(absoluteUrl).hostname.replace(/^www\./, '');
+                const baseHost = new URL(baseWebsite).hostname.replace(/^www\./, '');
+                if (targetHost !== baseHost) return;
+            } catch {
+                return;
+            }
+
+            if (
+                /contact|about|team|get in touch|support/i.test(href) ||
+                /contact|about|team|get in touch|support/i.test(anchorText)
+            ) {
+                contactCandidates.push(absoluteUrl);
+            }
+        });
+
+        if (!bestEmail) {
+            for (const candidate of contactCandidates) {
+                if (!seen.has(candidate) && queue.length < 2) {
+                    queue.push(candidate);
+                }
+            }
+        }
+
+        if (bestEmail && contactCandidates.length > 0) {
+            contactPageUrl = contactCandidates[0];
+        }
+    }
+
+    return {
+        email: bestEmail,
+        phone: bestPhone,
+        website: baseWebsite,
+        contactPageUrl,
+        scannedUrls,
+    };
 }

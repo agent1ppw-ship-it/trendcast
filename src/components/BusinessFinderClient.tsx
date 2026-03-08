@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Building2, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Send, Sparkles, Users } from 'lucide-react';
+import { Building2, ExternalLink, Globe, Loader2, Mail, MapPin, Phone, Search, Send, Sparkles, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createLead } from '@/app/actions/crm';
-import { getBusinessSearchStatus, startBusinessSearchJob } from '@/app/actions/businessFinder';
+import { enrichBusinessFinderLead, getBusinessSearchStatus, startBusinessSearchJob } from '@/app/actions/businessFinder';
 import type {
+    BusinessLeadContactEnrichment,
     BusinessFinderExtractionDiagnostics,
     BusinessFinderLead,
     BusinessFinderMatchStrategy,
@@ -51,6 +52,8 @@ export function BusinessFinderClient({
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [isSendingAll, setIsSendingAll] = useState(false);
     const [jobProgress, setJobProgress] = useState<{ phase: string; percent: number } | null>(null);
+    const [enrichingIds, setEnrichingIds] = useState<string[]>([]);
+    const [enrichedContacts, setEnrichedContacts] = useState<Record<string, BusinessLeadContactEnrichment>>({});
     const [searchDiagnostics, setSearchDiagnostics] = useState<{
         finalUrl?: string;
         pageTitle?: string;
@@ -120,6 +123,7 @@ export function BusinessFinderClient({
 
                 setResults(liveLeads);
                 setSentIds([]);
+                setEnrichedContacts({});
                 setSourceLabel(status.sourceLabel || 'Yellow Pages');
                 setMatchStrategy(status.matchStrategy || 'exact_zip');
                 setSearchDiagnostics(diagnostics);
@@ -154,13 +158,88 @@ export function BusinessFinderClient({
         }, 1500);
     };
 
+    const handleEnrichSingle = async (lead: BusinessFinderLead) => {
+        if (enrichingIds.includes(lead.id)) return;
+
+        setEnrichingIds((current) => [...current, lead.id]);
+        setError('');
+
+        const result = await enrichBusinessFinderLead(lead);
+
+        if (!result.success || !result.contact) {
+            setError(result.error || `Failed to enrich contact info for ${lead.name}.`);
+        } else {
+            setEnrichedContacts((current) => ({
+                ...current,
+                [lead.id]: result.contact!,
+            }));
+
+            if (result.contact.email) {
+                setStatusMessage(`Found contact info for ${lead.name}: ${result.contact.email}`);
+            } else {
+                setStatusMessage(`Scanned ${lead.name}, but no public email was found.`);
+            }
+        }
+
+        setEnrichingIds((current) => current.filter((id) => id !== lead.id));
+    };
+
+    const handleExportCsv = () => {
+        if (results.length === 0) return;
+
+        const escapeCsv = (value: string) => `"${(value || '').replace(/"/g, '""')}"`;
+        const header = [
+            'Business',
+            'Industry',
+            'Phone',
+            'Email',
+            'Website',
+            'Contact Page',
+            'Address',
+            'City',
+            'ZIP',
+            'Source',
+        ];
+
+        const rows = results.map((lead) => {
+            const enriched = enrichedContacts[lead.id];
+            const phone = enriched?.phone || lead.phone || '';
+            const email = enriched?.email || lead.email || '';
+            const website = enriched?.website || lead.website || lead.listingUrl || '';
+            const contactPage = enriched?.contactPageUrl || lead.contactPageUrl || '';
+
+            return [
+                lead.name,
+                lead.industry,
+                phone,
+                email,
+                website,
+                contactPage,
+                lead.address,
+                lead.city,
+                lead.zipCode,
+                lead.sourceLabel,
+            ].map((value) => escapeCsv(value || '')).join(',');
+        });
+
+        const csv = [header.map((entry) => escapeCsv(entry)).join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `trendcast-leads-${zipCode}-${industry.toLowerCase().replace(/\s+/g, '-')}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     const handleSendSingle = async (lead: BusinessFinderLead) => {
         setSendingId(lead.id);
         setError('');
+        const enriched = enrichedContacts[lead.id];
 
         const result = await createLead({
             name: lead.name,
-            phone: lead.phone,
+            phone: enriched?.phone || lead.phone,
             address: lead.address,
             source: 'BUSINESS_SCRAPER',
         });
@@ -184,9 +263,10 @@ export function BusinessFinderClient({
         const nextSent: string[] = [];
 
         for (const lead of unsentResults) {
+            const enriched = enrichedContacts[lead.id];
             const result = await createLead({
                 name: lead.name,
-                phone: lead.phone,
+                phone: enriched?.phone || lead.phone,
                 address: lead.address,
                 source: 'BUSINESS_SCRAPER',
             });
@@ -231,6 +311,13 @@ export function BusinessFinderClient({
                         className="px-4 py-2.5 bg-blue-600/10 text-blue-300 border border-blue-500/20 rounded-lg text-sm font-medium hover:bg-blue-600/20 transition-all disabled:opacity-50"
                     >
                         {isSendingAll ? 'Sending Batch...' : 'Send All to CRM'}
+                    </button>
+                    <button
+                        onClick={handleExportCsv}
+                        disabled={results.length === 0}
+                        className="px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-[#1B1B1B] transition-all disabled:opacity-50"
+                    >
+                        Export Lead List CSV
                     </button>
                 </div>
             </div>
@@ -525,11 +612,45 @@ export function BusinessFinderClient({
                                                 )}
                                             </td>
                                             <td className="px-6 py-5">
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Phone className="w-4 h-4 text-gray-500" />
-                                                    <span className="font-mono text-gray-300">{lead.phone || 'No phone listed'}</span>
-                                                </div>
-                                                <div className="mt-3 text-xs text-gray-500">Verified from live directory result</div>
+                                                {(() => {
+                                                    const enriched = enrichedContacts[lead.id];
+                                                    const phone = enriched?.phone || lead.phone;
+                                                    const email = enriched?.email || lead.email;
+                                                    const contactPageUrl = enriched?.contactPageUrl || lead.contactPageUrl;
+
+                                                    return (
+                                                        <>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <Phone className="w-4 h-4 text-gray-500" />
+                                                                <span className="font-mono text-gray-300">{phone || 'No phone listed'}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <Mail className="w-4 h-4 text-gray-500" />
+                                                                {email ? (
+                                                                    <a href={`mailto:${email}`} className="text-blue-300 hover:text-blue-200 hover:underline">
+                                                                        {email}
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-gray-500">No email found yet</span>
+                                                                )}
+                                                            </div>
+                                                            {contactPageUrl && (
+                                                                <a
+                                                                    href={contactPageUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mt-2"
+                                                                >
+                                                                    Contact page
+                                                                    <ExternalLink className="w-3 h-3" />
+                                                                </a>
+                                                            )}
+                                                            <div className="mt-3 text-xs text-gray-500">
+                                                                {email ? 'Email gathered from business website' : 'Run email enrichment to gather contact emails'}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-start gap-2 text-gray-300">
@@ -546,16 +667,26 @@ export function BusinessFinderClient({
                                                 </span>
                                             </td>
                                             <td className="px-6 py-5 text-right">
-                                                <button
-                                                    onClick={() => handleSendSingle(lead)}
-                                                    disabled={isSent || sendingId === lead.id || isSendingAll}
-                                                    className={isSent
-                                                        ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-sm font-medium'
-                                                        : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 text-sm font-semibold transition-all disabled:opacity-50'}
-                                                >
-                                                    {sendingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                                    {isSent ? 'Sent to CRM' : 'Send to CRM'}
-                                                </button>
+                                                <div className="flex flex-col gap-2 items-end">
+                                                    <button
+                                                        onClick={() => handleEnrichSingle(lead)}
+                                                        disabled={enrichingIds.includes(lead.id) || isLoading}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/10 text-blue-300 border border-blue-500/20 text-sm font-medium hover:bg-blue-600/20 transition-all disabled:opacity-50"
+                                                    >
+                                                        {enrichingIds.includes(lead.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                                                        {enrichedContacts[lead.id]?.email || lead.email ? 'Refresh Contact' : 'Find Contact Info'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSendSingle(lead)}
+                                                        disabled={isSent || sendingId === lead.id || isSendingAll}
+                                                        className={isSent
+                                                            ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-sm font-medium'
+                                                            : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 text-sm font-semibold transition-all disabled:opacity-50'}
+                                                    >
+                                                        {sendingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                        {isSent ? 'Sent to CRM' : 'Send to CRM'}
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
