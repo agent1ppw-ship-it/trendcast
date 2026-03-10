@@ -101,19 +101,19 @@ export function LeadCard({ lead }: { lead: any }) {
                     </p>
                 )}
 
-                {/* Hover Actions Overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#1A1A1A] to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between px-2 pb-2">
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
                     <button
                         onClick={() => handleMove('backward')}
                         disabled={!canMoveBackward}
-                        className="p-1.5 rounded-md bg-[#2A2A2A] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-0 transition-all z-10"
+                        className="p-1.5 rounded-md bg-[#2A2A2A] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        title={canMoveBackward ? 'Move backward in pipeline' : 'Already at first stage'}
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
 
                     <button
                         onClick={handleDelete}
-                        className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all z-10"
+                        className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all"
                         title="Delete Lead"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -122,7 +122,8 @@ export function LeadCard({ lead }: { lead: any }) {
                     <button
                         onClick={() => handleMove('forward')}
                         disabled={!canMoveForward}
-                        className="p-1.5 rounded-md bg-[#2A2A2A] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-0 transition-all z-10"
+                        className="p-1.5 rounded-md bg-[#2A2A2A] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        title={canMoveForward ? 'Move forward in pipeline' : 'Already at last stage'}
                     >
                         <ChevronRight className="w-4 h-4" />
                     </button>
