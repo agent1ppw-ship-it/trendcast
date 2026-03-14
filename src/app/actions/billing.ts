@@ -16,6 +16,30 @@ const PRICE_IDS = {
     'ULTIMATE': process.env.STRIPE_PRICE_ULTIMATE || 'price_mock_ultimate_39999'
 };
 
+function getCheckoutLineItem(tier: 'INTRO' | 'PRO' | 'ULTIMATE'): Stripe.Checkout.SessionCreateParams.LineItem {
+    if (tier === 'INTRO') {
+        return {
+            price_data: {
+                currency: 'usd',
+                product_data: {
+                    name: 'Trendcast Intro',
+                    description: 'Intro subscription tier billed monthly.',
+                },
+                recurring: {
+                    interval: 'month',
+                },
+                unit_amount: 1749,
+            },
+            quantity: 1,
+        };
+    }
+
+    return {
+        price: PRICE_IDS[tier],
+        quantity: 1,
+    };
+}
+
 export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') {
     try {
         const orgId = await ensureOrganization();
@@ -31,8 +55,6 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
         }
 
         const activeEmail = org.users[0].email || undefined;
-        const priceId = PRICE_IDS[tier];
-
         let checkoutSession;
 
         if (org.stripeSubscriptionId && org.stripeCustomerId) {
@@ -49,12 +71,7 @@ export async function createCheckoutSession(tier: 'INTRO' | 'PRO' | 'ULTIMATE') 
                 payment_method_types: ['card'],
                 billing_address_collection: 'required',
                 customer_email: activeEmail,
-                line_items: [
-                    {
-                        price: priceId,
-                        quantity: 1,
-                    },
-                ],
+                line_items: [getCheckoutLineItem(tier)],
                 mode: 'subscription',
                 success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=success`,
                 cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://trendcast.io'}/dashboard?payment=cancelled`,

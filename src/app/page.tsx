@@ -303,7 +303,7 @@ export default function Home() {
               <h3 className="text-2xl font-bold text-white mb-2">Intro</h3>
               <p className="text-gray-400 mb-6 min-h-[48px] text-sm">Generate client-ready long-tail keyword blog posts that boost local SEO and drive new leads.</p>
               <div className="mb-6">
-                <span className="text-4xl font-extrabold text-white">$34.99</span>
+                <span className="text-4xl font-extrabold text-white">$17.49</span>
                 <span className="text-gray-500">/mo</span>
               </div>
               <ul className="space-y-4 mb-8 flex-1 text-sm text-gray-300">

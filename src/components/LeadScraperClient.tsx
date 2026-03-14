@@ -224,7 +224,7 @@ export function LeadScraperClient({ initialLeads }: { initialLeads: Lead[] }) {
                                                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all flex items-center justify-center gap-2"
                                             >
                                                 {isUpgrading ? <Activity className="w-4 h-4 animate-pulse" /> : <Zap className="w-4 h-4" />}
-                                                Upgrade to Intro Tier ($34.99)
+                                                Upgrade to Intro Tier ($17.49)
                                             </button>
                                         )}
                                         {queueWarning.includes('Redis') && (
