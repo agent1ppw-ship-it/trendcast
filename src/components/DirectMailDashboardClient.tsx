@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition, type ChangeEvent } from 'react';
 import { AlertCircle, CheckCircle2, Mail, Maximize2, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -120,8 +119,11 @@ export function DirectMailDashboardClient({
     lobEnvironment: 'demo' | 'test' | 'live';
     senderProfile: SenderProfileRecord;
 }) {
-    const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [mailLeads, setMailLeads] = useState(leads);
+    const [mailTemplates, setMailTemplates] = useState(templates);
+    const [mailCampaigns, setMailCampaigns] = useState(campaigns);
     const [campaignName, setCampaignName] = useState('Neighborhood Postcard Drop');
     const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id || '');
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -150,10 +152,105 @@ export function DirectMailDashboardClient({
     const [fullPreviewTemplate, setFullPreviewTemplate] = useState<PostcardPreviewTemplate | null>(null);
     const [fullPreviewSide, setFullPreviewSide] = useState<'front' | 'back'>('front');
 
-    const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0] || null;
+    useEffect(() => {
+        let isCancelled = false;
+
+        const loadData = async () => {
+            try {
+                const response = await fetch('/api/dashboard/mail-data', {
+                    cache: 'no-store',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load direct mail data.');
+                }
+
+                const payload = await response.json() as {
+                    success: boolean;
+                    senderProfile: SenderProfileRecord;
+                    leads: LeadRecord[];
+                    templates: TemplateRecord[];
+                    campaigns: CampaignRecord[];
+                };
+
+                if (isCancelled) return;
+
+                setMailLeads(payload.leads || []);
+                setMailTemplates(payload.templates || []);
+                setMailCampaigns(payload.campaigns || []);
+                setMailFromName(payload.senderProfile?.mailFromName || '');
+                setMailFromCompany(payload.senderProfile?.mailFromCompany || '');
+                setMailAddressLine1(payload.senderProfile?.mailAddressLine1 || '');
+                setMailAddressLine2(payload.senderProfile?.mailAddressLine2 || '');
+                setMailCity(payload.senderProfile?.mailCity || '');
+                setMailState(payload.senderProfile?.mailState || '');
+                setMailZip(payload.senderProfile?.mailZip || '');
+            } catch (loadError) {
+                if (!isCancelled) {
+                    setError(loadError instanceof Error ? loadError.message : 'Failed to load direct mail data.');
+                }
+            } finally {
+                if (!isCancelled) {
+                    setIsLoadingData(false);
+                }
+            }
+        };
+
+        loadData();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!selectedTemplateId && mailTemplates[0]?.id) {
+            setSelectedTemplateId(mailTemplates[0].id);
+        }
+    }, [mailTemplates, selectedTemplateId]);
+
+    const refreshMailData = async () => {
+        setIsLoadingData(true);
+        setError('');
+
+        try {
+            const response = await fetch('/api/dashboard/mail-data', {
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to refresh direct mail data.');
+            }
+
+            const payload = await response.json() as {
+                success: boolean;
+                senderProfile: SenderProfileRecord;
+                leads: LeadRecord[];
+                templates: TemplateRecord[];
+                campaigns: CampaignRecord[];
+            };
+
+            setMailLeads(payload.leads || []);
+            setMailTemplates(payload.templates || []);
+            setMailCampaigns(payload.campaigns || []);
+            setMailFromName(payload.senderProfile?.mailFromName || '');
+            setMailFromCompany(payload.senderProfile?.mailFromCompany || '');
+            setMailAddressLine1(payload.senderProfile?.mailAddressLine1 || '');
+            setMailAddressLine2(payload.senderProfile?.mailAddressLine2 || '');
+            setMailCity(payload.senderProfile?.mailCity || '');
+            setMailState(payload.senderProfile?.mailState || '');
+            setMailZip(payload.senderProfile?.mailZip || '');
+        } catch (refreshError) {
+            setError(refreshError instanceof Error ? refreshError.message : 'Failed to refresh direct mail data.');
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
+
+    const selectedTemplate = mailTemplates.find((template) => template.id === selectedTemplateId) || mailTemplates[0] || null;
 
     const filteredLeads = useMemo(() => {
-        return leads.filter((lead) => {
+        return mailLeads.filter((lead) => {
             if (!lead.address) return false;
             if (sourceFilter !== 'ALL' && lead.source !== sourceFilter) return false;
             if (statusFilter !== 'ALL' && lead.status !== statusFilter) return false;
@@ -161,11 +258,11 @@ export function DirectMailDashboardClient({
             const haystack = `${lead.name} ${lead.address} ${lead.source} ${lead.status}`.toLowerCase();
             return haystack.includes(search.trim().toLowerCase());
         });
-    }, [leads, search, sourceFilter, statusFilter]);
+    }, [mailLeads, search, sourceFilter, statusFilter]);
 
     const selectedLeads = useMemo(
-        () => leads.filter((lead) => selectedLeadIds.includes(lead.id)),
-        [leads, selectedLeadIds],
+        () => mailLeads.filter((lead) => selectedLeadIds.includes(lead.id)),
+        [mailLeads, selectedLeadIds],
     );
 
     const estimatedCost = useMemo(() => {
@@ -254,10 +351,10 @@ export function DirectMailDashboardClient({
                     setFeedback(sendResult.message || 'Campaign processed.');
                 }
             } else {
-                setFeedback('Campaign draft saved.');
+            setFeedback('Campaign draft saved.');
             }
 
-            router.refresh();
+            await refreshMailData();
         });
     };
 
@@ -291,7 +388,7 @@ export function DirectMailDashboardClient({
             setNewTemplateCta('');
             setNewTemplateImageUrl('');
             setNewTemplateImageLabel('');
-            router.refresh();
+            await refreshMailData();
         });
     };
 
@@ -350,7 +447,7 @@ export function DirectMailDashboardClient({
             }
 
             setFeedback('Sender profile saved.');
-            router.refresh();
+            await refreshMailData();
         });
     };
 
@@ -414,7 +511,7 @@ export function DirectMailDashboardClient({
             }
 
             setFeedback('Campaign cancelled.');
-            router.refresh();
+            await refreshMailData();
         });
     };
 
@@ -435,10 +532,10 @@ export function DirectMailDashboardClient({
 
             setFeedback('Template deleted.');
             if (selectedTemplateId === templateId) {
-                const nextTemplate = templates.find((template) => template.id !== templateId);
+                const nextTemplate = mailTemplates.find((template) => template.id !== templateId);
                 setSelectedTemplateId(nextTemplate?.id || '');
             }
-            router.refresh();
+            await refreshMailData();
         });
     };
 
@@ -473,6 +570,12 @@ export function DirectMailDashboardClient({
                         {error ? <AlertCircle className="mt-0.5 h-4 w-4" /> : <CheckCircle2 className="mt-0.5 h-4 w-4" />}
                         <span>{error || feedback}</span>
                     </div>
+                </div>
+            )}
+
+            {isLoadingData && (
+                <div className="mb-6 rounded-2xl border border-blue-500/15 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                    Loading your Direct Mail workspace...
                 </div>
             )}
 
@@ -549,7 +652,7 @@ export function DirectMailDashboardClient({
                             <div>
                                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Choose Template</label>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    {templates.map((template) => (
+                                    {mailTemplates.map((template) => (
                                         <div
                                             key={template.id}
                                             onClick={() => setSelectedTemplateId(template.id)}
@@ -871,13 +974,13 @@ export function DirectMailDashboardClient({
                             <CardTitle className="text-lg font-semibold text-white">Recent Campaigns</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-6">
-                            {campaigns.length === 0 && (
+                            {mailCampaigns.length === 0 && (
                                 <div className="rounded-2xl border border-dashed border-white/10 bg-[#161616] px-4 py-8 text-center text-sm text-gray-500">
                                     No campaigns yet. Create your first postcard drop from the builder.
                                 </div>
                             )}
 
-                            {campaigns.map((campaign) => (
+                            {mailCampaigns.map((campaign) => (
                                 <div key={campaign.id} className="rounded-2xl border border-white/5 bg-[#161616] p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
