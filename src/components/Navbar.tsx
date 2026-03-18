@@ -8,6 +8,7 @@ import { signOut, useSession } from 'next-auth/react';
 const desktopNavItems = [
     { href: '/#features', label: 'Features' },
     { href: '/#pricing', label: 'Pricing' },
+    { href: '/blog', label: 'Blog' },
     { href: '/signup?mode=signin', label: 'CRM Login' },
     { href: '/dashboard/leads', label: 'Lead Extractor' },
     { href: '/hub', label: 'Contractor Forums', accent: true },
@@ -16,6 +17,7 @@ const desktopNavItems = [
 const mobileNavItems = [
     { href: '/#features', label: 'Features' },
     { href: '/#pricing', label: 'Pricing' },
+    { href: '/blog', label: 'Blog' },
     { href: '/signup?mode=signin', label: 'CRM Login' },
     { href: '/dashboard/leads', label: 'Lead Extractor' },
     { href: '/dashboard/businesses', label: 'Business Finder' },

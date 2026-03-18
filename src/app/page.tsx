@@ -418,6 +418,7 @@ export default function Home() {
           </div>
           <p className="text-gray-600 text-sm">© 2026 trendcast.io. All rights reserved.</p>
           <div className="flex gap-6 text-sm">
+            <Link href="/blog" className="text-gray-500 hover:text-gray-300 transition-colors">Blog</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Terms</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Privacy Policy</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Contact</Link>
