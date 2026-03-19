@@ -10,9 +10,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "assets:generate": "node ./scripts/generate-brand-assets.mjs",
-    "build:ios:preview": "npx eas build --platform ios --profile preview",
-    "build:ios:production": "npx eas build --platform ios --profile production",
-    "submit:ios": "npx eas submit --platform ios --profile production"
+    "build:ios:preview": "npx eas-cli build --platform ios --profile preview",
+    "build:ios:production": "npx eas-cli build --platform ios --profile production",
+    "submit:ios": "npx eas-cli submit --platform ios --profile production"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.24.0",
@@ -33,6 +33,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "^18.3.7",
+    "eas-cli": "^18.4.0",
     "typescript": "^5.6.3"
   }
 }
