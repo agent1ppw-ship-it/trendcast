@@ -17,7 +17,7 @@ import {
   Zap
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createCheckoutSession } from '@/app/actions/billing';
 import { siteName, siteUrl } from '@/lib/site';
@@ -48,6 +48,24 @@ export default function Home() {
 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navigationEntry?.type === 'reload';
+
+    if (!isReload || window.location.hash) {
+      return;
+    }
+
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+
   const homePageJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
