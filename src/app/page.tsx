@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createCheckoutSession } from '@/app/actions/billing';
+import { siteName, siteUrl } from '@/lib/site';
 
 export default function Home() {
   const mobileQuickActions = [
@@ -47,6 +48,47 @@ export default function Home() {
 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const homePageJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: siteName,
+        url: siteUrl,
+        description: 'AI software for home service businesses focused on lead generation, CRM automation, direct mail, and local SEO.',
+      },
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${siteUrl}#software`,
+        name: siteName,
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        url: siteUrl,
+        description: 'AI tools for home service businesses including lead scraping, business finder data, CRM workflows, direct mail, and local SEO content.',
+        offers: {
+          '@type': 'Offer',
+          price: '17.49',
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
+        },
+        audience: {
+          '@type': 'Audience',
+          audienceType: 'Home service businesses',
+        },
+        featureList: [
+          'Lead scraper for newly sold homes',
+          'Business finder for local service companies',
+          'Pipeline CRM for follow-up and quoting',
+          'AI blog and local SEO content tools',
+          'Direct mail and sales workflow automation',
+        ],
+        provider: {
+          '@id': `${siteUrl}#organization`,
+        },
+      },
+    ],
+  };
 
   const handleUpgrade = async (tier: 'INTRO' | 'PRO' | 'ULTIMATE') => {
     setIsLoading(tier);
@@ -66,6 +108,10 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen overflow-hidden bg-[#020306] text-gray-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homePageJsonLd) }}
+      />
 
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-40 overflow-hidden isolate">
@@ -89,19 +135,27 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
               </span>
-              Enterprise Voice AI Agents are Live
+              AI Tools for Home Service Businesses
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-8 leading-[1.1]">
-              The unfair AI advantage for <br className="hidden md:block" />
+              AI tools for <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-emerald-300 to-fuchsia-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.35)]">
-                Home Services
+                home service businesses
               </span>
             </h1>
 
             <p className="text-xl md:text-2xl text-gray-400 mb-10 leading-relaxed max-w-3xl mx-auto font-light">
-              Home sale extractor tool with contact information and direct input to a pipeline CRM. Try for free! Just search by zip code.
+              Lead scraping, business finder data, AI follow-up, pipeline CRM, direct mail, and local SEO tools for roofers, landscapers, plumbers, painters, HVAC companies, electricians, and more.
             </p>
+
+            <div className="mb-10 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-300">
+              {['AI lead generation', 'Contractor CRM automation', 'Local SEO for home services', 'Business finder data'].map((label) => (
+                <span key={label} className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                  {label}
+                </span>
+              ))}
+            </div>
 
             <div className="flex items-center justify-center">
               <Link
@@ -289,6 +343,61 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="border-t border-white/5 bg-[linear-gradient(180deg,#050608_0%,#0b0c0f_100%)] py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-200">
+                <span className="h-2 w-2 rounded-full bg-orange-400" />
+                New Offer
+              </div>
+              <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+                $399 contractor websites for local home service businesses.
+              </h2>
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-gray-300">
+                Mobile optimized, SEO ready, and designed for contractors who need a clean portfolio site that actually helps get estimate requests. Built for landscaping, power washing, roofing, tree service, concrete, drywall, dumpster rental, and more.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3 text-sm text-gray-200">
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Flat $399 build</div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Mobile optimized</div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">SEO ready</div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Built for local trades</div>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-orange-400/18 bg-[linear-gradient(150deg,rgba(18,15,12,0.96),rgba(9,13,18,0.94))] p-8 shadow-[0_0_70px_rgba(249,115,22,0.10)]">
+              <div className="rounded-[1.5rem] border border-white/8 bg-[#0d1218] p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">Trendcast Websites</p>
+                <div className="mt-4 flex items-end gap-2">
+                  <span className="text-5xl font-extrabold text-white">$399</span>
+                  <span className="pb-2 text-sm font-medium text-gray-400">one-time build</span>
+                </div>
+                <ul className="mt-6 space-y-3 text-sm text-gray-200">
+                  <li className="flex items-start gap-3"><span className="text-orange-400">✓</span> Clean service business homepage and portfolio structure</li>
+                  <li className="flex items-start gap-3"><span className="text-orange-400">✓</span> Strong call-to-action layout for quote requests</li>
+                  <li className="flex items-start gap-3"><span className="text-orange-400">✓</span> SEO-ready content hierarchy and metadata foundation</li>
+                  <li className="flex items-start gap-3"><span className="text-orange-400">✓</span> Built specifically for home service contractors</li>
+                </ul>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link
+                    href="/contractor-websites"
+                    className="inline-flex items-center justify-center rounded-2xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-orange-400"
+                  >
+                    View Website Offer
+                  </Link>
+                  <Link
+                    href="/contractor-websites#website-build-inquiry"
+                    className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-gray-100 transition-colors hover:bg-white/10"
+                  >
+                    Start My Build
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* PRICING SECTION */}
       <section id="pricing" className="py-24 bg-[#050506] border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -418,6 +527,7 @@ export default function Home() {
           </div>
           <p className="text-gray-600 text-sm">© 2026 trendcast.io. All rights reserved.</p>
           <div className="flex gap-6 text-sm">
+            <Link href="/contractor-websites" className="text-gray-500 hover:text-gray-300 transition-colors">Websites</Link>
             <Link href="/blog" className="text-gray-500 hover:text-gray-300 transition-colors">Blog</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Terms</Link>
             <Link href="#" className="text-gray-500 hover:text-gray-300 transition-colors">Privacy Policy</Link>
