@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, CheckCircle2, Globe2, MonitorSmartphone, Search, Sparkles } from 'lucide-react';
+import { ContractorWebsiteMockupTool } from '@/components/ContractorWebsiteMockupTool';
 import { WebsiteBuildInquiryForm } from '@/components/WebsiteBuildInquiryForm';
 
 export const metadata: Metadata = {
@@ -142,6 +143,8 @@ export default function ContractorWebsitesPage() {
                     </div>
                 </div>
             </section>
+
+            <ContractorWebsiteMockupTool />
 
             <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
                 <div className="grid gap-6 md:grid-cols-3">
