@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendWebsiteBuildInquiryNotification } from '@/lib/websiteBuildInquiryEmail';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,17 @@ export async function POST(request: Request) {
             .filter(Boolean)
             .join(' | ');
 
+        const notificationResult = await sendWebsiteBuildInquiryNotification({
+            name,
+            email,
+            phone,
+            businessName,
+            industry,
+            cityState,
+            currentWebsite,
+            notes,
+        });
+
         const lead = await prisma.lead.create({
             data: {
                 orgId,
@@ -89,6 +101,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             inquiryId: lead.id,
+            emailNotificationSent: notificationResult.sent,
         });
     } catch (error) {
         console.error('Website build inquiry failed:', error);
