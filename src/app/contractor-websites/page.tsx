@@ -102,13 +102,13 @@ export default function ContractorWebsitesPage() {
                             </div>
 
                             <div className="mt-10 flex flex-wrap gap-4">
-                                <Link
+                                <a
                                     href="#website-build-inquiry"
                                     className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-4 text-sm font-extrabold text-white transition-all hover:bg-orange-400"
                                 >
                                     Start My Website Build
                                     <ArrowRight className="h-4 w-4" />
-                                </Link>
+                                </a>
                                 <Link
                                     href="/#pricing"
                                     className="inline-flex items-center gap-2 rounded-2xl border border-white/12 bg-white/5 px-6 py-4 text-sm font-semibold text-gray-100 transition-all hover:bg-white/10"
@@ -237,13 +237,13 @@ export default function ContractorWebsitesPage() {
                                     For contractors who need a professional web presence without turning this into a giant custom-agency project.
                                 </p>
                             </div>
-                            <Link
+                            <a
                                 href="#website-build-inquiry"
                                 className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-4 text-sm font-extrabold text-white transition-all hover:bg-orange-400"
                             >
                                 Claim This Offer
                                 <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -265,7 +265,7 @@ export default function ContractorWebsitesPage() {
                 </div>
             </section>
 
-            <section id="website-build-inquiry" className="border-t border-white/6 bg-[linear-gradient(180deg,#0a0b0d_0%,#07080b_100%)]">
+            <section id="website-build-inquiry" className="scroll-mt-28 border-t border-white/6 bg-[linear-gradient(180deg,#0a0b0d_0%,#07080b_100%)]">
                 <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
                     <div className="mb-10 max-w-2xl">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">Lead capture</p>
