@@ -79,8 +79,8 @@ export default function ContractorWebsitesPage() {
     return (
         <div className="min-h-screen bg-[#060607] text-white">
             <section className="relative overflow-hidden border-b border-white/6 bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.14),transparent_34%),radial-gradient(circle_at_75%_20%,rgba(34,211,238,0.10),transparent_32%),linear-gradient(180deg,#0a0b0d_0%,#060607_72%)]">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay" />
-                <div className="mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8 lg:pb-28 lg:pt-32">
+                <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay" />
+                <div className="relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8 lg:pb-28 lg:pt-32">
                     <div className="grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
                         <div>
                             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200">
