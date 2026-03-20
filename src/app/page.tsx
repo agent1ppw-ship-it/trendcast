@@ -157,6 +157,35 @@ export default function Home() {
               ))}
             </div>
 
+            <div className="mx-auto mb-10 max-w-4xl rounded-[28px] border border-orange-400/20 bg-[linear-gradient(135deg,rgba(33,18,9,0.92),rgba(10,16,25,0.94))] p-4 text-left shadow-[0_0_50px_rgba(249,115,22,0.12)] sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                    New Offer
+                  </div>
+                  <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+                    $399 contractor website builds
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-7 text-gray-300 sm:text-base">
+                    Mobile-optimized, SEO-ready portfolio sites for landscapers, roofers, tree service companies, power washers, concrete crews, drywall companies, and other local contractors.
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-col gap-3 sm:items-end">
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200">
+                    One-time build
+                  </div>
+                  <Link
+                    href="/contractor-websites"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-orange-400"
+                  >
+                    View Site Builds
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-center">
               <Link
                 href="/signup"
