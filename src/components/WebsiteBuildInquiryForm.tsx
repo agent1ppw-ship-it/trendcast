@@ -296,7 +296,7 @@ export function WebsiteBuildInquiryForm() {
                     disabled={submittingIntent !== null}
                     className="inline-flex items-center justify-center rounded-2xl bg-orange-500 px-6 py-4 text-sm font-extrabold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    {isSubmitting('checkout') ? 'Opening Checkout...' : 'Continue to Secure $399 Checkout'}
+                    {isSubmitting('checkout') ? 'Opening Checkout...' : 'Proceed to Secure Checkout'}
                 </button>
                 <button
                     type="button"
