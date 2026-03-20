@@ -21,16 +21,6 @@ const nextConfig: NextConfig = {
         destination: "https://trendcast.io/:path*",
         permanent: true,
       },
-      {
-        source: "/blog",
-        destination: "/hub",
-        permanent: true,
-      },
-      {
-        source: "/blog/:slug",
-        destination: "/hub/:slug",
-        permanent: true,
-      },
     ];
   },
   outputFileTracingIncludes: {
