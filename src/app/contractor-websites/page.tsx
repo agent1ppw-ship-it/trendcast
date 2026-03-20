@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { ArrowRight, BadgeCheck, CheckCircle2, Globe2, MonitorSmartphone, Search, Sparkles } from 'lucide-react';
 import { ContractorWebsiteMockupTool } from '@/components/ContractorWebsiteMockupTool';
 import { WebsiteBuildInquiryForm } from '@/components/WebsiteBuildInquiryForm';
@@ -271,12 +272,14 @@ export default function ContractorWebsitesPage() {
                         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">Lead capture</p>
                         <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-white">Request your website build.</h2>
                         <p className="mt-4 text-base leading-8 text-gray-300">
-                            Fill this out and the inquiry will be captured inside Trendcast so it can be followed up like any other lead.
+                            Share your business details, upload a logo and project photos if you have them, and either submit the project for review or go straight into secure Stripe checkout for the $399 build.
                         </p>
                     </div>
 
                     <div className="rounded-[2rem] border border-white/8 bg-[linear-gradient(155deg,rgba(18,16,13,0.96),rgba(10,12,16,0.94))] p-6 sm:p-8">
-                        <WebsiteBuildInquiryForm />
+                        <Suspense fallback={<div className="text-sm text-gray-400">Loading website build form...</div>}>
+                            <WebsiteBuildInquiryForm />
+                        </Suspense>
                     </div>
                 </div>
             </section>
