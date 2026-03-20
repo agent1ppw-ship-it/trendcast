@@ -25,10 +25,13 @@ function optionalRow(label: string, value: string) {
 
 export async function sendWebsiteBuildInquiryNotification(inquiry: WebsiteBuildInquiryNotification) {
     const apiKey = process.env.RESEND_API_KEY;
-    const toEmail = process.env.WEBSITE_BUILD_INQUIRY_TO_EMAIL || process.env.CONTACT_NOTIFICATION_EMAIL;
+    const toEmail =
+        process.env.WEBSITE_BUILD_INQUIRY_TO_EMAIL ||
+        process.env.CONTACT_NOTIFICATION_EMAIL ||
+        'vincent@precisionpropertyworks.com';
 
-    if (!apiKey || !toEmail) {
-        console.warn('Website build inquiry email skipped because RESEND_API_KEY or WEBSITE_BUILD_INQUIRY_TO_EMAIL is missing.');
+    if (!apiKey) {
+        console.warn('Website build inquiry email skipped because RESEND_API_KEY is missing.');
         return { sent: false as const, reason: 'missing-config' as const };
     }
 
